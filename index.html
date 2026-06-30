@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Catalogue Ảnh Sản Phẩm</title>
+  <title>Catalogue</title>
 
   <!-- CDN: Không cần build, up thẳng index.html lên GitHub Pages -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -106,7 +106,7 @@
               Thư viện tra cứu hình ảnh sản phẩm
             </h1>
             <p class="mt-4 text-slate-600 text-lg leading-relaxed">
-              Giao diện dạng thẻ giống Shopee, tìm theo mã hàng, ID, đặc điểm nhận dạng và mục đích sử dụng.
+              Giao diện dạng thẻ, tìm theo mã hàng, ID, đặc điểm nhận dạng và mục đích sử dụng.
             </p>
 
             <div class="mt-8 grid sm:grid-cols-3 gap-3">
@@ -141,7 +141,7 @@
           </div>
 
           <label class="text-sm font-black text-slate-700 mb-2">Tên đăng nhập</label>
-          <input v-model.trim="loginForm.username" class="input" placeholder="Ví dụ: Vinh" autocomplete="username" />
+          <input v-model.trim="loginForm.username" class="input" placeholder="" autocomplete="username" />
 
           <label class="text-sm font-black text-slate-700 mt-4 mb-2">Mật khẩu</label>
           <div class="relative">
@@ -161,7 +161,6 @@
           </div>
 
           <div class="mt-6 text-xs text-slate-500 leading-relaxed bg-white/70 border border-emerald-100 rounded-2xl p-4">
-            Nếu mới chạy SQL, tài khoản mẫu là các tên: Vinh, Luu, Chieu, Thanh, Trinh, Tra, Nam, Khoa, Na. Admin nên đổi mật khẩu ngay sau lần đăng nhập đầu tiên.
           </div>
         </form>
       </div>
@@ -204,7 +203,7 @@
             <i data-lucide="triangle-alert" class="w-6 h-6 shrink-0"></i>
             <div>
               <p class="font-black">Tài khoản đang dùng mật khẩu mặc định</p>
-              <p class="text-sm">Anh nên đổi mật khẩu để bảo mật trước khi dùng lâu dài.</p>
+              <p class="text-sm">nên đổi mật khẩu để bảo mật trước khi dùng lâu dài.</p>
             </div>
           </div>
           <button @click="openPasswordModal" class="btn h-10 px-4 bg-amber-600 text-white hover:bg-amber-700">Đổi ngay</button>
@@ -541,8 +540,8 @@
      * TUYỆT ĐỐI KHÔNG DÁN SERVICE_ROLE / SECRET KEY VÀO FILE HTML.
      **********************************************************************/
     const CONFIG = {
-      SUPABASE_URL: 'https://YOUR_PROJECT_ID.supabase.co',
-      SUPABASE_ANON_KEY: 'YOUR_PUBLISHABLE_OR_ANON_KEY',
+      SUPABASE_URL: 'https://vhsikdgkzecdfopkpzum.supabase.co',
+      SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc2lrZGdremVjZGZvcGtwenVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjgyMTcsImV4cCI6MjA5Njg0NDIxN30.bj1yl4azsk8X-V2I1C6l5Qpa0kqt6j0TP4ZCJ3Du0l4',
       BUCKET: 'product-images',
       LOCAL_TOKEN_KEY: 'catalogue_app_session_token_v1',
       SIGNED_URL_SECONDS: 60 * 60
