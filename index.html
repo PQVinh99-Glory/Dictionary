@@ -397,6 +397,28 @@
             <p class="mt-3 text-xs text-slate-500 leading-relaxed">
               Nếu chọn ảnh mới, hệ thống tự đặt đường dẫn upload và tự lấy mã hàng từ tên ảnh nếu ô mã hàng đang trống.
             </p>
+
+            <label class="btn mt-3 w-full h-11 bg-white border border-emerald-200 hover:bg-emerald-50 cursor-pointer text-emerald-700">
+              <i data-lucide="box" class="w-5 h-5"></i>
+              Chọn ảnh 360 / nhiều góc
+              <input type="file" accept="image/*" multiple class="hidden" @change="onFrameFilesChange" />
+            </label>
+
+            <div v-if="editor.framePreviews.length" class="mt-3">
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <p class="text-xs font-black text-emerald-700">Frame 360: {{ editor.framePreviews.length }} ảnh</p>
+                <button type="button" @click="clearFrameFiles" class="text-xs font-black text-red-600 hover:underline">Xóa frame</button>
+              </div>
+              <div class="grid grid-cols-4 gap-1.5">
+                <div v-for="(src,idx) in editor.framePreviews" :key="idx" class="aspect-square rounded-xl overflow-hidden border border-emerald-100 bg-emerald-50 relative">
+                  <img :src="src" class="w-full h-full object-cover" />
+                  <span class="absolute left-1 bottom-1 px-1.5 py-.5 rounded bg-slate-900/70 text-white text-[10px] font-black">{{ idx + 1 }}</span>
+                </div>
+              </div>
+              <p class="mt-2 text-[11px] text-slate-500 leading-relaxed">
+                Có thể chọn 4 / 8 / 12 / 24 ảnh. Hệ thống tự nén WebP và lưu đúng thứ tự frame.
+              </p>
+            </div>
           </div>
 
           <form @submit.prevent="saveEditor" class="space-y-4">
@@ -451,7 +473,7 @@
       class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto flex items-start lg:items-center justify-center"
       @click.self="closeZoom"
     >
-      <div class="w-full max-w-7xl min-w-0 grid lg:grid-cols-[minmax(0,1fr)_380px] gap-3 sm:gap-4 py-2 sm:py-0">
+      <div class="w-full max-w-7xl min-w-0 grid lg:grid-cols-[minmax(0,1fr)_390px] gap-3 sm:gap-4 py-2 sm:py-0">
         <div
           class="viewer-stage rounded-[1.5rem] sm:rounded-[2rem] border border-white/10 overflow-hidden flex items-center justify-center min-h-[42dvh] max-h-[54dvh] lg:min-h-[560px] lg:max-h-[86vh]"
           :class="{ 'is-dragging': zoom.dragging }"
@@ -463,8 +485,8 @@
           @pointerleave="onViewerPointerUp"
         >
           <img
-            v-if="zoom.item && imageUrl(zoom.item)"
-            :src="imageUrl(zoom.item)"
+            v-if="zoomImageSrc()"
+            :src="zoomImageSrc()"
             :style="{ transform: zoomTransform() }"
             :class="['viewer-object max-w-[94vw] lg:max-w-[96%] max-h-[50dvh] lg:max-h-[84vh] object-contain select-none', zoom.mode3d ? 'viewer-3d' : '']"
             draggable="false"
@@ -473,7 +495,10 @@
 
           <div class="absolute left-3 right-3 bottom-3 flex flex-wrap gap-2 text-[11px] sm:text-xs font-bold text-white/90">
             <span class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-slate-950/45 border border-white/10 backdrop-blur">
-              {{ zoom.mode3d ? '3D: kéo để xoay' : 'Kéo để di chuyển' }}
+              {{ zoom.mode360 ? '360°: kéo trái/phải đổi góc' : (zoom.mode3d ? '3D: kéo để xoay' : 'Kéo để di chuyển') }}
+            </span>
+            <span v-if="zoom.frames.length > 1" class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-emerald-600/80 border border-white/10 backdrop-blur">
+              Frame {{ zoom.frameIndex + 1 }}/{{ zoom.frames.length }}
             </span>
             <span class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-slate-950/45 border border-white/10 backdrop-blur hidden sm:inline">
               Lăn chuột để zoom · 2 ngón để pinch
@@ -499,7 +524,7 @@
 
             <details class="rounded-2xl bg-white/70 border border-emerald-100 p-3 break-all">
               <summary class="font-bold cursor-pointer">Path ảnh</summary>
-              <div class="mt-2 text-xs text-slate-600">{{ zoom.item?.image_path }}</div>
+              <div class="mt-2 text-xs text-slate-600">{{ zoom.mode360 && zoom.frames.length ? zoom.frames[zoom.frameIndex]?.image_path : zoom.item?.image_path }}</div>
             </details>
           </div>
 
@@ -527,9 +552,41 @@
             </button>
           </div>
 
+          <div v-if="zoom.loadingFrames" class="mt-3 rounded-2xl bg-white/80 border border-emerald-100 p-3 text-xs font-bold text-slate-600">
+            Đang tải frame 360...
+          </div>
+
+          <div v-if="zoom.frames.length > 1" class="mt-2 grid grid-cols-[44px_1fr_44px] gap-2">
+            <button @click="prev360Frame" class="btn h-10 sm:h-11 bg-white border border-emerald-100 hover:bg-emerald-50" title="Frame trước">
+              <i data-lucide="chevron-left" class="w-5 h-5"></i>
+            </button>
+            <button
+              @click="toggle360Mode"
+              :class="['btn h-10 sm:h-11 border text-xs', zoom.mode360 ? 'bg-lime-500 text-white border-lime-500' : 'bg-white border-emerald-100 hover:bg-emerald-50']"
+              title="Bật/tắt xem 360° nhiều ảnh"
+            >
+              <i data-lucide="rotate-3d" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+              360° {{ zoom.frameIndex + 1 }}/{{ zoom.frames.length }}
+            </button>
+            <button @click="next360Frame" class="btn h-10 sm:h-11 bg-white border border-emerald-100 hover:bg-emerald-50" title="Frame sau">
+              <i data-lucide="chevron-right" class="w-5 h-5"></i>
+            </button>
+          </div>
+
+          <div v-if="zoom.frames.length > 1" class="mt-2 grid grid-cols-4 gap-1.5">
+            <button
+              v-for="(f,idx) in zoom.frames"
+              :key="f.image_path"
+              @click="set360Frame(idx)"
+              :class="['aspect-square rounded-xl overflow-hidden border-2 bg-emerald-50', idx===zoom.frameIndex ? 'border-emerald-600' : 'border-transparent']"
+            >
+              <img :src="imageUrls[f.image_path] || ''" class="w-full h-full object-cover" />
+            </button>
+          </div>
+
           <div class="mt-3 rounded-2xl bg-emerald-50 border border-emerald-100 p-3 text-[11px] sm:text-xs text-slate-600 leading-relaxed">
-            <b>PC:</b> lăn chuột để zoom, kéo ảnh để {{ zoom.mode3d ? 'xoay 3D mô phỏng' : 'di chuyển ảnh' }}.<br>
-            <b>Mobile:</b> kéo 1 ngón để {{ zoom.mode3d ? 'xoay mô phỏng' : 'di chuyển' }}, dùng 2 ngón để phóng to/thu nhỏ.
+            <b>PC:</b> lăn chuột để zoom, kéo ảnh để {{ zoom.mode360 ? 'đổi góc 360°' : (zoom.mode3d ? 'xoay 3D mô phỏng' : 'di chuyển ảnh') }}.<br>
+            <b>Mobile:</b> kéo 1 ngón để {{ zoom.mode360 ? 'đổi frame' : (zoom.mode3d ? 'xoay mô phỏng' : 'di chuyển') }}, dùng 2 ngón để phóng to/thu nhỏ.
           </div>
 
           <button v-if="canEdit" @click="openEditor(zoom.item); closeZoom()" class="btn mt-3 w-full h-11 sm:h-12 bg-slate-900 text-white hover:bg-slate-800 text-sm">
@@ -667,6 +724,8 @@
             open: false,
             file: null,
             localPreview: '',
+            frameFiles: [],
+            framePreviews: [],
             form: this.emptyForm()
           },
           zoom: {
@@ -679,6 +738,11 @@
             rotateX: 0,
             rotateY: 0,
             mode3d: false,
+            mode360: false,
+            frames: [],
+            frameIndex: 0,
+            frameDragAccum: 0,
+            loadingFrames: false,
             dragging: false,
             pointers: {},
             lastPointer: null,
@@ -877,6 +941,7 @@
         openEditor(item = null) {
           this.editor.file = null;
           this.editor.localPreview = '';
+          this.clearFrameFiles();
           if (item) {
             this.editor.form = {
               id: item.id,
@@ -895,6 +960,7 @@
         closeEditor() {
           this.editor.open = false;
           if (this.editor.localPreview) URL.revokeObjectURL(this.editor.localPreview);
+          this.clearFrameFiles();
           this.editor.file = null;
           this.editor.localPreview = '';
         },
@@ -907,6 +973,21 @@
           if (!this.editor.form.code) this.editor.form.code = this.codeFromFilename(file.name);
           if (!this.editor.form.image_name) this.editor.form.image_name = file.name;
         },
+        onFrameFilesChange(e) {
+          const files = Array.from(e.target.files || []);
+          e.target.value = '';
+          if (!files.length) return;
+          this.clearFrameFiles();
+          this.editor.frameFiles = files;
+          this.editor.framePreviews = files.map(file => URL.createObjectURL(file));
+        },
+        clearFrameFiles() {
+          (this.editor.framePreviews || []).forEach(src => {
+            try { URL.revokeObjectURL(src); } catch (_) {}
+          });
+          this.editor.frameFiles = [];
+          this.editor.framePreviews = [];
+        },
         async saveEditor() {
           if (!this.canEdit) return this.toast('error', 'Tài khoản không có quyền thêm/sửa.');
           this.saving = true;
@@ -915,7 +996,7 @@
             let imageName = this.editor.form.image_name;
 
             if (this.editor.file) {
-              const uploaded = await this.uploadFile(this.editor.file);
+              const uploaded = await this.uploadFile(this.editor.file, { kind: 'main' });
               imagePath = uploaded.path;
               imageName = uploaded.name;
             }
@@ -932,8 +1013,36 @@
             });
 
             if (!row || !row.ok) throw new Error(row?.message || 'Không lưu được dữ liệu');
+
+            if (this.editor.frameFiles.length) {
+              const imageId = row.id || row.image_id || this.editor.form.id || await this.getImageIdByPath(imagePath);
+              if (!imageId) throw new Error('Đã lưu ảnh chính nhưng không lấy được image_id để lưu frame 360.');
+
+              const code = this.editor.form.code || this.codeFromFilename(imageName || imagePath);
+              const frames = [];
+              for (let i = 0; i < this.editor.frameFiles.length; i++) {
+                const uploadedFrame = await this.uploadFile(this.editor.frameFiles[i], {
+                  kind: '360',
+                  code,
+                  frameIndex: i + 1
+                });
+                frames.push({
+                  frame_index: i + 1,
+                  image_path: uploadedFrame.path,
+                  image_name: uploadedFrame.name
+                });
+              }
+
+              const frameRow = await this.rpcRow('app_replace_360_frames', {
+                p_session_token: this.session.token,
+                p_image_id: imageId,
+                p_frames: frames
+              });
+              if (!frameRow || !frameRow.ok) throw new Error(frameRow?.message || 'Không lưu được frame 360');
+            }
+
             this.closeEditor();
-            this.toast('success', row.message || 'Đã lưu dữ liệu.');
+            this.toast('success', this.editor.frameFiles.length ? 'Đã lưu dữ liệu và frame 360.' : (row.message || 'Đã lưu dữ liệu.'));
             await this.loadImages(true);
           } catch (err) {
             this.toast('error', this.readError(err));
@@ -941,28 +1050,85 @@
             this.saving = false;
           }
         },
-        async uploadFile(file) {
-          const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-          const code = this.codeFromFilename(file.name) || 'NO_CODE';
+        async getImageIdByPath(imagePath) {
+          const row = await this.rpcRow('app_get_image_by_path', {
+            p_session_token: this.session.token,
+            p_image_path: imagePath
+          });
+          return row?.id || null;
+        },
+        async compressImageToWebp(file, maxEdge = 1600, quality = 0.78) {
+          if (!file?.type?.startsWith('image/')) return file;
+
+          const img = new Image();
+          const objectUrl = URL.createObjectURL(file);
+
+          try {
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = objectUrl;
+            });
+
+            const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
+            const width = Math.max(1, Math.round(img.naturalWidth * scale));
+            const height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d', { alpha: false });
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+            if (!blob) return file;
+
+            const base = String(file.name || 'image')
+              .replace(/\.[^.]+$/, '')
+              .replace(/[^A-Za-z0-9_-]+/g, '_');
+
+            return new File([blob], `${base}.webp`, { type: 'image/webp' });
+          } catch (_) {
+            return file;
+          } finally {
+            URL.revokeObjectURL(objectUrl);
+          }
+        },
+        async uploadFile(file, options = {}) {
+          const kind = options.kind || 'main';
+          const frameIndex = options.frameIndex || 1;
+          const originalName = file.name || 'image.jpg';
+          const compressed = await this.compressImageToWebp(file, kind === '360' ? 1400 : 1600, kind === '360' ? 0.76 : 0.78);
+
+          const ext = (compressed.name.split('.').pop() || 'webp').toLowerCase().replace(/[^a-z0-9]/g, '') || 'webp';
+          const code = (options.code || this.codeFromFilename(originalName) || 'NO_CODE').toUpperCase();
           const now = new Date();
           const yyyy = now.getFullYear();
           const mm = String(now.getMonth() + 1).padStart(2, '0');
           const stamp = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-          const safeName = `${code}_${stamp}.${ext}`;
-          const path = `uploads/${yyyy}-${mm}/${safeName}`;
+
+          let path;
+          if (kind === '360') {
+            path = `uploads/360/${code}/${code}_frame_${String(frameIndex).padStart(2, '0')}_${stamp}.${ext}`;
+          } else {
+            path = `uploads/${yyyy}-${mm}/${code}_${stamp}.${ext}`;
+          }
 
           const { data, error } = await this.sb.storage
             .from(CONFIG.BUCKET)
-            .upload(path, file, {
-              cacheControl: '3600',
+            .upload(path, compressed, {
+              cacheControl: '31536000',
               upsert: false,
-              contentType: file.type || `image/${ext}`
+              contentType: compressed.type || `image/${ext}`
             });
 
           if (error) {
             throw new Error('Upload ảnh lỗi. Nếu bucket đang private và không dùng Supabase Auth thì cần policy Storage/Edge Function riêng. Chi tiết: ' + error.message);
           }
-          return { path: data.path, name: file.name };
+          return { path: data.path, name: originalName };
         },
         async bulkImport(e) {
           const files = Array.from(e.target.files || []);
@@ -1024,7 +1190,7 @@
             this.saving = false;
           }
         },
-        openZoom(item) {
+        async openZoom(item) {
           this.zoom = {
             open: true,
             item,
@@ -1035,17 +1201,53 @@
             rotateX: 0,
             rotateY: 0,
             mode3d: false,
+            mode360: false,
+            frames: [],
+            frameIndex: 0,
+            frameDragAccum: 0,
+            loadingFrames: true,
             dragging: false,
             pointers: {},
             lastPointer: null,
             pinchStartDistance: 0,
             pinchStartScale: 1
           };
+          await this.load360Frames(item);
         },
         closeZoom() {
           this.zoom.open = false;
           this.zoom.dragging = false;
           this.zoom.pointers = {};
+        },
+        async load360Frames(item) {
+          if (!item?.id || !this.session.token) {
+            this.zoom.loadingFrames = false;
+            return;
+          }
+
+          try {
+            const frames = await this.rpcRows('app_get_360_frames', {
+              p_session_token: this.session.token,
+              p_image_id: item.id
+            });
+            this.zoom.frames = frames || [];
+            this.zoom.frameIndex = 0;
+            if (this.zoom.frames.length > 1) {
+              await this.loadImageUrls(this.zoom.frames);
+              this.zoom.mode360 = true;
+            }
+          } catch (_) {
+            this.zoom.frames = [];
+          } finally {
+            this.zoom.loadingFrames = false;
+          }
+        },
+        zoomImageSrc() {
+          if (this.zoom.mode360 && this.zoom.frames.length) {
+            const frame = this.zoom.frames[this.zoom.frameIndex];
+            return frame ? (this.imageUrls[frame.image_path] || '') : '';
+          }
+          return this.zoom.item ? this.imageUrl(this.zoom.item) : '';
         },
         clampZoom(value) {
           return Math.min(8, Math.max(0.35, Number(value) || 1));
@@ -1063,19 +1265,46 @@
           this.zoom.y = 0;
           this.zoom.rotateX = 0;
           this.zoom.rotateY = 0;
+          this.zoom.frameDragAccum = 0;
           this.zoom.pointers = {};
           this.zoom.lastPointer = null;
           this.zoom.dragging = false;
         },
         toggle3dMode() {
           this.zoom.mode3d = !this.zoom.mode3d;
+          if (this.zoom.mode3d) this.zoom.mode360 = false;
           this.zoom.x = 0;
           this.zoom.y = 0;
           this.zoom.rotateX = 0;
           this.zoom.rotateY = 0;
+          this.zoom.frameDragAccum = 0;
           this.zoom.pointers = {};
           this.zoom.lastPointer = null;
           this.zoom.dragging = false;
+        },
+        toggle360Mode() {
+          if (this.zoom.frames.length <= 1) return;
+          this.zoom.mode360 = !this.zoom.mode360;
+          if (this.zoom.mode360) this.zoom.mode3d = false;
+          this.resetZoom();
+        },
+        set360Frame(index) {
+          if (!this.zoom.frames.length) return;
+          this.zoom.frameIndex = Math.max(0, Math.min(this.zoom.frames.length - 1, index));
+          this.zoom.mode360 = true;
+          this.zoom.mode3d = false;
+        },
+        next360Frame() {
+          if (!this.zoom.frames.length) return;
+          this.zoom.frameIndex = (this.zoom.frameIndex + 1) % this.zoom.frames.length;
+          this.zoom.mode360 = true;
+          this.zoom.mode3d = false;
+        },
+        prev360Frame() {
+          if (!this.zoom.frames.length) return;
+          this.zoom.frameIndex = (this.zoom.frameIndex - 1 + this.zoom.frames.length) % this.zoom.frames.length;
+          this.zoom.mode360 = true;
+          this.zoom.mode3d = false;
         },
         zoomTransform() {
           const z = this.zoom;
@@ -1133,7 +1362,13 @@
           const dx = event.clientX - this.zoom.lastPointer.x;
           const dy = event.clientY - this.zoom.lastPointer.y;
 
-          if (this.zoom.mode3d) {
+          if (this.zoom.mode360 && this.zoom.frames.length > 1 && this.zoom.scale <= 1.15) {
+            this.zoom.frameDragAccum += dx;
+            if (Math.abs(this.zoom.frameDragAccum) > 34) {
+              this.zoom.frameDragAccum > 0 ? this.prev360Frame() : this.next360Frame();
+              this.zoom.frameDragAccum = 0;
+            }
+          } else if (this.zoom.mode3d) {
             this.zoom.rotateY = (this.zoom.rotateY + dx * 0.55) % 360;
             this.zoom.rotateX = Math.max(-70, Math.min(70, this.zoom.rotateX - dy * 0.35));
           } else {
@@ -1151,6 +1386,7 @@
             this.zoom.dragging = false;
             this.zoom.lastPointer = null;
             this.zoom.pinchStartDistance = 0;
+            this.zoom.frameDragAccum = 0;
           } else if (points.length === 1) {
             this.zoom.lastPointer = { x: points[0].x, y: points[0].y };
             this.zoom.pinchStartDistance = 0;
