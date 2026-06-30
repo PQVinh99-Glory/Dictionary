@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catalogue Ảnh Sản Phẩm</title>
+
+  <!-- CDN: Không cần build, up thẳng index.html lên GitHub Pages -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          boxShadow: {
+            soft: '0 18px 60px rgba(16, 185, 129, 0.16)',
+            card: '0 10px 28px rgba(15, 23, 42, 0.09)'
+          },
+          colors: {
+            leaf: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    [v-cloak] { display: none; }
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(34,197,94,.24), transparent 34%),
+        radial-gradient(circle at top right, rgba(132,204,22,.18), transparent 30%),
+        linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 45%, #f7fee7 100%);
+      min-height: 100vh;
+    }
+    .glass {
+      background: rgba(255,255,255,.78);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255,255,255,.72);
+    }
+    .card-img-bg {
+      background-image:
+        linear-gradient(45deg, rgba(22,163,74,.07) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(22,163,74,.07) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(22,163,74,.07) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(22,163,74,.07) 75%);
+      background-size: 18px 18px;
+      background-position: 0 0, 0 9px, 9px -9px, -9px 0px;
+    }
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .scrollbar-soft::-webkit-scrollbar { width: 8px; height: 8px; }
+    .scrollbar-soft::-webkit-scrollbar-thumb { background: #86efac; border-radius: 999px; }
+    .scrollbar-soft::-webkit-scrollbar-track { background: transparent; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .45rem;
+      border-radius: 1rem;
+      font-weight: 800;
+      transition: .18s ease;
+    }
+    .btn:active { transform: scale(.98); }
+    .input {
+      width: 100%;
+      border-radius: 1rem;
+      border: 1px solid #bbf7d0;
+      background: rgba(255,255,255,.88);
+      padding: .72rem .9rem;
+      outline: none;
+      transition: .18s ease;
+    }
+    .input:focus {
+      border-color: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34,197,94,.14);
+    }
+  </style>
+</head>
+<body>
+  <div id="app" v-cloak class="min-h-screen text-slate-800">
+    <!-- LOGIN -->
+    <section v-if="!session.user" class="min-h-screen flex items-center justify-center p-4">
+      <div class="w-full max-w-5xl grid lg:grid-cols-[1.05fr_.95fr] gap-6 items-stretch">
+        <div class="glass rounded-[2rem] shadow-soft p-7 md:p-10 overflow-hidden relative">
+          <div class="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-emerald-300/40 blur-3xl"></div>
+          <div class="relative">
+            <div class="w-16 h-16 rounded-3xl bg-gradient-to-br from-emerald-500 to-lime-400 text-white flex items-center justify-center shadow-card mb-6">
+              <i data-lucide="images" class="w-9 h-9"></i>
+            </div>
+            <p class="text-sm font-black tracking-[.24em] text-emerald-700 uppercase">Secure Catalogue</p>
+            <h1 class="mt-3 text-4xl md:text-5xl font-black leading-tight text-slate-900">
+              Thư viện tra cứu hình ảnh sản phẩm
+            </h1>
+            <p class="mt-4 text-slate-600 text-lg leading-relaxed">
+              Giao diện dạng thẻ giống Shopee, tìm theo mã hàng, ID, đặc điểm nhận dạng và mục đích sử dụng.
+            </p>
+
+            <div class="mt-8 grid sm:grid-cols-3 gap-3">
+              <div class="rounded-3xl bg-white/70 p-4 border border-emerald-100">
+                <i data-lucide="shield-check" class="w-7 h-7 text-emerald-600"></i>
+                <p class="mt-3 font-black">Đăng nhập riêng</p>
+                <p class="text-sm text-slate-500">Lưu phiên 30 ngày</p>
+              </div>
+              <div class="rounded-3xl bg-white/70 p-4 border border-emerald-100">
+                <i data-lucide="search" class="w-7 h-7 text-emerald-600"></i>
+                <p class="mt-3 font-black">Tìm nhanh</p>
+                <p class="text-sm text-slate-500">Mã / ID / mô tả</p>
+              </div>
+              <div class="rounded-3xl bg-white/70 p-4 border border-emerald-100">
+                <i data-lucide="smartphone" class="w-7 h-7 text-emerald-600"></i>
+                <p class="mt-3 font-black">PC & Mobile</p>
+                <p class="text-sm text-slate-500">Tối ưu responsive</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <form @submit.prevent="login" class="glass rounded-[2rem] shadow-soft p-7 md:p-9 flex flex-col justify-center">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center">
+              <i data-lucide="lock-keyhole" class="w-7 h-7"></i>
+            </div>
+            <div>
+              <h2 class="text-2xl font-black text-slate-900">Đăng nhập</h2>
+              <p class="text-sm text-slate-500">Dùng user trong bảng app_users</p>
+            </div>
+          </div>
+
+          <label class="text-sm font-black text-slate-700 mb-2">Tên đăng nhập</label>
+          <input v-model.trim="loginForm.username" class="input" placeholder="Ví dụ: Vinh" autocomplete="username" />
+
+          <label class="text-sm font-black text-slate-700 mt-4 mb-2">Mật khẩu</label>
+          <div class="relative">
+            <input :type="showPassword ? 'text' : 'password'" v-model="loginForm.password" class="input pr-12" placeholder="Nhập mật khẩu" autocomplete="current-password" />
+            <button type="button" @click="showPassword=!showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl hover:bg-emerald-50">
+              <i :data-lucide="showPassword ? 'eye-off' : 'eye'" class="w-5 h-5 text-slate-500"></i>
+            </button>
+          </div>
+
+          <button class="btn mt-6 h-12 bg-emerald-600 hover:bg-emerald-700 text-white shadow-card" :disabled="loading">
+            <i data-lucide="log-in" class="w-5 h-5"></i>
+            {{ loading ? 'Đang đăng nhập...' : 'Đăng nhập' }}
+          </button>
+
+          <div v-if="notice.text" :class="['mt-4 rounded-2xl p-4 text-sm font-bold', notice.type==='error' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100']">
+            {{ notice.text }}
+          </div>
+
+          <div class="mt-6 text-xs text-slate-500 leading-relaxed bg-white/70 border border-emerald-100 rounded-2xl p-4">
+            Nếu mới chạy SQL, tài khoản mẫu là các tên: Vinh, Luu, Chieu, Thanh, Trinh, Tra, Nam, Khoa, Na. Admin nên đổi mật khẩu ngay sau lần đăng nhập đầu tiên.
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- APP -->
+    <section v-else class="pb-24">
+      <header class="sticky top-0 z-40 border-b border-emerald-100 bg-white/82 backdrop-blur-xl">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-lime-400 text-white flex items-center justify-center shadow-card shrink-0">
+              <i data-lucide="leaf" class="w-7 h-7"></i>
+            </div>
+            <div class="min-w-0">
+              <h1 class="font-black text-lg md:text-2xl text-slate-900 truncate">Catalogue Ảnh</h1>
+              <p class="text-xs md:text-sm text-slate-500 truncate">Xin chào, <b>{{ session.user.display_name }}</b> · Quyền: <b>{{ roleLabel(session.user.role_name) }}</b></p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <button v-if="session.user.role_name === 'admin'" @click="openAdmin" class="btn h-10 px-3 bg-slate-900 text-white hover:bg-slate-800 text-sm">
+              <i data-lucide="users" class="w-4 h-4"></i>
+              <span class="hidden sm:inline">User</span>
+            </button>
+            <button @click="openPasswordModal" class="btn h-10 px-3 bg-white border border-emerald-200 hover:bg-emerald-50 text-sm">
+              <i data-lucide="key-round" class="w-4 h-4"></i>
+              <span class="hidden sm:inline">Mật khẩu</span>
+            </button>
+            <button @click="logout" class="btn h-10 px-3 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 text-sm">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+              <span class="hidden sm:inline">Đăng xuất</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="max-w-7xl mx-auto px-4 pt-5">
+        <div v-if="session.user.must_change_password" class="mb-4 rounded-3xl border border-amber-200 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-800">
+          <div class="flex gap-3">
+            <i data-lucide="triangle-alert" class="w-6 h-6 shrink-0"></i>
+            <div>
+              <p class="font-black">Tài khoản đang dùng mật khẩu mặc định</p>
+              <p class="text-sm">Anh nên đổi mật khẩu để bảo mật trước khi dùng lâu dài.</p>
+            </div>
+          </div>
+          <button @click="openPasswordModal" class="btn h-10 px-4 bg-amber-600 text-white hover:bg-amber-700">Đổi ngay</button>
+        </div>
+
+        <!-- TOOLS -->
+        <section class="glass rounded-[1.8rem] shadow-soft p-4 md:p-5 mb-5">
+          <div class="grid lg:grid-cols-[1fr_190px_190px_auto] gap-3">
+            <div class="relative">
+              <i data-lucide="search" class="w-5 h-5 text-emerald-600 absolute left-4 top-1/2 -translate-y-1/2"></i>
+              <input v-model.trim="filters.search" @keyup.enter="loadImages(true)" class="input pl-12 h-12" placeholder="Tìm mã hàng, ID, đặc điểm nhận dạng, tên ảnh..." />
+            </div>
+
+            <select v-model="filters.usage" @change="loadImages(true)" class="input h-12">
+              <option value="all">Tất cả vị trí</option>
+              <option value="left">Bên trái</option>
+              <option value="right">Bên phải</option>
+              <option value="both">Cả hai bên</option>
+              <option value="unknown">Chưa xác định</option>
+            </select>
+
+            <select v-model.number="filters.limit" @change="loadImages(true)" class="input h-12">
+              <option :value="40">40 ảnh</option>
+              <option :value="80">80 ảnh</option>
+              <option :value="120">120 ảnh</option>
+              <option :value="200">200 ảnh</option>
+            </select>
+
+            <div class="flex gap-2">
+              <button @click="loadImages(true)" class="btn h-12 px-4 bg-white border border-emerald-200 hover:bg-emerald-50">
+                <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+              </button>
+              <button v-if="canEdit" @click="openEditor()" class="btn h-12 px-4 bg-emerald-600 text-white hover:bg-emerald-700 shadow-card">
+                <i data-lucide="plus" class="w-5 h-5"></i>
+                <span class="hidden sm:inline">Thêm</span>
+              </button>
+              <label v-if="canEdit" class="btn h-12 px-4 bg-lime-500 text-white hover:bg-lime-600 shadow-card cursor-pointer">
+                <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                <span class="hidden sm:inline">Import</span>
+                <input type="file" accept="image/*" multiple class="hidden" @change="bulkImport" />
+              </label>
+            </div>
+          </div>
+
+          <div class="mt-4 flex flex-wrap gap-2 text-xs font-black">
+            <span class="px-3 py-2 rounded-full bg-white border border-emerald-100 text-slate-600">Đã tải: {{ images.length }}</span>
+            <span class="px-3 py-2 rounded-full bg-emerald-100 text-emerald-700">Bucket: {{ CONFIG.BUCKET }}</span>
+            <span class="px-3 py-2 rounded-full bg-white border border-emerald-100 text-slate-600">Gợi ý mã: {{ codeSuggestions.length }}</span>
+            <span v-if="lastLoadAt" class="px-3 py-2 rounded-full bg-white border border-emerald-100 text-slate-600">Cập nhật: {{ formatTime(lastLoadAt) }}</span>
+          </div>
+        </section>
+
+        <!-- STATUS -->
+        <div v-if="notice.text && session.user" :class="['mb-4 rounded-3xl p-4 text-sm font-bold flex gap-3 items-start', notice.type==='error' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100']">
+          <i :data-lucide="notice.type==='error' ? 'circle-alert' : 'circle-check'" class="w-5 h-5 shrink-0"></i>
+          <span>{{ notice.text }}</span>
+        </div>
+
+        <!-- LOADING -->
+        <div v-if="loadingImages" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div v-for="n in 15" :key="n" class="rounded-[1.5rem] bg-white/70 border border-emerald-100 shadow-card overflow-hidden animate-pulse">
+            <div class="aspect-square bg-emerald-100"></div>
+            <div class="p-4 space-y-3">
+              <div class="h-4 bg-emerald-100 rounded-full"></div>
+              <div class="h-3 bg-emerald-100 rounded-full w-2/3"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMPTY -->
+        <div v-else-if="images.length === 0" class="glass rounded-[2rem] p-10 text-center shadow-soft">
+          <div class="w-20 h-20 rounded-[2rem] bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+            <i data-lucide="image-off" class="w-10 h-10"></i>
+          </div>
+          <h2 class="mt-4 text-2xl font-black">Chưa có dữ liệu phù hợp</h2>
+          <p class="text-slate-500 mt-2">Thử đổi từ khóa tìm kiếm hoặc import metadata từ Storage bằng SQL.</p>
+        </div>
+
+        <!-- CARD GRID -->
+        <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <article v-for="item in images" :key="item.id" class="group rounded-[1.5rem] bg-white border border-emerald-100 shadow-card hover:shadow-soft hover:-translate-y-1 transition overflow-hidden">
+            <button @click="openZoom(item)" class="relative aspect-square w-full overflow-hidden card-img-bg bg-emerald-50 block">
+              <img v-if="imageUrl(item)" :src="imageUrl(item)" :alt="item.code" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" @error="markImageError(item)" />
+              <div v-else class="w-full h-full flex flex-col items-center justify-center text-emerald-700 p-4 text-center">
+                <i data-lucide="image" class="w-10 h-10 mb-2"></i>
+                <span class="text-xs font-bold break-all">{{ item.image_name || item.image_path }}</span>
+              </div>
+              <span class="absolute top-2 left-2 px-2.5 py-1 rounded-full text-[11px] font-black shadow bg-white/90 text-emerald-700 border border-emerald-100">
+                {{ usageLabel(item.usage_side) }}
+              </span>
+              <span class="absolute bottom-2 right-2 w-9 h-9 rounded-full bg-white/90 border border-emerald-100 flex items-center justify-center text-emerald-700 shadow">
+                <i data-lucide="zoom-in" class="w-5 h-5"></i>
+              </span>
+            </button>
+
+            <div class="p-3">
+              <h3 class="font-black text-slate-900 truncate" :title="item.code">{{ item.code }}</h3>
+              <p class="text-xs text-slate-500 mt-1 truncate">ID: <b>{{ item.part_id || 'Chưa có' }}</b></p>
+              <p class="text-xs text-slate-500 mt-2 line-clamp-2 min-h-[32px]" :title="item.identifying_features || ''">
+                {{ item.identifying_features || 'Chưa nhập đặc điểm nhận dạng' }}
+              </p>
+
+              <div class="mt-3 flex gap-2">
+                <button @click="openZoom(item)" class="btn flex-1 h-9 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs">
+                  <i data-lucide="eye" class="w-4 h-4"></i>Xem
+                </button>
+                <button v-if="canEdit" @click="openEditor(item)" class="btn flex-1 h-9 bg-slate-900 text-white hover:bg-slate-800 text-xs">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>Sửa
+                </button>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div v-if="images.length > 0" class="mt-7 flex justify-center">
+          <button @click="loadMore" class="btn h-12 px-6 bg-white border border-emerald-200 hover:bg-emerald-50 shadow-card" :disabled="loadingImages">
+            <i data-lucide="chevrons-down" class="w-5 h-5"></i>
+            Tải thêm
+          </button>
+        </div>
+      </main>
+    </section>
+
+    <!-- EDITOR MODAL -->
+    <div v-if="editor.open" class="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="closeEditor">
+      <div class="w-full max-w-3xl max-h-[92vh] overflow-auto scrollbar-soft glass rounded-[2rem] shadow-soft p-5 md:p-6">
+        <div class="flex items-start justify-between gap-4 mb-5">
+          <div>
+            <p class="text-sm font-black tracking-[.2em] uppercase text-emerald-700">{{ editor.form.id ? 'Chỉnh sửa' : 'Thêm mới' }}</p>
+            <h2 class="text-2xl font-black text-slate-900">Thông tin ảnh</h2>
+          </div>
+          <button @click="closeEditor" class="w-10 h-10 rounded-2xl bg-white border border-emerald-100 hover:bg-emerald-50 flex items-center justify-center">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div class="grid md:grid-cols-[240px_1fr] gap-5">
+          <div>
+            <div class="aspect-square rounded-[1.5rem] overflow-hidden bg-emerald-50 border border-emerald-100 card-img-bg flex items-center justify-center">
+              <img v-if="editorPreviewUrl" :src="editorPreviewUrl" class="w-full h-full object-cover" />
+              <div v-else class="text-center p-4 text-emerald-700">
+                <i data-lucide="image-plus" class="w-10 h-10 mx-auto mb-2"></i>
+                <p class="text-sm font-bold">Chọn ảnh mới hoặc giữ ảnh cũ</p>
+              </div>
+            </div>
+
+            <label class="btn mt-3 w-full h-11 bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer">
+              <i data-lucide="camera" class="w-5 h-5"></i>
+              Chọn / chụp ảnh
+              <input type="file" accept="image/*" capture="environment" class="hidden" @change="onEditorFileChange" />
+            </label>
+
+            <p class="mt-3 text-xs text-slate-500 leading-relaxed">
+              Nếu chọn ảnh mới, hệ thống tự đặt đường dẫn upload và tự lấy mã hàng từ tên ảnh nếu ô mã hàng đang trống.
+            </p>
+          </div>
+
+          <form @submit.prevent="saveEditor" class="space-y-4">
+            <div>
+              <label class="text-sm font-black text-slate-700">Mã hàng</label>
+              <input v-model.trim="editor.form.code" list="code-list" class="input mt-1" placeholder="Ví dụ: 3627680004" />
+            </div>
+            <div>
+              <label class="text-sm font-black text-slate-700">ID</label>
+              <input v-model.trim="editor.form.part_id" list="part-id-list" class="input mt-1" placeholder="ID / mã phụ nếu có" />
+            </div>
+            <div>
+              <label class="text-sm font-black text-slate-700">Mục đích sử dụng</label>
+              <select v-model="editor.form.usage_side" class="input mt-1">
+                <option value="unknown">Chưa xác định</option>
+                <option value="left">Bên trái</option>
+                <option value="right">Bên phải</option>
+                <option value="both">Cả hai bên</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm font-black text-slate-700">Đặc điểm nhận dạng</label>
+              <textarea v-model.trim="editor.form.identifying_features" class="input mt-1 min-h-[110px] resize-y" placeholder="Ví dụ: màu đen, có 2 lỗ, tem xanh, dùng bên trái..."></textarea>
+            </div>
+            <div>
+              <label class="text-sm font-black text-slate-700">Đường dẫn ảnh trong Storage</label>
+              <input v-model.trim="editor.form.image_path" class="input mt-1" placeholder="uploads/2026-06/xxx.jpg" />
+              <p class="mt-1 text-xs text-slate-500">Khi sửa metadata, có thể giữ nguyên đường dẫn ảnh cũ.</p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-2 pt-2">
+              <button class="btn h-12 px-5 bg-emerald-600 text-white hover:bg-emerald-700 shadow-card" :disabled="saving">
+                <i data-lucide="save" class="w-5 h-5"></i>
+                {{ saving ? 'Đang lưu...' : 'Lưu dữ liệu' }}
+              </button>
+              <button type="button" @click="closeEditor" class="btn h-12 px-5 bg-white border border-emerald-200 hover:bg-emerald-50">
+                Hủy
+              </button>
+              <button v-if="editor.form.id" type="button" @click="deleteCurrent" class="btn h-12 px-5 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 sm:ml-auto">
+                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                Xóa
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ZOOM MODAL -->
+    <div v-if="zoom.open" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm p-4 flex items-center justify-center" @click.self="closeZoom">
+      <div class="w-full max-w-6xl max-h-[94vh] grid lg:grid-cols-[1fr_360px] gap-4">
+        <div class="rounded-[2rem] bg-white/10 border border-white/10 overflow-hidden flex items-center justify-center min-h-[320px]">
+          <img v-if="zoom.item && imageUrl(zoom.item)" :src="imageUrl(zoom.item)" :style="{ transform: `scale(${zoom.scale}) rotate(${zoom.rotate}deg)` }" class="max-w-full max-h-[86vh] object-contain transition" />
+          <div v-else class="text-white text-center p-8">Không tải được ảnh</div>
+        </div>
+        <div class="glass rounded-[2rem] p-5 overflow-auto scrollbar-soft">
+          <div class="flex justify-between gap-3 items-start">
+            <div>
+              <p class="text-xs font-black tracking-[.2em] uppercase text-emerald-700">Chi tiết ảnh</p>
+              <h2 class="text-2xl font-black text-slate-900 mt-1 break-all">{{ zoom.item?.code }}</h2>
+            </div>
+            <button @click="closeZoom" class="w-10 h-10 rounded-2xl bg-white border border-emerald-100 hover:bg-emerald-50 flex items-center justify-center">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+          </div>
+
+          <div class="mt-5 space-y-3 text-sm">
+            <div class="rounded-2xl bg-white/70 border border-emerald-100 p-3"><b>ID:</b> {{ zoom.item?.part_id || 'Chưa có' }}</div>
+            <div class="rounded-2xl bg-white/70 border border-emerald-100 p-3"><b>Mục đích:</b> {{ usageLabel(zoom.item?.usage_side) }}</div>
+            <div class="rounded-2xl bg-white/70 border border-emerald-100 p-3"><b>Đặc điểm:</b><br>{{ zoom.item?.identifying_features || 'Chưa nhập' }}</div>
+            <div class="rounded-2xl bg-white/70 border border-emerald-100 p-3 break-all"><b>Path:</b><br>{{ zoom.item?.image_path }}</div>
+          </div>
+
+          <div class="mt-5 grid grid-cols-3 gap-2">
+            <button @click="zoom.scale=Math.max(.5, zoom.scale-.2)" class="btn h-11 bg-white border border-emerald-100 hover:bg-emerald-50"><i data-lucide="zoom-out" class="w-5 h-5"></i></button>
+            <button @click="zoom.scale=Math.min(4, zoom.scale+.2)" class="btn h-11 bg-white border border-emerald-100 hover:bg-emerald-50"><i data-lucide="zoom-in" class="w-5 h-5"></i></button>
+            <button @click="zoom.rotate=(zoom.rotate+90)%360" class="btn h-11 bg-white border border-emerald-100 hover:bg-emerald-50"><i data-lucide="rotate-cw" class="w-5 h-5"></i></button>
+          </div>
+
+          <button v-if="canEdit" @click="openEditor(zoom.item); closeZoom()" class="btn mt-3 w-full h-12 bg-slate-900 text-white hover:bg-slate-800">
+            <i data-lucide="pencil" class="w-5 h-5"></i>
+            Chỉnh sửa ảnh này
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASSWORD MODAL -->
+    <div v-if="passwordModal.open" class="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="passwordModal.open=false">
+      <form @submit.prevent="changePassword" class="w-full max-w-md glass rounded-[2rem] shadow-soft p-6">
+        <div class="flex items-start justify-between gap-3 mb-5">
+          <div>
+            <p class="text-sm font-black tracking-[.2em] uppercase text-emerald-700">Security</p>
+            <h2 class="text-2xl font-black text-slate-900">Đổi mật khẩu</h2>
+          </div>
+          <button type="button" @click="passwordModal.open=false" class="w-10 h-10 rounded-2xl bg-white border border-emerald-100 hover:bg-emerald-50 flex items-center justify-center">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <label class="text-sm font-black text-slate-700">Mật khẩu cũ</label>
+        <input type="password" v-model="passwordModal.old" class="input mt-1 mb-4" autocomplete="current-password" />
+        <label class="text-sm font-black text-slate-700">Mật khẩu mới</label>
+        <input type="password" v-model="passwordModal.new" class="input mt-1 mb-4" autocomplete="new-password" placeholder="Tối thiểu 10 ký tự" />
+        <button class="btn w-full h-12 bg-emerald-600 text-white hover:bg-emerald-700" :disabled="saving">
+          <i data-lucide="key-round" class="w-5 h-5"></i>
+          Cập nhật mật khẩu
+        </button>
+      </form>
+    </div>
+
+    <!-- ADMIN MODAL -->
+    <div v-if="admin.open" class="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="admin.open=false">
+      <div class="w-full max-w-5xl max-h-[92vh] overflow-auto scrollbar-soft glass rounded-[2rem] shadow-soft p-5 md:p-6">
+        <div class="flex items-start justify-between gap-4 mb-5">
+          <div>
+            <p class="text-sm font-black tracking-[.2em] uppercase text-emerald-700">Admin</p>
+            <h2 class="text-2xl font-black text-slate-900">Quản lý user</h2>
+          </div>
+          <button @click="admin.open=false" class="w-10 h-10 rounded-2xl bg-white border border-emerald-100 hover:bg-emerald-50 flex items-center justify-center">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div class="overflow-auto rounded-3xl border border-emerald-100 bg-white">
+          <table class="w-full text-sm min-w-[820px]">
+            <thead class="bg-emerald-50 text-emerald-800">
+              <tr>
+                <th class="p-3 text-left">Tên</th>
+                <th class="p-3 text-left">Username</th>
+                <th class="p-3 text-left">Quyền</th>
+                <th class="p-3 text-left">Trạng thái</th>
+                <th class="p-3 text-left">Đăng nhập cuối</th>
+                <th class="p-3 text-left">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="u in admin.users" :key="u.id" class="border-t border-emerald-50">
+                <td class="p-3 font-black">{{ u.display_name }}</td>
+                <td class="p-3">{{ u.username }}</td>
+                <td class="p-3">
+                  <select v-model="u.role_name" @change="adminSetRole(u)" class="rounded-xl border border-emerald-100 px-3 py-2 font-bold">
+                    <option value="admin">Admin</option>
+                    <option value="editor">Editor</option>
+                    <option value="viewer">Viewer</option>
+                  </select>
+                </td>
+                <td class="p-3">
+                  <button @click="adminToggleActive(u)" :class="['btn h-9 px-3 text-xs', u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100']">
+                    {{ u.is_active ? 'Đang mở' : 'Đang khóa' }}
+                  </button>
+                </td>
+                <td class="p-3 text-slate-500">{{ u.last_login_at ? formatTime(u.last_login_at) : 'Chưa có' }}</td>
+                <td class="p-3">
+                  <button @click="adminResetPassword(u)" class="btn h-9 px-3 bg-slate-900 text-white text-xs">Reset mật khẩu</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <datalist id="code-list">
+      <option v-for="c in codeSuggestions" :key="c" :value="c"></option>
+    </datalist>
+    <datalist id="part-id-list">
+      <option v-for="p in partIdSuggestions" :key="p" :value="p"></option>
+    </datalist>
+  </div>
+
+  <script>
+    /**********************************************************************
+     * CẤU HÌNH SUPABASE - ANH ĐIỀN Ở ĐÂY
+     * 1) SUPABASE_URL: Project URL, dạng https://xxxx.supabase.co
+     * 2) SUPABASE_ANON_KEY: Publishable key hoặc Legacy anon public key
+     * 3) BUCKET: bucket ảnh hiện tại của anh = product-images
+     *
+     * TUYỆT ĐỐI KHÔNG DÁN SERVICE_ROLE / SECRET KEY VÀO FILE HTML.
+     **********************************************************************/
+    const CONFIG = {
+      SUPABASE_URL: 'https://YOUR_PROJECT_ID.supabase.co',
+      SUPABASE_ANON_KEY: 'YOUR_PUBLISHABLE_OR_ANON_KEY',
+      BUCKET: 'product-images',
+      LOCAL_TOKEN_KEY: 'catalogue_app_session_token_v1',
+      SIGNED_URL_SECONDS: 60 * 60
+    };
+
+    const { createApp, nextTick } = Vue;
+
+    createApp({
+      data() {
+        return {
+          CONFIG,
+          sb: null,
+          loading: false,
+          loadingImages: false,
+          saving: false,
+          showPassword: false,
+          notice: { type: '', text: '' },
+          session: {
+            token: localStorage.getItem(CONFIG.LOCAL_TOKEN_KEY) || '',
+            user: null
+          },
+          loginForm: { username: '', password: '' },
+          filters: { search: '', usage: 'all', limit: 80, offset: 0 },
+          images: [],
+          imageUrls: {},
+          brokenImages: {},
+          lastLoadAt: '',
+          editor: {
+            open: false,
+            file: null,
+            localPreview: '',
+            form: this.emptyForm()
+          },
+          zoom: { open: false, item: null, scale: 1, rotate: 0 },
+          passwordModal: { open: false, old: '', new: '' },
+          admin: { open: false, users: [] }
+        }
+      },
+      computed: {
+        canEdit() {
+          return this.session.user && ['admin', 'editor'].includes(this.session.user.role_name);
+        },
+        codeSuggestions() {
+          return [...new Set(this.images.map(x => x.code).filter(Boolean))].slice(0, 300).sort();
+        },
+        partIdSuggestions() {
+          return [...new Set(this.images.map(x => x.part_id).filter(Boolean))].slice(0, 300).sort();
+        },
+        editorPreviewUrl() {
+          if (this.editor.localPreview) return this.editor.localPreview;
+          if (this.editor.form.image_path) return this.imageUrls[this.editor.form.image_path] || '';
+          return '';
+        }
+      },
+      async mounted() {
+        this.sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+          auth: { persistSession: false, autoRefreshToken: false }
+        });
+
+        this.paintIcons();
+
+        if (CONFIG.SUPABASE_URL.includes('YOUR_PROJECT') || CONFIG.SUPABASE_ANON_KEY.includes('YOUR_')) {
+          this.toast('error', 'Anh chưa điền SUPABASE_URL và SUPABASE_ANON_KEY trong file HTML.');
+          return;
+        }
+
+        if (this.session.token) {
+          await this.restoreSession();
+        }
+      },
+      updated() {
+        this.paintIcons();
+      },
+      methods: {
+        paintIcons() {
+          nextTick(() => window.lucide && window.lucide.createIcons());
+        },
+        emptyForm() {
+          return {
+            id: null,
+            code: '',
+            part_id: '',
+            usage_side: 'unknown',
+            identifying_features: '',
+            image_path: '',
+            image_name: ''
+          }
+        },
+        toast(type, text) {
+          this.notice = { type, text };
+          if (text) setTimeout(() => {
+            if (this.notice.text === text) this.notice = { type: '', text: '' };
+          }, type === 'error' ? 9000 : 4500);
+        },
+        async rpcRows(fn, params = {}) {
+          const { data, error } = await this.sb.rpc(fn, params);
+          if (error) throw error;
+          return Array.isArray(data) ? data : (data ? [data] : []);
+        },
+        async rpcRow(fn, params = {}) {
+          const rows = await this.rpcRows(fn, params);
+          return rows[0] || null;
+        },
+        async login() {
+          if (!this.loginForm.username || !this.loginForm.password) {
+            this.toast('error', 'Anh nhập đủ tên đăng nhập và mật khẩu nhé.');
+            return;
+          }
+          this.loading = true;
+          try {
+            const row = await this.rpcRow('app_login', {
+              p_username: this.loginForm.username,
+              p_password: this.loginForm.password
+            });
+            if (!row || !row.ok) throw new Error(row?.message || 'Đăng nhập thất bại');
+
+            this.session.token = row.session_token;
+            this.session.user = {
+              user_id: row.user_id,
+              username: row.username,
+              display_name: row.display_name,
+              role_name: row.role_name,
+              must_change_password: row.must_change_password
+            };
+            localStorage.setItem(CONFIG.LOCAL_TOKEN_KEY, row.session_token);
+            this.loginForm.password = '';
+            this.toast('success', 'Đăng nhập thành công.');
+            await this.loadImages(true);
+          } catch (err) {
+            this.toast('error', this.readError(err));
+          } finally {
+            this.loading = false;
+          }
+        },
+        async restoreSession() {
+          this.loading = true;
+          try {
+            const row = await this.rpcRow('app_me', { p_session_token: this.session.token });
+            if (!row || !row.ok) throw new Error('Phiên đăng nhập đã hết hạn.');
+            this.session.user = {
+              user_id: row.user_id,
+              username: row.username,
+              display_name: row.display_name,
+              role_name: row.role_name,
+              must_change_password: row.must_change_password
+            };
+            await this.loadImages(true);
+          } catch (err) {
+            localStorage.removeItem(CONFIG.LOCAL_TOKEN_KEY);
+            this.session.token = '';
+            this.session.user = null;
+            this.toast('error', 'Phiên đăng nhập cũ không còn hợp lệ, anh đăng nhập lại nhé.');
+          } finally {
+            this.loading = false;
+          }
+        },
+        async logout() {
+          try {
+            if (this.session.token) await this.rpcRow('app_logout', { p_session_token: this.session.token });
+          } catch (_) {}
+          localStorage.removeItem(CONFIG.LOCAL_TOKEN_KEY);
+          this.session = { token: '', user: null };
+          this.images = [];
+          this.imageUrls = {};
+          this.toast('success', 'Đã đăng xuất.');
+        },
+        async loadImages(reset = false) {
+          if (!this.session.token) return;
+          if (reset) {
+            this.filters.offset = 0;
+            this.images = [];
+          }
+          this.loadingImages = true;
+          try {
+            const rows = await this.rpcRows('app_search_images', {
+              p_session_token: this.session.token,
+              p_search: this.filters.search || '',
+              p_usage_side: this.filters.usage || 'all',
+              p_limit: this.filters.limit,
+              p_offset: this.filters.offset
+            });
+            this.images = reset ? rows : [...this.images, ...rows];
+            this.lastLoadAt = new Date().toISOString();
+            await this.loadImageUrls(rows);
+          } catch (err) {
+            this.toast('error', this.readError(err));
+          } finally {
+            this.loadingImages = false;
+          }
+        },
+        async loadMore() {
+          this.filters.offset += this.filters.limit;
+          await this.loadImages(false);
+        },
+        async loadImageUrls(rows) {
+          const paths = [...new Set(rows.map(x => x.image_path).filter(Boolean))]
+            .filter(p => !this.imageUrls[p] && !this.brokenImages[p]);
+          if (!paths.length) return;
+
+          try {
+            const { data, error } = await this.sb.storage
+              .from(CONFIG.BUCKET)
+              .createSignedUrls(paths, CONFIG.SIGNED_URL_SECONDS);
+            if (error) throw error;
+            (data || []).forEach(x => {
+              const signed = x.signedUrl || x.signedURL;
+              if (x.path && signed) this.imageUrls[x.path] = signed;
+            });
+          } catch (err) {
+            // Fallback nếu bucket đang public hoặc policy cũ cho phép public URL.
+            paths.forEach(path => {
+              const { data } = this.sb.storage.from(CONFIG.BUCKET).getPublicUrl(path);
+              if (data?.publicUrl) this.imageUrls[path] = data.publicUrl;
+            });
+          }
+        },
+        imageUrl(item) {
+          if (!item?.image_path || this.brokenImages[item.image_path]) return '';
+          return this.imageUrls[item.image_path] || '';
+        },
+        markImageError(item) {
+          if (item?.image_path) this.brokenImages[item.image_path] = true;
+        },
+        openEditor(item = null) {
+          this.editor.file = null;
+          this.editor.localPreview = '';
+          if (item) {
+            this.editor.form = {
+              id: item.id,
+              code: item.code || '',
+              part_id: item.part_id || '',
+              usage_side: item.usage_side || 'unknown',
+              identifying_features: item.identifying_features || '',
+              image_path: item.image_path || '',
+              image_name: item.image_name || ''
+            };
+          } else {
+            this.editor.form = this.emptyForm();
+          }
+          this.editor.open = true;
+        },
+        closeEditor() {
+          this.editor.open = false;
+          if (this.editor.localPreview) URL.revokeObjectURL(this.editor.localPreview);
+          this.editor.file = null;
+          this.editor.localPreview = '';
+        },
+        onEditorFileChange(e) {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          this.editor.file = file;
+          if (this.editor.localPreview) URL.revokeObjectURL(this.editor.localPreview);
+          this.editor.localPreview = URL.createObjectURL(file);
+          if (!this.editor.form.code) this.editor.form.code = this.codeFromFilename(file.name);
+          if (!this.editor.form.image_name) this.editor.form.image_name = file.name;
+        },
+        async saveEditor() {
+          if (!this.canEdit) return this.toast('error', 'Tài khoản không có quyền thêm/sửa.');
+          this.saving = true;
+          try {
+            let imagePath = this.editor.form.image_path;
+            let imageName = this.editor.form.image_name;
+
+            if (this.editor.file) {
+              const uploaded = await this.uploadFile(this.editor.file);
+              imagePath = uploaded.path;
+              imageName = uploaded.name;
+            }
+
+            const row = await this.rpcRow('app_upsert_image_metadata', {
+              p_session_token: this.session.token,
+              p_id: this.editor.form.id,
+              p_code: this.editor.form.code,
+              p_part_id: this.editor.form.part_id || null,
+              p_usage_side: this.editor.form.usage_side || 'unknown',
+              p_identifying_features: this.editor.form.identifying_features || null,
+              p_image_path: imagePath,
+              p_image_name: imageName || null
+            });
+
+            if (!row || !row.ok) throw new Error(row?.message || 'Không lưu được dữ liệu');
+            this.closeEditor();
+            this.toast('success', row.message || 'Đã lưu dữ liệu.');
+            await this.loadImages(true);
+          } catch (err) {
+            this.toast('error', this.readError(err));
+          } finally {
+            this.saving = false;
+          }
+        },
+        async uploadFile(file) {
+          const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+          const code = this.codeFromFilename(file.name) || 'NO_CODE';
+          const now = new Date();
+          const yyyy = now.getFullYear();
+          const mm = String(now.getMonth() + 1).padStart(2, '0');
+          const stamp = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+          const safeName = `${code}_${stamp}.${ext}`;
+          const path = `uploads/${yyyy}-${mm}/${safeName}`;
+
+          const { data, error } = await this.sb.storage
+            .from(CONFIG.BUCKET)
+            .upload(path, file, {
+              cacheControl: '3600',
+              upsert: false,
+              contentType: file.type || `image/${ext}`
+            });
+
+          if (error) {
+            throw new Error('Upload ảnh lỗi. Nếu bucket đang private và không dùng Supabase Auth thì cần policy Storage/Edge Function riêng. Chi tiết: ' + error.message);
+          }
+          return { path: data.path, name: file.name };
+        },
+        async bulkImport(e) {
+          const files = Array.from(e.target.files || []);
+          e.target.value = '';
+          if (!files.length) return;
+          if (!this.canEdit) return this.toast('error', 'Tài khoản không có quyền import.');
+
+          this.loading = true;
+          let ok = 0;
+          let fail = 0;
+          try {
+            for (const file of files) {
+              try {
+                const uploaded = await this.uploadFile(file);
+                const code = this.codeFromFilename(file.name);
+                const row = await this.rpcRow('app_upsert_image_metadata', {
+                  p_session_token: this.session.token,
+                  p_id: null,
+                  p_code: code,
+                  p_part_id: null,
+                  p_usage_side: 'unknown',
+                  p_identifying_features: null,
+                  p_image_path: uploaded.path,
+                  p_image_name: file.name
+                });
+                if (row?.ok) ok++; else fail++;
+              } catch (err) {
+                console.warn('Import failed:', file.name, err);
+                fail++;
+              }
+            }
+            this.toast(fail ? 'error' : 'success', `Import xong: thành công ${ok}, lỗi ${fail}.`);
+            await this.loadImages(true);
+          } finally {
+            this.loading = false;
+          }
+        },
+        async deleteCurrent() {
+          if (!this.editor.form.id) return;
+          if (!confirm('Anh chắc muốn xóa metadata ảnh này? File trong Storage sẽ chưa bị xóa nếu policy không cho phép.')) return;
+          this.saving = true;
+          try {
+            const oldPath = this.editor.form.image_path;
+            const row = await this.rpcRow('app_delete_image_metadata', {
+              p_session_token: this.session.token,
+              p_id: this.editor.form.id
+            });
+            if (!row || !row.ok) throw new Error(row?.message || 'Không xóa được');
+
+            // Thử xóa file nếu policy storage cho phép. Không bắt buộc.
+            try { if (oldPath) await this.sb.storage.from(CONFIG.BUCKET).remove([oldPath]); } catch (_) {}
+
+            this.closeEditor();
+            this.toast('success', row.message || 'Đã xóa metadata.');
+            await this.loadImages(true);
+          } catch (err) {
+            this.toast('error', this.readError(err));
+          } finally {
+            this.saving = false;
+          }
+        },
+        openZoom(item) {
+          this.zoom = { open: true, item, scale: 1, rotate: 0 };
+        },
+        closeZoom() {
+          this.zoom.open = false;
+        },
+        openPasswordModal() {
+          this.passwordModal = { open: true, old: '', new: '' };
+        },
+        async changePassword() {
+          this.saving = true;
+          try {
+            const row = await this.rpcRow('app_change_password', {
+              p_session_token: this.session.token,
+              p_old_password: this.passwordModal.old,
+              p_new_password: this.passwordModal.new
+            });
+            if (!row || !row.ok) throw new Error(row?.message || 'Không đổi được mật khẩu');
+            this.passwordModal.open = false;
+            this.session.user.must_change_password = false;
+            this.toast('success', row.message || 'Đã đổi mật khẩu.');
+          } catch (err) {
+            this.toast('error', this.readError(err));
+          } finally {
+            this.saving = false;
+          }
+        },
+        async openAdmin() {
+          this.admin.open = true;
+          await this.loadAdminUsers();
+        },
+        async loadAdminUsers() {
+          try {
+            this.admin.users = await this.rpcRows('app_admin_list_users', { p_session_token: this.session.token });
+          } catch (err) {
+            this.toast('error', this.readError(err));
+          }
+        },
+        async adminSetRole(u) {
+          try {
+            const row = await this.rpcRow('app_admin_set_user_role', {
+              p_session_token: this.session.token,
+              p_username: u.username,
+              p_role_name: u.role_name
+            });
+            if (!row?.ok) throw new Error(row?.message || 'Không cập nhật được quyền');
+            this.toast('success', 'Đã cập nhật quyền.');
+          } catch (err) {
+            this.toast('error', this.readError(err));
+            await this.loadAdminUsers();
+          }
+        },
+        async adminToggleActive(u) {
+          try {
+            const row = await this.rpcRow('app_admin_set_user_active', {
+              p_session_token: this.session.token,
+              p_username: u.username,
+              p_is_active: !u.is_active
+            });
+            if (!row?.ok) throw new Error(row?.message || 'Không cập nhật được trạng thái');
+            u.is_active = !u.is_active;
+            this.toast('success', 'Đã cập nhật trạng thái user.');
+          } catch (err) {
+            this.toast('error', this.readError(err));
+          }
+        },
+        async adminResetPassword(u) {
+          const pass = prompt(`Nhập mật khẩu mới cho ${u.display_name} - tối thiểu 10 ký tự:`);
+          if (!pass) return;
+          try {
+            const row = await this.rpcRow('app_admin_reset_password', {
+              p_session_token: this.session.token,
+              p_username: u.username,
+              p_new_password: pass
+            });
+            if (!row?.ok) throw new Error(row?.message || 'Không reset được mật khẩu');
+            this.toast('success', 'Đã reset mật khẩu.');
+          } catch (err) {
+            this.toast('error', this.readError(err));
+          }
+        },
+        codeFromFilename(name) {
+          const base = String(name || '')
+            .replace(/^.*[\\/]/, '')
+            .replace(/\.[^.]+$/, '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/đ/g, 'd')
+            .replace(/Đ/g, 'D')
+            .replace(/[^A-Za-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .toUpperCase();
+          return base || 'NO_CODE';
+        },
+        usageLabel(v) {
+          return ({ left: 'Bên trái', right: 'Bên phải', both: 'Cả hai bên', unknown: 'Chưa xác định', all: 'Tất cả' })[v] || 'Chưa xác định';
+        },
+        roleLabel(v) {
+          return ({ admin: 'Admin', editor: 'Editor', viewer: 'Viewer' })[v] || v;
+        },
+        formatTime(v) {
+          try { return new Date(v).toLocaleString('vi-VN'); } catch (_) { return v; }
+        },
+        readError(err) {
+          const msg = err?.message || String(err || 'Có lỗi không xác định');
+          if (msg.includes('UNAUTHORIZED')) return 'Không có quyền hoặc phiên đăng nhập đã hết hạn.';
+          if (msg.includes('Failed to fetch')) return 'Không kết nối được Supabase. Kiểm tra URL/API key/CORS/mạng.';
+          return msg;
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
