@@ -87,6 +87,16 @@
     .viewer-object.viewer-3d {
       filter: drop-shadow(0 26px 34px rgba(0,0,0,.28));
     }
+    .transparent-preview-bg {
+      background-color: transparent;
+      background-image:
+        linear-gradient(45deg, rgba(148,163,184,.18) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(148,163,184,.18) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(148,163,184,.18) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(148,163,184,.18) 75%);
+      background-size: 18px 18px;
+      background-position: 0 0, 0 9px, 9px -9px, -9px 0px;
+    }
     .line-clamp-2 {
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -991,14 +1001,52 @@
         async saveEditor() {
           if (!this.canEdit) return this.toast('error', 'Tài khoản không có quyền thêm/sửa.');
           this.saving = true;
+
+          const selectedFrameFiles = [...(this.editor.frameFiles || [])];
+          const hasFrameFiles = selectedFrameFiles.length > 0;
+
           try {
+            if (!this.editor.form.code && hasFrameFiles) {
+              this.editor.form.code = this.codeFromFilename(selectedFrameFiles[0].name);
+            }
+
+            if (!this.editor.form.code) {
+              throw new Error('Anh cần nhập mã hàng trước khi lưu.');
+            }
+
             let imagePath = this.editor.form.image_path;
             let imageName = this.editor.form.image_name;
+            let uploadedFrames = [];
 
             if (this.editor.file) {
               const uploaded = await this.uploadFile(this.editor.file, { kind: 'main' });
               imagePath = uploaded.path;
               imageName = uploaded.name;
+            }
+
+            // Nếu anh chỉ chọn ảnh 360 mà chưa chọn ảnh chính:
+            // dùng luôn frame đầu tiên làm ảnh đại diện để tránh lỗi "thiếu đường dẫn ảnh".
+            if (!imagePath && hasFrameFiles) {
+              const code = this.editor.form.code || this.codeFromFilename(selectedFrameFiles[0].name);
+              for (let i = 0; i < selectedFrameFiles.length; i++) {
+                const uploadedFrame = await this.uploadFile(selectedFrameFiles[i], {
+                  kind: '360',
+                  code,
+                  frameIndex: i + 1
+                });
+                uploadedFrames.push({
+                  frame_index: i + 1,
+                  image_path: uploadedFrame.path,
+                  image_name: uploadedFrame.name
+                });
+              }
+
+              imagePath = uploadedFrames[0]?.image_path || '';
+              imageName = uploadedFrames[0]?.image_name || selectedFrameFiles[0]?.name || '';
+            }
+
+            if (!imagePath) {
+              throw new Error('Thiếu đường dẫn ảnh. Anh chọn ít nhất 1 ảnh chính hoặc chọn bộ ảnh 360 để hệ thống tự lấy frame đầu làm ảnh đại diện.');
             }
 
             const row = await this.rpcRow('app_upsert_image_metadata', {
@@ -1014,35 +1062,38 @@
 
             if (!row || !row.ok) throw new Error(row?.message || 'Không lưu được dữ liệu');
 
-            if (this.editor.frameFiles.length) {
+            if (hasFrameFiles) {
               const imageId = row.id || row.image_id || this.editor.form.id || await this.getImageIdByPath(imagePath);
               if (!imageId) throw new Error('Đã lưu ảnh chính nhưng không lấy được image_id để lưu frame 360.');
 
-              const code = this.editor.form.code || this.codeFromFilename(imageName || imagePath);
-              const frames = [];
-              for (let i = 0; i < this.editor.frameFiles.length; i++) {
-                const uploadedFrame = await this.uploadFile(this.editor.frameFiles[i], {
-                  kind: '360',
-                  code,
-                  frameIndex: i + 1
-                });
-                frames.push({
-                  frame_index: i + 1,
-                  image_path: uploadedFrame.path,
-                  image_name: uploadedFrame.name
-                });
+              // Nếu đã upload frame ở bước dùng frame đầu làm ảnh đại diện thì tái sử dụng,
+              // không upload lặp lại. Nếu có ảnh chính riêng thì upload frame tại đây.
+              if (!uploadedFrames.length) {
+                const code = this.editor.form.code || this.codeFromFilename(imageName || imagePath);
+                for (let i = 0; i < selectedFrameFiles.length; i++) {
+                  const uploadedFrame = await this.uploadFile(selectedFrameFiles[i], {
+                    kind: '360',
+                    code,
+                    frameIndex: i + 1
+                  });
+                  uploadedFrames.push({
+                    frame_index: i + 1,
+                    image_path: uploadedFrame.path,
+                    image_name: uploadedFrame.name
+                  });
+                }
               }
 
               const frameRow = await this.rpcRow('app_replace_360_frames', {
                 p_session_token: this.session.token,
                 p_image_id: imageId,
-                p_frames: frames
+                p_frames: uploadedFrames
               });
               if (!frameRow || !frameRow.ok) throw new Error(frameRow?.message || 'Không lưu được frame 360');
             }
 
             this.closeEditor();
-            this.toast('success', this.editor.frameFiles.length ? 'Đã lưu dữ liệu và frame 360.' : (row.message || 'Đã lưu dữ liệu.'));
+            this.toast('success', hasFrameFiles ? 'Đã lưu dữ liệu và frame 360.' : (row.message || 'Đã lưu dữ liệu.'));
             await this.loadImages(true);
           } catch (err) {
             this.toast('error', this.readError(err));
@@ -1078,9 +1129,11 @@
             canvas.width = width;
             canvas.height = height;
 
-            const ctx = canvas.getContext('2d', { alpha: false });
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, width, height);
+            // QUAN TRỌNG:
+            // alpha:true + clearRect giúp giữ nền trong suốt của PNG/WebP.
+            // Bản cũ dùng alpha:false + fill trắng nên ảnh xóa phông bị dính nền trắng.
+            const ctx = canvas.getContext('2d', { alpha: true });
+            ctx.clearRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
 
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
