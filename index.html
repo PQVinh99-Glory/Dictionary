@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Catalogue Linh Kiện</title>
+  <title>Catalogue AI</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23059669'/%3E%3Cpath d='M18 38h12v8H18zM34 18h12v8H34zM21 18h9v9h-9zM36 35h10v10H36z' fill='white' opacity='.95'/%3E%3Cpath d='M30 31h7M32 27v8M25 38l10-12' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -184,8 +184,8 @@
       <div class="w-16 h-16 rounded-3xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-300/50">
         <i data-lucide="blocks" class="w-9 h-9"></i>
       </div>
-      <h1 class="mt-5 text-3xl font-black tracking-tight">Catalogue Linh Kiện</h1>
-      <p class="mt-1 text-slate-500 font-semibold">Đăng nhập để quản lý ảnh từ Cloudflare R2 + Supabase metadata.</p>
+      <h1 class="mt-5 text-3xl font-black tracking-tight">Catalogue AI</h1>
+      <p class="mt-1 text-slate-500 font-semibold">Hệ thống quản lý tra cứu hình ảnh.</p>
 
       <form @submit.prevent="login" class="mt-6 space-y-3">
         <input class="input" v-model.trim="loginForm.username" placeholder="Tên đăng nhập" autocomplete="username" />
@@ -254,7 +254,7 @@
       <div v-else-if="!parts.length" class="mt-6 glass rounded-[2rem] p-10 text-center">
         <div class="mx-auto w-20 h-20 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center"><i data-lucide="image-off" class="w-10 h-10"></i></div>
         <h2 class="mt-4 text-2xl font-black">Chưa có dữ liệu phù hợp</h2>
-        <p class="mt-2 text-slate-500 font-semibold">Bấm Thêm mã để upload ảnh lên R2 và lưu metadata vào Supabase.</p>
+        <p class="mt-2 text-slate-500 font-semibold">Bấm Thêm mã để upload ảnh database.</p>
       </div>
 
       <div v-else class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -332,7 +332,7 @@
 
           <div class="sim-guide">
             <span class="px-3 py-2 rounded-full bg-white/85 border border-emerald-100 shadow-sm text-xs font-black text-slate-700">Kéo ngang/dọc để xoay 3D</span>
-            <span class="px-3 py-2 rounded-full bg-emerald-600/90 text-white shadow-sm text-xs font-black">Độ dày giả 0.3mm</span>
+            <span class="px-3 py-2 rounded-full bg-emerald-600/90 text-white shadow-sm text-xs font-black">Thuật toán mô phỏng độ dày</span>
           </div>
         </div>
         <img v-else-if="activeAssetUrl" :src="activeAssetUrl" class="viewer-object part-img max-w-[96%] max-h-[96%] object-contain" :style="viewerTransform" draggable="false" />
@@ -380,7 +380,7 @@
         </div>
 
         <button v-if="canEdit" @click="openEditor(detail.item)" class="btn mt-4 w-full h-12 bg-slate-950 text-white hover:bg-slate-800"><i data-lucide="pencil" class="w-5 h-5"></i>Chỉnh sửa mã này</button>
-        <button v-if="canEdit" @click="deleteCurrentPart" class="btn mt-2 w-full h-11 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100"><i data-lucide="trash-2" class="w-5 h-5"></i>Xóa metadata mã này</button>
+        <button v-if="canEdit" @click="deleteCurrentPart" class="btn mt-2 w-full h-11 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100"><i data-lucide="trash-2" class="w-5 h-5"></i>Xóa mã này</button>
       </aside>
     </div>
   </div>
@@ -405,13 +405,13 @@
             <label class="btn h-11 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-pointer"><i data-lucide="scan-search" class="w-5 h-5"></i>Ảnh chi tiết 1<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('detail', 1, $event)" /></label>
             <label class="btn h-11 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-pointer"><i data-lucide="scan-search" class="w-5 h-5"></i>Ảnh chi tiết 2<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('detail', 2, $event)" /></label>
           </div>
-          <p class="text-xs text-slate-500 leading-relaxed">Ảnh nên tách nền bằng remove.bg trước, xuất PNG/WebP trong suốt. App sẽ giữ alpha, nén WebP và upload lên Cloudflare R2. Với mã 2 mặt khác nhau, hãy upload front/back cùng chiều, cùng scale để 3D lật như cầm linh kiện trên tay.</p>
+          <p class="text-xs text-slate-500 leading-relaxed">Ảnh nên tách nền trước, xuất PNG/WebP trong suốt. App sẽ giữ alpha, nén WebP và upload lên Cloud. Với mã 2 mặt khác nhau, hãy upload front/back cùng chiều scale 3D.</p>
         </section>
 
         <form @submit.prevent="savePart" class="space-y-3">
           <div class="grid sm:grid-cols-2 gap-3">
             <label class="block"><span class="text-sm font-black text-slate-600">Mã hàng</span><input v-model.trim="editor.form.code" required class="input mt-1" placeholder="Ví dụ: 3446350101" /></label>
-            <label class="block"><span class="text-sm font-black text-slate-600">ID / mã phụ</span><input v-model.trim="editor.form.part_id" class="input mt-1" placeholder="Ví dụ: (5633,5634)+..." /></label>
+            <label class="block"><span class="text-sm font-black text-slate-600">ID</span><input v-model.trim="editor.form.part_id" class="input mt-1" placeholder="Ví dụ: (5633,5634)+..." /></label>
           </div>
           <div class="grid sm:grid-cols-3 gap-3">
             <label class="block"><span class="text-sm font-black text-slate-600">Vị trí</span><select v-model="editor.form.usage_side" class="input mt-1"><option value="unknown">Chưa xác định</option><option value="left">Bên trái</option><option value="right">Bên phải</option><option value="both">Cả hai</option></select></label>
@@ -775,7 +775,7 @@ createApp({
       this.saving=true;
       try {
         const code = this.editor.form.code.trim().toUpperCase();
-        if(!code) throw new Error('Anh cần nhập mã hàng.');
+        if(!code) throw new Error('Cần nhập mã hàng.');
         let assets = this.editor.assets.map(a => ({ asset_type:a.asset_type, storage_provider:a.storage_provider || 'r2', bucket_name:a.bucket_name || 'catalogue-images', image_path:a.image_path, image_name:a.image_name || null, sort_order:Number(a.sort_order||1) }));
 
         for(const [key,file] of Object.entries(this.editor.files)) {
@@ -789,7 +789,7 @@ createApp({
         }
         assets = assets.filter(a => a.image_path);
         const primary = assets.find(a => a.asset_type==='thumb') || assets.find(a => a.asset_type==='front') || assets[0];
-        if(!primary) throw new Error('Anh cần chọn ít nhất ảnh mặt chính/front hoặc giữ ảnh cũ.');
+        if(!primary) throw new Error('Cần chọn ít nhất ảnh mặt chính/front hoặc giữ ảnh cũ.');
 
         const saved = await this.rpcRow('app_upsert_part_metadata', {
           p_session_token:this.session.token,
@@ -804,17 +804,17 @@ createApp({
           p_primary_image_path:primary.image_path,
           p_primary_image_name:primary.image_name || null
         });
-        if(!saved?.ok) throw new Error(saved?.message || 'Không lưu được metadata');
+        if(!saved?.ok) throw new Error(saved?.message || 'Không lưu được data');
 
         const rep = await this.rpcRow('app_replace_part_assets', { p_session_token:this.session.token, p_image_id:saved.id, p_assets:assets });
         if(!rep?.ok) throw new Error(rep?.message || 'Không lưu được assets');
 
-        this.toast('success','Đã lưu metadata Supabase và ảnh R2.');
+        this.toast('success','Đã lưu data và ảnh.');
         this.closeEditor(); this.closeDetail(); await this.loadParts(true);
       } catch(e) { this.toast('error', this.readError(e)); } finally { this.saving=false; }
     },
     async deleteCurrentPart() {
-      if(!this.detail.item || !confirm('Xóa metadata mã này? File ảnh trên R2 chưa bị xóa để tránh mất nhầm.')) return;
+      if(!this.detail.item || !confirm('Xóa data mã này? File ảnh trên R2 chưa bị xóa để tránh mất nhầm.')) return;
       try {
         const row = await this.rpcRow('app_delete_part', {p_session_token:this.session.token, p_image_id:this.detail.item.id});
         if(!row?.ok) throw new Error(row?.message || 'Không xóa được');
