@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Catalogue AI</title>
+  <title>Catalogue AI - Enterprise Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -20,7 +20,7 @@
       --lime:#84cc16;
       --ink:#0f172a;
       --muted:#64748b;
-      --glass:rgba(255,255,255,.76);
+      --glass:rgba(255,255,255,.85);
     }
     * { box-sizing:border-box; }
     body {
@@ -29,94 +29,104 @@
       font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       color:var(--ink);
       background:
-        radial-gradient(circle at top left, rgba(16,185,129,.22), transparent 32%),
-        radial-gradient(circle at top right, rgba(132,204,22,.22), transparent 28%),
-        linear-gradient(135deg,#ecfdf5,#f7fee7 48%,#ecfeff);
+        radial-gradient(circle at top left, rgba(16,185,129,.15), transparent 40%),
+        radial-gradient(circle at top right, rgba(132,204,22,.15), transparent 35%),
+        linear-gradient(135deg,#f8fafc,#f1f5f9 48%,#e2e8f0);
       overflow-x:hidden;
     }
     [v-cloak] { display:none; }
     .glass {
       background:var(--glass);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border:1px solid rgba(255,255,255,.72);
-      box-shadow: 0 18px 55px rgba(15,23,42,.10);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border:1px solid rgba(255,255,255,.9);
+      box-shadow: 0 10px 40px -10px rgba(15,23,42,.08), 0 4px 6px -4px rgba(15,23,42,.05);
     }
     .btn {
       display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
-      border-radius:1rem; font-weight:900; transition:.16s ease; user-select:none;
+      border-radius:1rem; font-weight:800; transition:all .2s cubic-bezier(0.4, 0, 0.2, 1); user-select:none;
       white-space:nowrap;
     }
-    .btn:active { transform:scale(.98); }
+    .btn:active { transform:scale(.96); }
     .input {
-      width:100%; border-radius:1rem; border:1px solid #bbf7d0; background:rgba(255,255,255,.88);
-      padding:.78rem .95rem; outline:none; transition:.16s ease;
+      width:100%; border-radius:1rem; border:1px solid #cbd5e1; background:rgba(255,255,255,.9);
+      padding:.78rem 1rem; outline:none; transition:all .2s ease;
+      font-weight:600; color:#1e293b;
     }
-    .input:focus { border-color:#10b981; box-shadow:0 0 0 4px rgba(16,185,129,.14); }
-    .soft-card { background:rgba(255,255,255,.82); border:1px solid rgba(187,247,208,.8); }
-    .scrollbar-soft::-webkit-scrollbar { width:8px; height:8px; }
-    .scrollbar-soft::-webkit-scrollbar-thumb { background:#a7f3d0; border-radius:999px; }
+    .input:focus { border-color:#059669; box-shadow:0 0 0 4px rgba(5,150,105,.15); background:#fff; }
+    .soft-card { background:rgba(255,255,255,.9); border:1px solid #e2e8f0; }
+    
+    /* Scrollbar xịn */
+    .scrollbar-soft::-webkit-scrollbar { width:6px; height:6px; }
+    .scrollbar-soft::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:999px; }
+    .scrollbar-soft:hover::-webkit-scrollbar-thumb { background:#94a3b8; }
+    
+    /* Checker background cho ảnh trong suốt */
     .checker {
-      background-color:rgba(255,255,255,.55);
+      background-color:rgba(255,255,255,.7);
       background-image:
-        linear-gradient(45deg, rgba(148,163,184,.18) 25%, transparent 25%),
-        linear-gradient(-45deg, rgba(148,163,184,.18) 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, rgba(148,163,184,.18) 75%),
-        linear-gradient(-45deg, transparent 75%, rgba(148,163,184,.18) 75%);
-      background-size:18px 18px;
-      background-position:0 0,0 9px,9px -9px,-9px 0;
+        linear-gradient(45deg, rgba(203,213,225,.3) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(203,213,225,.3) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(203,213,225,.3) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(203,213,225,.3) 75%);
+      background-size:16px 16px;
+      background-position:0 0,0 8px,8px -8px,-8px 0;
     }
-    .part-img { filter: drop-shadow(0 14px 18px rgba(15,23,42,.18)); }
+    .part-img { filter: drop-shadow(0 12px 24px rgba(15,23,42,.2)); }
+    
+    /* Thẻ Sản phẩm tối ưu chống Crash (Virtual render CSS) */
     .catalog-card {
-      border:1px solid rgba(255,255,255,.8);
-      box-shadow:0 20px 45px rgba(15,23,42,.08);
-      transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+      content-visibility: auto;
+      contain-intrinsic-size: 100% 320px;
+      border:1px solid rgba(255,255,255,.9);
+      box-shadow:0 12px 30px -10px rgba(15,23,42,.06);
+      transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+      background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.85) 100%);
     }
     .catalog-card:hover {
-      transform:translateY(-3px);
-      box-shadow:0 28px 55px rgba(15,23,42,.12);
-      border-color:rgba(16,185,129,.18);
+      transform:translateY(-4px);
+      box-shadow:0 24px 45px -12px rgba(15,23,42,.12);
+      border-color:rgba(16,185,129,.3);
     }
     .catalog-code {
-      font-size:1.55rem;
-      line-height:1.1;
-      letter-spacing:-0.035em;
+      font-size:1.45rem;
+      line-height:1.2;
+      letter-spacing:-0.03em;
       font-weight:800;
+      color:#0f172a;
     }
     .meta-block {
-      border:1px solid rgba(187,247,208,.95);
-      background:rgba(255,255,255,.72);
+      border:1px solid #e2e8f0;
+      background:rgba(255,255,255,.8);
       border-radius:1rem;
-      padding:.7rem .85rem;
+      padding:.6rem .8rem;
     }
     .meta-label {
       display:block;
-      font-size:.68rem;
+      font-size:.65rem;
       line-height:1;
       text-transform:uppercase;
-      letter-spacing:.14em;
+      letter-spacing:.12em;
       font-weight:800;
       color:#0f766e;
-      margin-bottom:.42rem;
+      margin-bottom:.3rem;
     }
     .meta-value {
       display:block;
-      font-size:.96rem;
-      line-height:1.35;
+      font-size:.9rem;
+      line-height:1.4;
       font-weight:700;
-      color:#0f172a;
+      color:#1e293b;
     }
-    .meta-value.muted { color:#475569; font-weight:600; }
+    .meta-value.muted { color:#64748b; font-weight:600; }
     .feature-block {
-      border-radius:1.05rem;
-      padding:.85rem .9rem;
-      background:linear-gradient(180deg, rgba(255,255,255,.82), rgba(248,250,252,.84));
-      border:1px solid rgba(226,232,240,.95);
-      min-height:5.1rem;
+      border-radius:1rem;
+      padding:.75rem .8rem;
+      background:linear-gradient(180deg, rgba(255,255,255,.9), rgba(241,245,249,.7));
+      border:1px solid #e2e8f0;
+      min-height:4.5rem;
     }
     .feature-block .meta-value {
-      font-size:.95rem;
-      line-height:1.52;
       display:-webkit-box;
       -webkit-line-clamp:2;
       -webkit-box-orient:vertical;
@@ -124,21 +134,18 @@
     }
     .modal-shell { max-height:calc(100dvh - 24px); }
     .detail-overlay {
-      background:
-        radial-gradient(circle at top left, rgba(16,185,129,.18), transparent 34%),
-        radial-gradient(circle at bottom right, rgba(132,204,22,.18), transparent 30%),
-        rgba(241,245,249,.70);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
     }
     .viewer-stage {
       height:clamp(360px, 68dvh, 690px);
       min-height:360px;
       background:
-        radial-gradient(circle at 30% 15%, rgba(255,255,255,.96), rgba(255,255,255,.78) 36%, transparent 58%),
-        linear-gradient(135deg, #f8fafc, #eefdf4 48%, #f7fee7);
-      border:1px solid rgba(15,23,42,.08);
-      box-shadow:0 22px 65px rgba(15,23,42,.16);
+        radial-gradient(circle at 30% 15%, rgba(255,255,255,1), rgba(255,255,255,.8) 40%, transparent 70%),
+        linear-gradient(135deg, #f8fafc, #f1f5f9 48%, #e2e8f0);
+      border:1px solid rgba(255,255,255,.8);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,1), 0 20px 50px -10px rgba(15,23,42,.15);
       touch-action:none;
       user-select:none;
       cursor:grab;
@@ -203,7 +210,7 @@
       user-select:none;
       -webkit-user-drag:none;
       pointer-events:none;
-      filter:drop-shadow(0 18px 20px rgba(15,23,42,.22));
+      filter:drop-shadow(0 20px 25px rgba(15,23,42,.25));
     }
     .sim-thickness-layer {
       position:absolute;
@@ -219,41 +226,40 @@
       max-width:96%;
       max-height:96%;
       object-fit:contain;
-      filter:brightness(0) saturate(0) opacity(.22) blur(.35px);
+      filter:brightness(0) saturate(0) opacity(.25) blur(.4px);
       user-select:none;
       -webkit-user-drag:none;
     }
     .sim-guide {
       position:absolute;
-      right:1rem;
-      top:1rem;
+      right:1.2rem;
+      top:1.2rem;
       display:flex;
-      gap:.35rem;
+      gap:.4rem;
       flex-wrap:wrap;
       justify-content:flex-end;
       max-width:min(92%, 520px);
       pointer-events:none;
     }
     .detail-side { max-height:86dvh; }
+    
     @media (max-width: 1024px) {
       .detail-grid { max-width:760px; }
       .viewer-stage { height:48dvh; min-height:290px; }
       .detail-side { max-height:none; }
     }
     @media (max-width: 760px) {
-      .modal-shell { max-height:100dvh; border-radius:1.35rem 1.35rem 0 0 !important; }
+      .modal-shell { max-height:100dvh; border-radius:1.5rem 1.5rem 0 0 !important; }
       .mobile-bottom { align-items:flex-end !important; padding:0 !important; }
-      .mobile-bottom .modal-shell { width:100% !important; }
+      .mobile-bottom .modal-shell { width:100% !important; margin:0 !important; }
       .hide-mobile { display:none !important; }
       .detail-overlay { padding:0 !important; align-items:flex-start !important; }
-      .detail-grid { gap:.55rem !important; margin:0 !important; width:100%; }
-      .viewer-stage { height:42dvh; min-height:250px; border-radius:0 0 1.25rem 1.25rem !important; padding:.5rem !important; }
-      .detail-side { border-radius:1.25rem 1.25rem 0 0 !important; width:100%; max-height:none !important; flex:1 1 auto; overflow:auto; -webkit-overflow-scrolling:touch; }
-      .detail-overlay { overflow:hidden !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
-      .detail-grid { height:100dvh; display:flex !important; flex-direction:column; overflow:hidden; }
-      .viewer-stage { flex:0 0 42dvh; max-height:42dvh; box-shadow:0 8px 22px rgba(15,23,42,.10) !important; }
+      .detail-grid { gap:0 !important; margin:0 !important; width:100%; height:100dvh; display:flex !important; flex-direction:column; overflow:hidden; }
+      .viewer-stage { height:45dvh; min-height:250px; border-radius:0 0 1.5rem 1.5rem !important; padding:.5rem !important; flex:0 0 45dvh; box-shadow:0 10px 25px rgba(15,23,42,.12) !important; z-index:10; }
+      .detail-side { border-radius:1.5rem 1.5rem 0 0 !important; width:100%; max-height:none !important; flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; background:rgba(255,255,255,0.95); z-index:5; padding-top:2rem !important; margin-top:-1rem !important; }
+      .detail-overlay { overflow:hidden !important; }
       .sim-thickness-layer { display:none !important; }
-      .sim-img { filter:drop-shadow(0 8px 8px rgba(15,23,42,.16)) !important; }
+      .sim-img { filter:drop-shadow(0 10px 15px rgba(15,23,42,.2)) !important; }
       .sim-card { width:96vw !important; height:100% !important; min-height:220px !important; max-height:none !important; }
     }
   </style>
@@ -261,135 +267,149 @@
 <body>
 <div id="app" v-cloak>
   <!-- LOGIN -->
-  <section v-if="!session.user" class="min-h-screen flex items-center justify-center p-4">
-    <div class="glass w-full max-w-md rounded-[2rem] p-6 sm:p-8">
-      <div class="w-16 h-16 rounded-3xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-300/50">
-        <i data-lucide="blocks" class="w-9 h-9"></i>
+  <section v-if="!session.user" class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+    <!-- Trang trí nền -->
+    <div class="absolute -top-40 -right-40 w-96 h-96 bg-emerald-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
+    <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
+    
+    <div class="glass w-full max-w-md rounded-[2.5rem] p-8 sm:p-10 relative z-10">
+      <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white flex items-center justify-center shadow-xl shadow-emerald-200 mb-8 mx-auto">
+        <i data-lucide="layers" class="w-10 h-10"></i>
       </div>
-      <h1 class="mt-5 text-3xl font-black tracking-tight">Catalogue AI</h1>
-      <p class="mt-1 text-slate-500 font-semibold">Hệ thông quản lý tra cứu hình ảnh.</p>
+      <h1 class="text-3xl font-black tracking-tight text-center text-slate-800">Catalogue AI</h1>
+      <p class="mt-2 text-slate-500 font-semibold text-center">Hệ thống quản lý tra cứu thông minh.</p>
 
-      <form @submit.prevent="login" class="mt-6 space-y-3">
-        <input class="input" v-model.trim="loginForm.username" placeholder="Tên đăng nhập" autocomplete="username" />
-        <input class="input" v-model="loginForm.password" type="password" placeholder="Mật khẩu" autocomplete="current-password" />
-        <button class="btn w-full h-12 bg-slate-950 text-white hover:bg-slate-800" :disabled="loading">
-          <i data-lucide="log-in" class="w-5 h-5"></i>{{ loading ? 'Đang đăng nhập...' : 'Đăng nhập' }}
+      <form @submit.prevent="login" class="mt-8 space-y-4">
+        <div>
+          <label class="block text-xs font-black tracking-widest text-slate-400 uppercase mb-1 ml-2">Tên đăng nhập</label>
+          <input class="input h-14" v-model.trim="loginForm.username" placeholder="Nhập tài khoản..." autocomplete="username" />
+        </div>
+        <div>
+          <label class="block text-xs font-black tracking-widest text-slate-400 uppercase mb-1 ml-2">Mật khẩu</label>
+          <input class="input h-14" v-model="loginForm.password" type="password" placeholder="Nhập mật khẩu..." autocomplete="current-password" />
+        </div>
+        <button class="btn w-full h-14 mt-4 bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200" :disabled="loading">
+          <i data-lucide="log-in" class="w-5 h-5"></i>{{ loading ? 'Đang xác thực...' : 'Vào hệ thống' }}
         </button>
       </form>
-      <p v-if="notice.text" :class="['mt-4 rounded-2xl p-3 text-sm font-bold', notice.type==='error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200']">{{ notice.text }}</p>
+      <p v-if="notice.text" :class="['mt-6 rounded-2xl p-4 text-sm font-bold text-center', notice.type==='error' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-emerald-50 text-emerald-600 border border-emerald-200']">{{ notice.text }}</p>
     </div>
   </section>
 
   <!-- APP -->
-  <main v-else class="pb-10">
-    <header class="sticky top-0 z-30 bg-white/55 backdrop-blur-xl border-b border-white/60">
-      <div class="max-w-7xl mx-auto px-3 sm:px-5 py-3 flex items-center justify-between gap-3">
-        <div class="flex items-center gap-3 min-w-0">
-          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-lime-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-emerald-200">
-            <i data-lucide="blocks" class="w-7 h-7"></i>
+  <main v-else class="pb-12">
+    <header class="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-white shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-4 min-w-0">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-100">
+            <i data-lucide="layers" class="w-6 h-6"></i>
           </div>
           <div class="min-w-0">
-            <h1 class="text-xl sm:text-2xl font-black truncate">Catalogue Linh Kiện</h1>
-            <p class="text-xs sm:text-sm text-slate-500 font-semibold truncate">Xin chào, <b>{{ session.user.display_name || session.user.username }}</b> · Quyền: <b>{{ session.user.role_name }}</b></p>
+            <h1 class="text-xl sm:text-2xl font-black truncate text-slate-800">Catalogue Linh Kiện</h1>
+            <p class="text-xs sm:text-sm text-slate-500 font-bold truncate">Xin chào, <span class="text-emerald-700">{{ session.user.display_name || session.user.username }}</span> <span class="mx-1">•</span> Role: <span class="bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">{{ session.user.role_name }}</span></p>
           </div>
         </div>
-        <div class="flex gap-2 shrink-0">
-          <button @click="openEditor()" v-if="canEdit" class="btn h-10 px-3 sm:px-4 bg-emerald-600 text-white hover:bg-emerald-700">
-            <i data-lucide="plus" class="w-5 h-5"></i><span class="hide-mobile">Thêm mã</span>
+        <div class="flex gap-2 sm:gap-3 shrink-0">
+          <button @click="openEditor()" v-if="canEdit" class="btn h-11 px-4 sm:px-5 bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-100">
+            <i data-lucide="plus" class="w-5 h-5"></i><span class="hide-mobile">Thêm mã mới</span>
           </button>
-          <button @click="logout" class="btn h-10 px-3 sm:px-4 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100">
-            <i data-lucide="log-out" class="w-5 h-5"></i><span class="hide-mobile">Đăng xuất</span>
+          <button @click="logout" class="btn h-11 w-11 sm:w-auto sm:px-4 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
+            <i data-lucide="log-out" class="w-5 h-5"></i><span class="hide-mobile">Thoát</span>
           </button>
         </div>
       </div>
     </header>
 
-    <section class="max-w-7xl mx-auto px-3 sm:px-5 pt-5">
-      <div class="glass rounded-[1.6rem] sm:rounded-[2rem] p-3 sm:p-5">
-        <div class="grid grid-cols-1 md:grid-cols-[1fr_180px_180px_84px] gap-2 sm:gap-3">
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+      <div class="glass rounded-[2rem] p-4 sm:p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-[1fr_180px_180px_60px] gap-3">
           <label class="relative block">
             <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600"></i>
-            <input v-model.trim="filters.search" @keyup.enter="loadParts(true)" class="input pl-12 h-12" placeholder="Tìm mã hàng, ID, đặc điểm nhận dạng..." />
+            <input v-model.trim="filters.search" @keyup.enter="loadParts(true)" class="input pl-12 h-12 shadow-inner" placeholder="Tìm mã hàng, ID, đặc điểm..." />
           </label>
-          <select v-model="filters.usage" @change="loadParts(true)" class="input h-12">
+          <select v-model="filters.usage" @change="loadParts(true)" class="input h-12 cursor-pointer">
             <option value="all">Tất cả vị trí</option><option value="left">Bên trái</option><option value="right">Bên phải</option><option value="both">Cả hai bên</option><option value="unknown">Chưa xác định</option>
           </select>
-          <select v-model="filters.viewMode" @change="loadParts(true)" class="input h-12">
-            <option value="all">Tất cả kiểu ảnh</option><option value="single_face">1 mặt</option><option value="dual_face">2 mặt</option><option value="detail_set">Có chi tiết</option>
+          <select v-model="filters.viewMode" @change="loadParts(true)" class="input h-12 cursor-pointer">
+            <option value="all">Tất cả kiểu ảnh</option><option value="single_face">1 mặt</option><option value="dual_face">2 mặt</option><option value="detail_set">Chi tiết</option>
           </select>
-          <button @click="loadParts(true)" class="btn h-12 bg-white border border-emerald-100 hover:bg-emerald-50">
+          <button @click="loadParts(true)" class="btn h-12 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100">
             <i data-lucide="refresh-cw" class="w-5 h-5"></i>
           </button>
         </div>
-        <div class="mt-3 flex flex-wrap gap-2 text-xs font-black text-slate-600">
-          <span class="px-3 py-2 rounded-full bg-white/80 border border-emerald-100">Đã tải: {{ parts.length }}</span>
-          <span class="px-3 py-2 rounded-full bg-emerald-100 text-emerald-800">R2: catalogue-images</span>
-          <span class="px-3 py-2 rounded-full bg-white/80 border border-emerald-100">Lazy load thumb</span>
-          <span class="px-3 py-2 rounded-full bg-white/80 border border-emerald-100">Cập nhật: {{ nowText }}</span>
+        <div class="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
+          <span class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center gap-1.5"><i data-lucide="database" class="w-3.5 h-3.5 text-emerald-600"></i> {{ parts.length }} mã đang hiển thị</span>
+          <span class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1.5"><i data-lucide="cloud" class="w-3.5 h-3.5"></i> R2 CDN</span>
+          <span class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center gap-1.5"><i data-lucide="clock" class="w-3.5 h-3.5 text-blue-500"></i> {{ nowText }}</span>
         </div>
       </div>
 
-      <p v-if="notice.text" :class="['mt-4 rounded-2xl px-4 py-3 text-sm font-bold', notice.type==='error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200']">{{ notice.text }}</p>
+      <p v-if="notice.text" :class="['mb-6 rounded-2xl px-5 py-4 text-sm font-bold shadow-sm', notice.type==='error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200']">{{ notice.text }}</p>
 
-      <div v-if="loadingImages" class="mt-6 glass rounded-[2rem] p-10 text-center font-black text-slate-500">Đang tải dữ liệu...</div>
-
-      <div v-else-if="!parts.length" class="mt-6 glass rounded-[2rem] p-10 text-center">
-        <div class="mx-auto w-20 h-20 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center"><i data-lucide="image-off" class="w-10 h-10"></i></div>
-        <h2 class="mt-4 text-2xl font-black">Chưa có dữ liệu phù hợp</h2>
-        <p class="mt-2 text-slate-500 font-semibold">Chọn Thêm mã.</p>
+      <div v-if="loadingImages" class="glass rounded-[2.5rem] p-12 text-center">
+        <div class="w-12 h-12 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="font-black text-slate-500 text-lg">Đang tải dữ liệu từ máy chủ...</p>
       </div>
 
-      <div v-else class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        <article v-for="item in parts" :key="item.id" class="glass catalog-card rounded-[1.9rem] overflow-hidden group">
-          <button @click="openDetail(item)" class="block w-full text-left">
-            <div class="checker aspect-[4/3] flex items-center justify-center overflow-hidden rounded-b-[1.4rem]">
-              <img v-if="partThumbUrl(item)" :src="partThumbUrl(item)" loading="lazy" class="part-img max-w-[90%] max-h-[88%] object-contain transition duration-300 group-hover:scale-[1.045]" />
-              <i v-else data-lucide="image-off" class="w-12 h-12 text-emerald-700"></i>
+      <div v-else-if="!parts.length" class="glass rounded-[2.5rem] p-16 text-center">
+        <div class="mx-auto w-24 h-24 rounded-[2rem] bg-slate-100 text-slate-400 flex items-center justify-center border border-slate-200 mb-6"><i data-lucide="package-search" class="w-12 h-12"></i></div>
+        <h2 class="text-2xl font-black text-slate-700">Chưa có dữ liệu</h2>
+        <p class="mt-2 text-slate-500 font-semibold">Thử thay đổi bộ lọc hoặc bấm Thêm mã mới.</p>
+      </div>
+
+      <!-- Danh sách - Sử dụng CSS content-visibility để tăng hiệu năng -->
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <article v-for="item in parts" :key="item.id" class="catalog-card rounded-[2rem] overflow-hidden group">
+          <button @click="openDetail(item)" class="block w-full text-left h-full flex flex-col">
+            <div class="checker aspect-[4/3] flex items-center justify-center overflow-hidden border-b border-slate-100 relative">
+              <img v-if="partThumbUrl(item)" :src="partThumbUrl(item)" loading="lazy" class="part-img max-w-[85%] max-h-[85%] object-contain transition duration-500 group-hover:scale-[1.08]" />
+              <div v-else class="text-slate-300"><i data-lucide="image-off" class="w-12 h-12"></i></div>
+              <!-- Badge -->
+              <div v-if="item.is_symmetric" class="absolute top-3 right-3 px-2.5 py-1 bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg backdrop-blur-sm">Đối xứng</div>
             </div>
-            <div class="p-4 sm:p-5">
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="text-[11px] uppercase tracking-[0.24em] font-extrabold text-emerald-700/85">Mã hàng</div>
-                  <h3 class="catalog-code break-all mt-1">{{ item.code }}</h3>
-                </div>
-              </div>
-              <div class="mt-4 grid grid-cols-1 gap-2.5">
+            <div class="p-5 flex-1 flex flex-col">
+              <div class="text-[10px] uppercase tracking-[0.2em] font-black text-emerald-600 mb-1">Mã sản phẩm</div>
+              <h3 class="catalog-code break-all group-hover:text-emerald-700 transition-colors">{{ item.code }}</h3>
+              
+              <div class="mt-4 grid grid-cols-2 gap-2">
                 <div class="meta-block">
-                  <span class="meta-label">ID</span>
-                  <span class="meta-value" :class="{ muted: !item.part_id }">{{ item.part_id || 'Chưa có' }}</span>
+                  <span class="meta-label">Mã phụ / ID</span>
+                  <span class="meta-value truncate" :class="{ muted: !item.part_id }">{{ item.part_id || '---' }}</span>
                 </div>
                 <div class="meta-block">
                   <span class="meta-label">Vị trí</span>
-                  <span class="meta-value">{{ usageLabel(item.usage_side) }}</span>
+                  <span class="meta-value truncate">{{ usageLabel(item.usage_side) }}</span>
                 </div>
-                <div class="feature-block">
-                  <span class="meta-label">Đặc điểm nhận dạng</span>
-                  <span class="meta-value" :class="{ muted: !item.identifying_features }">{{ item.identifying_features || 'Chưa nhập đặc điểm nhận dạng' }}</span>
-                </div>
+              </div>
+              <div class="feature-block mt-2 flex-1">
+                <span class="meta-label">Nhận dạng</span>
+                <span class="meta-value text-sm text-slate-600" :class="{ muted: !item.identifying_features }">{{ item.identifying_features || '---' }}</span>
               </div>
             </div>
           </button>
         </article>
       </div>
 
-      <div v-if="parts.length && hasMore" class="mt-6 flex justify-center">
-        <button @click="loadMore" class="btn h-12 px-6 bg-white border border-emerald-100 hover:bg-emerald-50">
-          <i data-lucide="chevrons-down" class="w-5 h-5"></i>Tải thêm
+      <div v-if="parts.length && hasMore" class="mt-10 flex justify-center pb-10">
+        <button @click="loadMore" class="btn h-14 px-8 bg-white border border-slate-200 shadow-md hover:shadow-lg hover:border-emerald-300 hover:text-emerald-700 rounded-2xl text-slate-600">
+          <i data-lucide="chevrons-down" class="w-5 h-5"></i>Tải thêm {{ CONFIG.PAGE_LIMIT }} mã
         </button>
       </div>
     </section>
   </main>
 
-  <!-- DETAIL -->
-  <div v-if="detail.open" class="detail-overlay fixed inset-0 z-50 p-2 sm:p-4 overflow-y-auto flex items-start justify-center" @click.self="closeDetail">
-    <div class="detail-grid w-full max-w-6xl grid lg:grid-cols-[minmax(0,1fr)_360px] gap-3 sm:gap-4 my-2 sm:my-4">
-      <section :class="['viewer-stage rounded-[1.6rem] sm:rounded-[2rem] overflow-hidden relative flex items-center justify-center p-3', detail.dragging ? 'dragging' : '']"
+  <!-- DETAIL MODAL -->
+  <div v-if="detail.open" class="detail-overlay fixed inset-0 z-50 p-3 sm:p-5 overflow-y-auto flex items-center justify-center" @click.self="closeDetail">
+    <div class="detail-grid w-full max-w-7xl grid lg:grid-cols-[minmax(0,1fr)_380px] gap-4 sm:gap-6">
+      
+      <section :class="['viewer-stage rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden relative flex items-center justify-center', detail.dragging ? 'dragging' : '']"
         @wheel.prevent="onViewerWheel"
         @pointerdown="onViewerPointerDown"
         @pointermove="onViewerPointerMove"
         @pointerup="onViewerPointerUp"
         @pointercancel="onViewerPointerUp"
         @lostpointercapture="onViewerPointerUp">
+        
         <div v-if="detail.tab==='sim'" class="sim-scene w-full h-full flex items-center justify-center">
           <div class="sim-card" :style="simTransform" draggable="false">
             <div
@@ -397,147 +417,218 @@
               :key="'edge-' + n"
               class="sim-thickness-layer"
               :style="simLayerStyle(n)">
-              <img
-                :src="simFrontUrl"
-                class="sim-edge-img"
-                draggable="false"
-                alt="" />
+              <img :src="simFrontUrl" class="sim-edge-img" draggable="false" alt="" />
             </div>
 
             <div class="sim-face">
-              <img
-                :src="simFrontUrl"
-                class="sim-img"
-                draggable="false"
-                alt="front" />
+              <img :src="simFrontUrl" class="sim-img" draggable="false" alt="front" />
             </div>
 
             <div class="sim-face sim-back">
-              <img
-                v-if="simBackUrl"
-                :src="simBackUrl"
-                class="sim-img"
-                draggable="false"
-                alt="back" />
-              <div v-else class="px-4 py-3 rounded-2xl bg-white/85 border border-amber-200 text-amber-700 text-sm font-black shadow-sm text-center">
-                Chưa có ảnh mặt sau<br>
-                <span class="text-xs font-bold text-slate-500">Không dùng ảnh mặt chính để giả mặt sau</span>
+              <img v-if="simBackUrl" :src="simBackUrl" class="sim-img" :style="simBackImgStyle" draggable="false" alt="back" />
+              <div v-else class="px-5 py-4 rounded-3xl bg-white/95 border border-amber-200 text-amber-700 text-sm font-black shadow-lg text-center backdrop-blur-md">
+                <i data-lucide="alert-triangle" class="w-8 h-8 mx-auto mb-2 text-amber-500"></i>
+                Mã này chưa có ảnh mặt sau<br>
+                <span class="text-xs font-bold text-slate-500 mt-1 block">Hệ thống chặn dùng ảnh mặt trước<br>để tránh sai lệch Trái/Phải.</span>
               </div>
             </div>
           </div>
 
           <div class="sim-guide">
-            <span class="px-3 py-2 rounded-full bg-white/85 border border-emerald-100 shadow-sm text-xs font-black text-slate-700">Kéo nhẹ để xoay 3D</span>
-            <span class="px-3 py-2 rounded-full bg-emerald-600/90 text-white shadow-sm text-xs font-black">Thuật toán mô phỏng</span>
+            <span class="px-3.5 py-1.5 rounded-xl bg-white/90 border border-slate-200 shadow-sm text-xs font-black text-slate-600 backdrop-blur-md"><i data-lucide="mouse-pointer-2" class="w-3.5 h-3.5 inline-block mr-1"></i>Kéo để xoay</span>
+            <span class="px-3.5 py-1.5 rounded-xl bg-emerald-600/95 text-white shadow-md text-xs font-black backdrop-blur-md">Mô phỏng 3D</span>
           </div>
         </div>
-        <img v-else-if="activeAssetUrl" :src="activeAssetUrl" class="viewer-object part-img max-w-[96%] max-h-[96%] object-contain" :style="viewerTransform" draggable="false" />
-        <div v-else class="text-slate-700 text-center font-black">
-          {{ detail.tab==='back' ? 'Chưa có ảnh mặt sau cho mã này' : 'Không có ảnh' }}
+        
+        <img v-else-if="activeAssetUrl" :src="activeAssetUrl" class="viewer-object part-img max-w-[90%] max-h-[90%] object-contain" :style="viewerTransform" draggable="false" />
+        
+        <div v-else class="text-slate-400 text-center font-black flex flex-col items-center">
+          <i data-lucide="image-off" class="w-16 h-16 mb-3"></i>
+          {{ detail.tab==='back' ? 'Chưa có ảnh mặt sau' : 'Không có ảnh' }}
         </div>
-        <div class="absolute left-3 bottom-3 flex flex-wrap gap-2 text-xs font-black text-slate-700">
-          <span class="px-3 py-2 rounded-full bg-white/85 border border-emerald-100 shadow-sm">{{ detail.tab==='sim' ? '3D mô phỏng: front/back + độ dày giả 0.3mm' : detailTabLabel }}</span>
-          <span class="px-3 py-2 rounded-full bg-white/85 border border-emerald-100 shadow-sm">Zoom {{ detail.zoom.toFixed(1) }}x</span>
-          <span v-if="detail.item?.is_symmetric" class="px-3 py-2 rounded-full bg-emerald-600/90 text-white">Đối xứng</span>
+        
+        <div class="absolute left-4 bottom-4 flex flex-wrap gap-2 text-[11px] uppercase tracking-wider font-black text-slate-600">
+          <span class="px-3 py-2 rounded-xl bg-white/90 border border-slate-200 shadow-sm backdrop-blur-md flex items-center gap-1.5"><i data-lucide="monitor" class="w-3.5 h-3.5 text-emerald-600"></i> {{ detailTabLabel }}</span>
+          <span class="px-3 py-2 rounded-xl bg-white/90 border border-slate-200 shadow-sm backdrop-blur-md">Zoom {{ detail.zoom.toFixed(1) }}x</span>
+          <span v-if="detail.item?.is_symmetric" class="px-3 py-2 rounded-xl bg-emerald-500 text-white shadow-md flex items-center gap-1.5"><i data-lucide="split-square-horizontal" class="w-3.5 h-3.5"></i> Đối xứng 2 mặt</span>
         </div>
       </section>
 
-      <aside class="detail-side glass rounded-[1.6rem] sm:rounded-[2rem] p-4 sm:p-5 overflow-auto scrollbar-soft">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0"><p class="text-xs font-black tracking-[.22em] text-emerald-700 uppercase">Chi tiết mã</p><h2 class="mt-1 text-2xl font-black break-all">{{ detail.item?.code }}</h2></div>
-          <button @click="closeDetail" class="btn w-11 h-11 bg-white border border-emerald-100"><i data-lucide="x" class="w-6 h-6"></i></button>
-        </div>
-        <div class="mt-4 space-y-2.5 text-sm">
-          <div class="soft-card rounded-2xl p-3"><b>ID:</b> {{ detail.item?.part_id || 'Chưa có' }}</div>
-          <div class="soft-card rounded-2xl p-3"><b>Vị trí:</b> {{ usageLabel(detail.item?.usage_side) }}</div>
-          <div class="soft-card rounded-2xl p-3"><b>Đặc điểm:</b><br>{{ detail.item?.identifying_features || 'Chưa nhập' }}</div>
-          <div v-if="detail.item && !detail.item.is_symmetric && !trueBackUrl" class="rounded-2xl p-3 bg-amber-50 border border-amber-200 text-amber-800 font-bold">
-            Mã này chưa có ảnh mặt sau thật, 3D sẽ không giả lập bằng mặt chính để tránh sai trái/phải.
+      <aside class="detail-side glass rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-6 flex flex-col h-full bg-white/80">
+        <div class="flex items-start justify-between gap-3 mb-6">
+          <div class="min-w-0">
+            <p class="text-[10px] font-black tracking-[.25em] text-emerald-600 uppercase mb-1">Mã linh kiện</p>
+            <h2 class="text-3xl font-black break-all text-slate-800 leading-tight">{{ detail.item?.code }}</h2>
           </div>
-          <div v-if="detail.item?.confusing_note" class="soft-card rounded-2xl p-3"><b>Ghi chú dễ nhầm:</b><br>{{ detail.item.confusing_note }}</div>
+          <button @click="closeDetail" class="btn w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 shrink-0 text-slate-500"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </div>
+        
+        <div class="space-y-3 text-sm flex-1 overflow-y-auto pr-2 scrollbar-soft">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="soft-card rounded-2xl p-3.5">
+              <span class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Mã phụ / ID</span>
+              <span class="font-black text-slate-700">{{ detail.item?.part_id || '---' }}</span>
+            </div>
+            <div class="soft-card rounded-2xl p-3.5">
+              <span class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Vị trí</span>
+              <span class="font-black text-slate-700">{{ usageLabel(detail.item?.usage_side) }}</span>
+            </div>
+          </div>
+          
+          <div class="soft-card rounded-2xl p-4">
+            <span class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Đặc điểm nhận dạng</span>
+            <span class="font-semibold text-slate-700 leading-relaxed">{{ detail.item?.identifying_features || 'Chưa cập nhật' }}</span>
+          </div>
+          
+          <div v-if="detail.item?.confusing_note" class="rounded-2xl p-4 bg-amber-50 border border-amber-200">
+            <span class="block text-[10px] uppercase tracking-widest font-bold text-amber-600 mb-1.5 flex items-center gap-1"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Chú ý nhầm lẫn</span>
+            <span class="font-bold text-amber-800 leading-relaxed">{{ detail.item.confusing_note }}</span>
+          </div>
+          
+          <div v-if="detail.item && !detail.item.is_symmetric && !trueBackUrl" class="rounded-2xl p-3.5 bg-blue-50 border border-blue-200 text-blue-800 font-semibold text-xs flex gap-2">
+            <i data-lucide="info" class="w-5 h-5 shrink-0 text-blue-500 mt-0.5"></i>
+            <span>Mã này chưa có ảnh mặt sau. Hệ thống tự khóa mặt sau trong 3D để tránh hiểu lầm trái/phải.</span>
+          </div>
+          
+          <div class="pt-4 border-t border-slate-200/60 mt-4">
+            <div class="grid grid-cols-2 gap-2.5">
+              <button @click="setDetailTab('front')" :class="tabBtnClass('front')"><i data-lucide="panel-top" class="w-4 h-4"></i> Mặt chính</button>
+              <button @click="setDetailTab('back')" :class="tabBtnClass('back')" :disabled="!hasBackView"><i data-lucide="panel-bottom" class="w-4 h-4"></i> Mặt sau</button>
+              <button @click="setDetailTab('detail')" :class="tabBtnClass('detail')" :disabled="!detailAssets.length"><i data-lucide="scan-search" class="w-4 h-4"></i> Chi tiết</button>
+              <button @click="setDetailTab('sim')" :class="tabBtnClass('sim')"><i data-lucide="box" class="w-4 h-4"></i> 3D View</button>
+            </div>
+          </div>
+          
+          <div class="mt-3 grid grid-cols-4 gap-2.5">
+            <button @click="zoomOut" class="btn h-11 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Thu nhỏ"><i data-lucide="zoom-out" class="w-5 h-5"></i></button>
+            <button @click="resetViewer" class="btn h-11 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Khôi phục"><i data-lucide="rotate-ccw" class="w-5 h-5"></i></button>
+            <button @click="zoomIn" class="btn h-11 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Phóng to"><i data-lucide="zoom-in" class="w-5 h-5"></i></button>
+            <button @click="flipSim" class="btn h-11 bg-emerald-50 border border-emerald-200 shadow-sm hover:bg-emerald-100 text-emerald-700" :disabled="detail.tab!=='sim'" title="Lật 3D"><i data-lucide="repeat-2" class="w-5 h-5"></i></button>
+          </div>
+          
+          <div v-if="detailAssets.length" class="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-soft">
+            <button v-for="a in detailAssets" :key="a.id || a.image_path" @click="detail.activeAsset=a" class="checker rounded-xl overflow-hidden h-16 min-w-[4rem] border-2 transition-colors shrink-0" :class="detail.activeAsset===a ? 'border-emerald-500' : 'border-slate-200'">
+              <img :src="assetUrl(a)" class="w-full h-full object-contain" loading="lazy" />
+            </button>
+          </div>
         </div>
 
-        <div class="mt-4 grid grid-cols-2 gap-2">
-          <button @click="setDetailTab('front')" :class="tabBtnClass('front')"><i data-lucide="panel-top" class="w-4 h-4"></i>Mặt chính</button>
-          <button @click="setDetailTab('back')" :class="tabBtnClass('back')" :disabled="!hasBackView" :title="hasBackView ? 'Xem mặt sau' : 'Mã này chưa có ảnh mặt sau'"><i data-lucide="panel-bottom" class="w-4 h-4"></i>Mặt sau</button>
-          <button @click="setDetailTab('detail')" :class="tabBtnClass('detail')" :disabled="!detailAssets.length"><i data-lucide="scan-search" class="w-4 h-4"></i>Chi tiết</button>
-          <button @click="setDetailTab('sim')" :class="tabBtnClass('sim')"><i data-lucide="box" class="w-4 h-4"></i>3D mô phỏng</button>
+        <div class="mt-4 pt-4 border-t border-slate-200/60 shrink-0">
+          <button v-if="canEdit" @click="openEditor(detail.item)" class="btn w-full h-12 bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200 mb-2"><i data-lucide="pencil" class="w-4 h-4"></i> Cập nhật linh kiện</button>
+          <button v-if="canEdit" @click="deleteCurrentPart" class="btn w-full h-11 bg-white text-red-600 border border-red-100 hover:bg-red-50"><i data-lucide="trash-2" class="w-4 h-4"></i> Xóa metadata</button>
         </div>
-
-        <div class="mt-3 grid grid-cols-4 gap-2">
-          <button @click="zoomOut" class="btn h-10 bg-white border border-emerald-100 hover:bg-emerald-50"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
-          <button @click="resetViewer" class="btn h-10 bg-white border border-emerald-100 hover:bg-emerald-50"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
-          <button @click="zoomIn" class="btn h-10 bg-white border border-emerald-100 hover:bg-emerald-50"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
-          <button @click="flipSim" class="btn h-10 bg-white border border-emerald-100 hover:bg-emerald-50" :disabled="detail.tab!=='sim'"><i data-lucide="repeat-2" class="w-4 h-4"></i></button>
-        </div>
-        <p class="mt-2 text-[11px] leading-relaxed text-slate-500 font-semibold">
-          PC: lăn chuột để zoom, kéo ảnh để xem chi tiết. Mobile: 2 ngón để phóng to/thu nhỏ; trong 3D kéo nhẹ để xoay. Nếu mã không đối xứng, app chỉ lật đúng khi có ảnh mặt sau thật; không dùng ảnh mặt chính để giả mặt sau.
-        </p>
-
-        <div v-if="detailAssets.length" class="mt-3 grid grid-cols-4 gap-2">
-          <button v-for="a in detailAssets" :key="a.id || a.image_path" @click="detail.activeAsset=a" class="checker rounded-xl overflow-hidden aspect-square border border-emerald-100">
-            <img :src="assetUrl(a)" class="w-full h-full object-contain" loading="lazy" />
-          </button>
-        </div>
-
-        <button v-if="canEdit" @click="openEditor(detail.item)" class="btn mt-4 w-full h-12 bg-slate-950 text-white hover:bg-slate-800"><i data-lucide="pencil" class="w-5 h-5"></i>Chỉnh sửa mã này</button>
-        <button v-if="canEdit" @click="deleteCurrentPart" class="btn mt-2 w-full h-11 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100"><i data-lucide="trash-2" class="w-5 h-5"></i>Xóa metadata mã này</button>
       </aside>
     </div>
   </div>
 
-  <!-- EDITOR -->
-  <div v-if="editor.open" class="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto flex items-start justify-center mobile-bottom" @click.self="closeEditor">
-    <div class="modal-shell glass w-full max-w-4xl rounded-[2rem] p-4 sm:p-6 overflow-auto scrollbar-soft my-2 sm:my-4">
-      <div class="flex items-start justify-between gap-3">
-        <div><p class="text-xs font-black tracking-[.22em] text-emerald-700 uppercase">{{ editor.form.id ? 'Cập nhật' : 'Thêm mới' }}</p><h2 class="text-2xl font-black">Thông tin linh kiện</h2></div>
-        <button @click="closeEditor" class="btn w-11 h-11 bg-white border border-emerald-100"><i data-lucide="x" class="w-6 h-6"></i></button>
+  <!-- EDITOR MODAL -->
+  <div v-if="editor.open" class="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-md p-3 sm:p-5 overflow-y-auto flex items-center justify-center mobile-bottom" @click.self="closeEditor">
+    <div class="modal-shell glass w-full max-w-5xl rounded-[2.5rem] p-5 sm:p-8 overflow-auto scrollbar-soft my-auto bg-white/90">
+      <div class="flex items-start justify-between gap-4 mb-6 border-b border-slate-200/60 pb-5">
+        <div>
+          <span class="inline-block px-3 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-widest mb-2">{{ editor.form.id ? 'Chỉnh sửa' : 'Thêm mới' }}</span>
+          <h2 class="text-2xl sm:text-3xl font-black text-slate-800">Thông tin linh kiện</h2>
+        </div>
+        <button @click="closeEditor" class="btn w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500 shrink-0"><i data-lucide="x" class="w-6 h-6"></i></button>
       </div>
 
-      <div class="mt-5 grid lg:grid-cols-[300px_minmax(0,1fr)] gap-5">
-        <section class="space-y-3">
-          <div class="checker rounded-3xl aspect-square flex items-center justify-center overflow-hidden border border-emerald-100">
-            <img v-if="editorPreview" :src="editorPreview" class="part-img max-w-[92%] max-h-[92%] object-contain" />
-            <div v-else class="text-center text-emerald-700 font-black"><i data-lucide="image-plus" class="w-12 h-12 mx-auto mb-2"></i>Chọn ảnh mặt chính</div>
+      <div class="grid lg:grid-cols-[340px_minmax(0,1fr)] gap-8">
+        <!-- Khu vực Ảnh -->
+        <section class="flex flex-col gap-4">
+          <div class="checker rounded-[2rem] aspect-square flex items-center justify-center overflow-hidden border border-slate-200 shadow-inner bg-white">
+            <img v-if="editorPreview" :src="editorPreview" class="part-img max-w-[85%] max-h-[85%] object-contain" />
+            <div v-else class="text-center text-slate-400 font-bold"><i data-lucide="image-plus" class="w-16 h-16 mx-auto mb-3 text-slate-300"></i>Chưa có ảnh</div>
           </div>
-          <div class="grid grid-cols-1 gap-2">
-            <label class="btn h-11 bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"><i data-lucide="images" class="w-5 h-5"></i>Ảnh mặt chính / Front<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('front', 1, $event)" /></label>
-            <label class="btn h-11 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-pointer"><i data-lucide="panel-bottom" class="w-5 h-5"></i>Ảnh mặt sau / Back<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('back', 1, $event)" /></label>
-            <label class="btn h-11 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-pointer"><i data-lucide="scan-search" class="w-5 h-5"></i>Ảnh chi tiết 1<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('detail', 1, $event)" /></label>
-            <label class="btn h-11 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-pointer"><i data-lucide="scan-search" class="w-5 h-5"></i>Ảnh chi tiết 2<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('detail', 2, $event)" /></label>
+          
+          <!-- Nút Tự động tách nền (Tích hợp Worker remove.bg) -->
+          <div class="rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 p-4 shadow-sm flex items-center gap-3">
+            <input type="checkbox" id="auto-rmbg" v-model="editor.autoRemoveBg" class="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-emerald-300 cursor-pointer">
+            <label for="auto-rmbg" class="text-sm font-extrabold text-emerald-800 cursor-pointer select-none">Tự động tách nền (AI)<br><span class="text-xs font-semibold text-emerald-600">Áp dụng khi chọn ảnh mặt chính/mặt sau</span></label>
           </div>
-          <p class="text-xs text-slate-500 leading-relaxed">Ảnh nên tách nền bằng remove.bg trước, xuất PNG/WebP trong suốt. App sẽ giữ alpha, nén WebP và upload lên Cloudflare R2. Với mã 2 mặt khác nhau, hãy upload front/back cùng chiều, cùng scale để 3D lật như cầm linh kiện trên tay.</p>
-        </section>
 
-        <form @submit.prevent="savePart" class="space-y-3">
-          <div class="grid sm:grid-cols-2 gap-3">
-            <label class="block"><span class="text-sm font-extrabold tracking-tight text-slate-700">Mã hàng</span><input v-model.trim="editor.form.code" required class="input mt-1" placeholder="Ví dụ: 3446350101" /></label>
-            <label class="block"><span class="text-sm font-extrabold tracking-tight text-slate-700">ID / mã phụ</span><input v-model.trim="editor.form.part_id" class="input mt-1" placeholder="Ví dụ: (5633,5634)+..." /></label>
+          <div class="grid grid-cols-1 gap-2.5">
+            <label class="btn h-12 bg-emerald-600 text-white shadow-md shadow-emerald-100 hover:bg-emerald-700 cursor-pointer relative overflow-hidden">
+              <i data-lucide="image" class="w-5 h-5"></i> Tải lên Mặt chính (Front)
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="absolute inset-0 opacity-0 cursor-pointer" @change="onFileChange('front', 1, $event)" :disabled="saving" />
+            </label>
+            <label class="btn h-12 bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 cursor-pointer relative overflow-hidden">
+              <i data-lucide="image" class="w-5 h-5 text-slate-400"></i> Tải lên Mặt sau (Back)
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="absolute inset-0 opacity-0 cursor-pointer" @change="onFileChange('back', 1, $event)" :disabled="saving" />
+            </label>
+            <div class="grid grid-cols-2 gap-2.5">
+              <label class="btn h-11 bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 cursor-pointer relative overflow-hidden text-sm">
+                <i data-lucide="scan-search" class="w-4 h-4 text-slate-400"></i> Chi tiết 1
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="absolute inset-0 opacity-0 cursor-pointer" @change="onFileChange('detail', 1, $event)" :disabled="saving" />
+              </label>
+              <label class="btn h-11 bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 cursor-pointer relative overflow-hidden text-sm">
+                <i data-lucide="scan-search" class="w-4 h-4 text-slate-400"></i> Chi tiết 2
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="absolute inset-0 opacity-0 cursor-pointer" @change="onFileChange('detail', 2, $event)" :disabled="saving" />
+              </label>
+            </div>
           </div>
-          <div class="grid sm:grid-cols-3 gap-3">
-            <label class="block"><span class="text-sm font-extrabold tracking-tight text-slate-700">Vị trí</span><select v-model="editor.form.usage_side" class="input mt-1"><option value="unknown">Chưa xác định</option><option value="left">Bên trái</option><option value="right">Bên phải</option><option value="both">Cả hai</option></select></label>
-            <label class="block"><span class="text-sm font-extrabold tracking-tight text-slate-700">Kiểu ảnh</span><select v-model="editor.form.view_mode" class="input mt-1"><option value="single_face">1 mặt</option><option value="dual_face">2 mặt front/back</option><option value="detail_set">Có ảnh chi tiết</option></select></label>
-            <label class="block"><span class="text-sm font-extrabold tracking-tight text-slate-700">Đối xứng</span><select v-model="editor.form.is_symmetric" class="input mt-1"><option :value="false">Không / chưa rõ</option><option :value="true">Có đối xứng</option></select></label>
-          </div>
-          <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-3 text-xs text-slate-600 leading-relaxed">
-            <b>Gợi ý:</b> Mã đối xứng chỉ cần upload <b>ảnh mặt chính</b> và chọn <b>Đối xứng = Có</b>. Mã không đối xứng nên upload đủ <b>front/back</b> để 3D mô phỏng lật 2 mặt rõ hơn.
-          </div>
-          <label class="block"><span class="text-sm font-extrabold tracking-tight text-slate-700">Đặc điểm nhận dạng</span><textarea v-model.trim="editor.form.identifying_features" class="input mt-1 min-h-[110px]" placeholder="Ví dụ: thân chính, có 2 ngàm chữ L, cụm lỗ lệch..."></textarea></label>
-          <label class="block"><span class="text-sm font-extrabold tracking-tight text-slate-700">Ghi chú dễ nhầm</span><textarea v-model.trim="editor.form.confusing_note" class="input mt-1 min-h-[86px]" placeholder="Ví dụ: dễ nhầm với mã ..., khác ở đường cắt/lỗ/ngàm..."></textarea></label>
-
-          <div v-if="editorAssetList.length" class="soft-card rounded-2xl p-3">
-            <p class="text-sm font-black text-emerald-700 mb-2">Ảnh sẽ lưu</p>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div v-for="a in editorAssetList" :key="a.asset_type + '_' + a.sort_order" class="checker rounded-xl overflow-hidden aspect-square border border-emerald-100 relative">
-                <img :src="a.preview || assetPathUrl(a.image_path, a.storage_provider)" class="w-full h-full object-contain" />
-                <span class="absolute left-1 bottom-1 px-2 py-1 rounded-full bg-slate-950/70 text-white text-[10px] font-black">{{ a.asset_type }} {{ a.sort_order }}</span>
+          
+          <div v-if="editorAssetList.length" class="soft-card rounded-2xl p-4 mt-2">
+            <p class="text-[11px] font-black tracking-wider text-emerald-700 uppercase mb-3">Tài nguyên chuẩn bị lưu</p>
+            <div class="grid grid-cols-4 gap-2">
+              <div v-for="a in editorAssetList" :key="a.asset_type + '_' + a.sort_order" class="checker rounded-xl overflow-hidden aspect-square border border-slate-200 relative bg-white">
+                <img :src="a.preview || assetPathUrl(a.image_path, a.storage_provider)" class="w-full h-full object-contain p-1" />
+                <span class="absolute left-1 bottom-1 px-1.5 py-0.5 rounded-md bg-slate-900/80 text-white text-[9px] font-bold">{{ a.asset_type }}</span>
               </div>
             </div>
           </div>
+        </section>
 
-          <div class="flex flex-col sm:flex-row gap-2 pt-2">
-            <button class="btn h-12 px-5 bg-emerald-600 text-white hover:bg-emerald-700" :disabled="saving"><i data-lucide="save" class="w-5 h-5"></i>{{ saving ? 'Đang lưu...' : 'Lưu dữ liệu' }}</button>
-            <button type="button" @click="closeEditor" class="btn h-12 px-5 bg-white border border-emerald-100 hover:bg-emerald-50">Hủy</button>
+        <!-- Khu vực Form -->
+        <form @submit.prevent="savePart" class="flex flex-col gap-5">
+          <div class="grid sm:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Mã sản phẩm *</label>
+              <input v-model.trim="editor.form.code" required class="input h-12 text-lg font-black" placeholder="Nhập mã hàng..." />
+            </div>
+            <div>
+              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">ID / Mã phụ</label>
+              <input v-model.trim="editor.form.part_id" class="input h-12" placeholder="Ví dụ: 5633, 5634..." />
+            </div>
+          </div>
+          
+          <div class="grid sm:grid-cols-3 gap-5">
+            <div>
+              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Vị trí lắp</label>
+              <select v-model="editor.form.usage_side" class="input h-12 cursor-pointer">
+                <option value="unknown">Chưa xác định</option><option value="left">Bên trái</option><option value="right">Bên phải</option><option value="both">Cả hai</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Kiểu ảnh</label>
+              <select v-model="editor.form.view_mode" class="input h-12 cursor-pointer">
+                <option value="single_face">1 mặt</option><option value="dual_face">2 mặt (Front/Back)</option><option value="detail_set">Có ảnh chi tiết</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Cấu trúc</label>
+              <select v-model="editor.form.is_symmetric" class="input h-12 cursor-pointer bg-emerald-50 border-emerald-200 text-emerald-800">
+                <option :value="false">Không đối xứng</option><option :value="true">Đối xứng 2 mặt</option>
+              </select>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Đặc điểm nhận dạng</label>
+            <textarea v-model.trim="editor.form.identifying_features" class="input min-h-[100px] resize-y" placeholder="Mô tả hình dáng, ngàm, lỗ, kích thước..."></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Ghi chú chống nhầm lẫn</label>
+            <textarea v-model.trim="editor.form.confusing_note" class="input min-h-[80px] resize-y border-amber-200 bg-amber-50 focus:border-amber-400 focus:ring-amber-200" placeholder="Hay nhầm với mã nào? Điểm khác biệt là gì?"></textarea>
+          </div>
+
+          <div class="mt-auto pt-6 flex flex-col sm:flex-row gap-3 border-t border-slate-200/60">
+            <button class="btn h-14 sm:flex-1 bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200/50 text-lg" :disabled="saving">
+              <i v-if="saving" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+              <i v-else data-lucide="save" class="w-5 h-5"></i>
+              {{ saving ? 'Đang xử lý & Lưu...' : 'Lưu vào Hệ Thống' }}
+            </button>
+            <button type="button" @click="closeEditor" class="btn h-14 px-8 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50" :disabled="saving">Hủy bỏ</button>
           </div>
         </form>
       </div>
@@ -546,11 +637,18 @@
 </div>
 
 <script>
+// =======================================================================
+// CẤU HÌNH HỆ THỐNG
+// =======================================================================
 const CONFIG = {
   SUPABASE_URL: 'https://vhsikdgkzecdfopkpzum.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc2lrZGdremVjZGZvcGtwenVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjgyMTcsImV4cCI6MjA5Njg0NDIxN30.bj1yl4azsk8X-V2I1C6l5Qpa0kqt6j0TP4ZCJ3Du0l4',
   R2_PUBLIC_URL: 'https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev',
   R2_WORKER_URL: 'https://catalogue-r2-upload-api.pqvinh1999.workers.dev',
+  
+  // URL CỦA WORKER PROXY REMOVE.BG (Anh thay link worker vừa deploy vào đây)
+  REMOVE_BG_WORKER_URL: 'https://remove.pqvinh1999.workers.dev',
+  
   ALLOWED_ORIGIN: 'https://pqvinh99-glory.github.io',
   SUPABASE_BUCKET_FALLBACK: 'product-images',
   LOCAL_TOKEN_KEY: 'catalogue_app_session_token_v3_r2',
@@ -562,6 +660,7 @@ const { createApp, nextTick } = Vue;
 createApp({
   data() {
     return {
+      CONFIG,
       sb:null, loading:false, loadingImages:false, saving:false,
       notice:{type:'', text:''}, nowText:'',
       session:{ token: localStorage.getItem(CONFIG.LOCAL_TOKEN_KEY) || '', user:null },
@@ -569,7 +668,7 @@ createApp({
       filters:{ search:'', usage:'all', viewMode:'all' },
       parts:[], page:0, hasMore:false,
       detail:{ open:false, item:null, assets:[], tab:'front', activeAsset:null, flipped:false, zoom:1, panX:0, panY:0, rotX:-8, rotY:18, dragging:false, pointerId:null, startX:0, startY:0, startPanX:0, startPanY:0, startRotX:-8, startRotY:18, pinchStartDistance:0, pinchStartZoom:1 },
-      editor:{ open:false, form:this.emptyForm(), assets:[], files:{}, previews:{} },
+      editor:{ open:false, autoRemoveBg: true, form:this.emptyForm(), assets:[], files:{}, previews:{} },
       isLowPower3D:false,
       pointerCache:null
     };
@@ -598,6 +697,8 @@ createApp({
     },
     detailTabLabel() { return {front:'Mặt chính', back:'Mặt sau', detail:'Ảnh chi tiết', sim:'3D mô phỏng'}[this.detail.tab] || 'Ảnh'; },
     viewerTransform() { return `transform: translate3d(${this.detail.panX}px, ${this.detail.panY}px, 0) scale(${this.detail.zoom});`; },
+    
+    // --- 3D LOGIC ---
     simFrontUrl() {
       return this.assetTypeUrl('front') || this.assetTypeUrl('back') || this.activeAssetUrl || '';
     },
@@ -605,6 +706,15 @@ createApp({
       const front = this.assetTypeUrl('front') || this.assetTypeUrl('back');
       const back = this.trueBackUrl;
       return this.detail.item?.is_symmetric ? (this.assetTypeUrl('back') || front) : back;
+    },
+    simBackImgStyle() {
+      // SỬA LỖI LẬP MẶT 3D:
+      // Nếu mã KHÔNG ĐỐI XỨNG và CÓ MẶT SAU THẬT -> Mặt sau đã bị lật 180 độ bởi thẻ div cha (hiệu ứng gương).
+      // Do đó cần scaleX(-1) để lật ngược hình ảnh lại một lần nữa -> Khôi phục đúng chiều.
+      if (this.detail.item && !this.detail.item.is_symmetric && this.trueBackUrl) {
+        return 'transform: scaleX(-1);';
+      }
+      return '';
     },
     simEdgeLayers() {
       if (this.isLowPower3D) return [];
@@ -617,6 +727,8 @@ createApp({
       const ry = Math.round(this.detail.rotY * 10) / 10;
       return `--thickness:${thickness}; transform: translate3d(0px, 0px, 0) scale(${z}) rotateX(${rx}deg) rotateY(${ry}deg);`;
     },
+    // --- END 3D LOGIC ---
+
     editorPreview() {
       return this.editor.previews['front_1'] || this.assetPathUrl(this.findEditorAsset('front',1)?.image_path, this.findEditorAsset('front',1)?.storage_provider) || '';
     },
@@ -643,7 +755,11 @@ createApp({
     emptyForm() { return { id:null, code:'', part_id:'', usage_side:'unknown', view_mode:'single_face', is_symmetric:false, identifying_features:'', confusing_note:'', image_path:'', image_name:'' }; },
     updateTime() { this.nowText = new Date().toLocaleString('vi-VN'); },
     renderIcons() { nextTick(() => lucide?.createIcons?.()); },
-    toast(type,text) { this.notice={type,text}; if(text) setTimeout(()=>{ if(this.notice.text===text) this.notice={type:'',text:''}; }, 5500); },
+    toast(type,text) { 
+      this.notice={type,text}; 
+      // Auto close toast unless it's a processing state
+      if(text && !text.includes('Đang')) setTimeout(()=>{ if(this.notice.text===text) this.notice={type:'',text:''}; }, 5500); 
+    },
     readError(err) { return err?.message || String(err) || 'Có lỗi xảy ra'; },
     detectLowPower3D() {
       const ua = navigator.userAgent || '';
@@ -714,16 +830,18 @@ createApp({
     },
     async loadMore() { this.page += 1; await this.loadParts(false); },
 
+    // --- Detail Viewer ---
     async openDetail(item) {
       this.detail = {open:true, item, assets:[], tab:'front', activeAsset:null, flipped:false, zoom:1, panX:0, panY:0, rotX:-8, rotY:18, dragging:false, pointerId:null, startX:0, startY:0, startPanX:0, startPanY:0, startRotX:-8, startRotY:18, pinchStartDistance:0, pinchStartZoom:1};
       try {
         this.detail.assets = await this.rpcRows('app_get_part_assets', {p_session_token:this.session.token, p_image_id:item.id});
         if (!this.assetTypeUrl('front') && this.assetTypeUrl('back')) this.detail.tab='back';
       } catch(e) { this.toast('error', this.readError(e)); }
+      this.renderIcons();
     },
     closeDetail() { this.resetViewer(); this.detail.open=false; this.detail.assets=[]; this.detail.item=null; },
     setDetailTab(t) { this.detail.tab=t; if(t==='detail') this.detail.activeAsset=this.detailAssets[0] || null; this.resetViewer(); },
-    tabBtnClass(t) { return ['btn h-11 px-2 text-xs sm:text-sm border', this.detail.tab===t ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-emerald-100 hover:bg-emerald-50'].join(' '); },
+    tabBtnClass(t) { return ['btn h-10 px-3 text-xs sm:text-sm border transition-colors', this.detail.tab===t ? 'bg-emerald-600 text-white border-emerald-700 shadow-inner' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'].join(' '); },
     flipSim() {
       if (this.detail.tab !== 'sim') this.detail.tab = 'sim';
       this.detail.rotY = this.detail.rotY + 180;
@@ -740,22 +858,15 @@ createApp({
       return this.pointerCache;
     },
     resetViewer() {
-      this.detail.zoom = 1;
-      this.detail.panX = 0;
-      this.detail.panY = 0;
-      this.detail.rotX = -8;
-      this.detail.rotY = 18;
-      this.detail.startRotX = -8;
-      this.detail.startRotY = 18;
-      this.detail.dragging = false;
-      this.detail.pointerId = null;
-      this.detail.pinchStartDistance = 0;
-      const cache = this.ensurePointerCache();
-      cache.clear();
+      this.detail.zoom = 1; this.detail.panX = 0; this.detail.panY = 0;
+      this.detail.rotX = -8; this.detail.rotY = 18;
+      this.detail.startRotX = -8; this.detail.startRotY = 18;
+      this.detail.dragging = false; this.detail.pointerId = null; this.detail.pinchStartDistance = 0;
+      const cache = this.ensurePointerCache(); cache.clear();
     },
-    zoomIn() { this.detail.zoom = this.clamp(this.detail.zoom * 1.22, 1, 8); },
+    zoomIn() { this.detail.zoom = this.clamp(this.detail.zoom * 1.25, 1, 8); },
     zoomOut() {
-      this.detail.zoom = this.clamp(this.detail.zoom / 1.22, 1, 8);
+      this.detail.zoom = this.clamp(this.detail.zoom / 1.25, 1, 8);
       if (this.detail.zoom === 1) { this.detail.panX = 0; this.detail.panY = 0; }
     },
     onViewerWheel(e) {
@@ -776,12 +887,9 @@ createApp({
 
       if (cache.size === 1) {
         this.detail.pointerId = e.pointerId;
-        this.detail.startX = e.clientX;
-        this.detail.startY = e.clientY;
-        this.detail.startPanX = this.detail.panX;
-        this.detail.startPanY = this.detail.panY;
-        this.detail.startRotX = this.detail.rotX;
-        this.detail.startRotY = this.detail.rotY;
+        this.detail.startX = e.clientX; this.detail.startY = e.clientY;
+        this.detail.startPanX = this.detail.panX; this.detail.startPanY = this.detail.panY;
+        this.detail.startRotX = this.detail.rotX; this.detail.startRotY = this.detail.rotY;
       }
       if (cache.size === 2) {
         this.detail.pinchStartDistance = this.pointerDistance(cache);
@@ -804,10 +912,10 @@ createApp({
         const dy = e.clientY - this.detail.startY;
 
         if (this.detail.tab === 'sim') {
-          const nextY = Math.round((this.detail.startRotY + dx * 0.34) * 10) / 10;
-          const nextX = Math.round(this.clamp(this.detail.startRotX - dy * 0.20, -45, 45) * 10) / 10;
-          if (Math.abs(nextY - this.detail.rotY) > 0.15) this.detail.rotY = nextY;
-          if (Math.abs(nextX - this.detail.rotX) > 0.15) this.detail.rotX = nextX;
+          const nextY = Math.round((this.detail.startRotY + dx * 0.35) * 10) / 10;
+          const nextX = Math.round(this.clamp(this.detail.startRotX - dy * 0.25, -60, 60) * 10) / 10;
+          if (Math.abs(nextY - this.detail.rotY) > 0.1) this.detail.rotY = nextY;
+          if (Math.abs(nextX - this.detail.rotX) > 0.1) this.detail.rotX = nextX;
         } else {
           this.detail.panX = this.detail.startPanX + dx;
           this.detail.panY = this.detail.startPanY + dy;
@@ -820,27 +928,22 @@ createApp({
       cache.delete(e.pointerId);
 
       if (cache.size === 0) {
-        this.detail.dragging = false;
-        this.detail.pointerId = null;
-        this.detail.pinchStartDistance = 0;
+        this.detail.dragging = false; this.detail.pointerId = null; this.detail.pinchStartDistance = 0;
         return;
       }
-
       if (cache.size === 1) {
         const [id, pt] = [...cache.entries()][0];
         this.detail.pointerId = id;
-        this.detail.startX = pt.x;
-        this.detail.startY = pt.y;
-        this.detail.startPanX = this.detail.panX;
-        this.detail.startPanY = this.detail.panY;
-        this.detail.startRotX = this.detail.rotX;
-        this.detail.startRotY = this.detail.rotY;
+        this.detail.startX = pt.x; this.detail.startY = pt.y;
+        this.detail.startPanX = this.detail.panX; this.detail.startPanY = this.detail.panY;
+        this.detail.startRotX = this.detail.rotX; this.detail.startRotY = this.detail.rotY;
         this.detail.pinchStartDistance = 0;
       }
     },
 
+    // --- Editor & API Tách Nền ---
     async openEditor(item=null) {
-      if(!this.canEdit) return this.toast('error','Tài khoản không có quyền thêm/sửa.');
+      if(!this.canEdit) return this.toast('error','Tài khoản không có quyền.');
       this.clearEditorFiles();
       this.editor.open=true;
       if(item) {
@@ -857,18 +960,58 @@ createApp({
       for (const src of Object.values(this.editor?.previews || {})) { try { URL.revokeObjectURL(src); } catch(_) {} }
       if (this.editor) { this.editor.files={}; this.editor.previews={}; }
     },
-    onFileChange(type, order, e) {
-      const file = e.target.files?.[0]; e.target.value=''; if(!file) return;
+    
+    // Gọi Cloudflare Worker để tách nền bằng API remove.bg
+    async removeBgApi(file) {
+      if (!CONFIG.REMOVE_BG_WORKER_URL || CONFIG.REMOVE_BG_WORKER_URL.includes('[THAY-LINK-WORKER')) {
+        throw new Error('Chưa cấu hình Link Cloudflare Worker (REMOVE_BG_WORKER_URL) trong phần <script>.');
+      }
+      const form = new FormData();
+      form.append('image_file', file);
+      
+      const res = await fetch(CONFIG.REMOVE_BG_WORKER_URL, { 
+        method: 'POST', 
+        body: form 
+      });
+      
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      const blob = await res.blob();
+      return new File([blob], file.name.replace(/\.[^.]+$/, '.png'), {type: 'image/png'});
+    },
+
+    async onFileChange(type, order, e) {
+      let file = e.target.files?.[0]; e.target.value=''; if(!file) return;
+      
       const key = `${type}_${order}`;
       if(this.editor.previews[key]) URL.revokeObjectURL(this.editor.previews[key]);
+      
+      // LOGIC TỰ ĐỘNG TÁCH NỀN (CHỈ ÁP DỤNG CHO FRONT/BACK)
+      if (this.editor.autoRemoveBg && (type === 'front' || type === 'back')) {
+        this.saving = true; // Khóa nút lưu trong lúc tách nền
+        this.toast('info', `Đang gửi ảnh sang máy chủ AI để tách nền tự động...`);
+        try {
+          file = await this.removeBgApi(file);
+          this.toast('success', `Tách nền thành công mặt ${type}!`);
+        } catch(err) {
+          this.toast('error', 'Lỗi tách nền: ' + this.readError(err));
+          // Nếu tách lỗi, vẫn dùng ảnh gốc để người dùng tự xử lý
+        } finally {
+          this.saving = false;
+        }
+      }
+
       this.editor.files[key]=file;
       this.editor.previews[key]=URL.createObjectURL(file);
+      
       if(!this.editor.form.code) this.editor.form.code = this.codeFromFilename(file.name);
       if(type==='back' && this.editor.form.view_mode === 'single_face') this.editor.form.view_mode='dual_face';
       if(type==='detail') this.editor.form.view_mode='detail_set';
     },
     codeFromFilename(name) { return String(name||'').replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g,'').toUpperCase(); },
 
+    // --- Compress & Upload ---
     async compressImageToWebp(file, maxEdge=1600, quality=.88) {
       if(!file?.type?.startsWith('image/')) return file;
       const img = new Image(); const objectUrl = URL.createObjectURL(file);
@@ -885,19 +1028,23 @@ createApp({
         return new File([blob], `${base}.webp`, {type:'image/webp'});
       } finally { URL.revokeObjectURL(objectUrl); }
     },
-    async makeThumbFile(file) { return this.compressImageToWebp(file, 460, .74); },
+    async makeThumbFile(file) { return this.compressImageToWebp(file, 460, .75); },
+    
     async uploadToR2(file, code, assetType) {
       const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent || '');
-      const maxEdge = assetType === 'thumb' ? 420 : (assetType === 'detail' ? (isIOS ? 1100 : 1300) : (isIOS ? 1350 : 1600));
-      const quality = assetType === 'thumb' ? .70 : (isIOS ? .84 : .88);
+      const maxEdge = assetType === 'thumb' ? 420 : (assetType === 'detail' ? (isIOS ? 1100 : 1300) : (isIOS ? 1400 : 1600));
+      const quality = assetType === 'thumb' ? .75 : (isIOS ? .85 : .90);
+      
       const prepared = assetType === 'thumb' ? await this.makeThumbFile(file) : await this.compressImageToWebp(file, maxEdge, quality);
       const form = new FormData();
       form.append('file', prepared);
       form.append('code', code);
       form.append('asset_type', assetType);
+      
       const res = await fetch(`${CONFIG.R2_WORKER_URL}/upload`, { method:'POST', headers:{'x-session-token':this.session.token}, body:form });
       const data = await res.json().catch(()=>({}));
-      if(!res.ok || !data.ok) throw new Error(data.message || 'Upload R2 lỗi');
+      if(!res.ok || !data.ok) throw new Error(data.message || 'Lỗi upload lên R2');
+      
       return { asset_type:data.asset_type || assetType, storage_provider:'r2', bucket_name:'catalogue-images', image_path:data.image_path, image_name:data.image_name || prepared.name };
     },
     mergeAsset(list, asset, sortOrder=1) {
@@ -911,7 +1058,7 @@ createApp({
       this.saving=true;
       try {
         const code = this.editor.form.code.trim().toUpperCase();
-        if(!code) throw new Error('Anh cần nhập mã hàng.');
+        if(!code) throw new Error('Cần nhập mã sản phẩm.');
         let assets = this.editor.assets.map(a => ({ asset_type:a.asset_type, storage_provider:a.storage_provider || 'r2', bucket_name:a.bucket_name || 'catalogue-images', image_path:a.image_path, image_name:a.image_name || null, sort_order:Number(a.sort_order||1) }));
 
         for(const [key,file] of Object.entries(this.editor.files)) {
@@ -925,7 +1072,7 @@ createApp({
         }
         assets = assets.filter(a => a.image_path);
         const primary = assets.find(a => a.asset_type==='thumb') || assets.find(a => a.asset_type==='front') || assets[0];
-        if(!primary) throw new Error('Anh cần chọn ít nhất ảnh mặt chính/front hoặc giữ ảnh cũ.');
+        if(!primary) throw new Error('Cần có ảnh mặt chính/front hoặc giữ lại ảnh cũ.');
 
         const saved = await this.rpcRow('app_upsert_part_metadata', {
           p_session_token:this.session.token,
@@ -940,21 +1087,21 @@ createApp({
           p_primary_image_path:primary.image_path,
           p_primary_image_name:primary.image_name || null
         });
-        if(!saved?.ok) throw new Error(saved?.message || 'Không lưu được metadata');
+        if(!saved?.ok) throw new Error(saved?.message || 'Không lưu được Metadata vào Database.');
 
         const rep = await this.rpcRow('app_replace_part_assets', { p_session_token:this.session.token, p_image_id:saved.id, p_assets:assets });
-        if(!rep?.ok) throw new Error(rep?.message || 'Không lưu được assets');
+        if(!rep?.ok) throw new Error(rep?.message || 'Không liên kết được hình ảnh.');
 
-        this.toast('success','Đã lưu metadata Supabase và ảnh R2.');
+        this.toast('success','Lưu dữ liệu thành công!');
         this.closeEditor(); this.closeDetail(); await this.loadParts(true);
       } catch(e) { this.toast('error', this.readError(e)); } finally { this.saving=false; }
     },
     async deleteCurrentPart() {
-      if(!this.detail.item || !confirm('Xóa metadata mã này? File ảnh trên R2 chưa bị xóa để tránh mất nhầm.')) return;
+      if(!this.detail.item || !confirm('Xác nhận xóa Metadata của mã này? (Ảnh gốc trên Cloudflare R2 sẽ không bị xóa để phòng ngừa lỗi rủi ro).')) return;
       try {
         const row = await this.rpcRow('app_delete_part', {p_session_token:this.session.token, p_image_id:this.detail.item.id});
-        if(!row?.ok) throw new Error(row?.message || 'Không xóa được');
-        this.toast('success','Đã xóa metadata.'); this.closeDetail(); await this.loadParts(true);
+        if(!row?.ok) throw new Error(row?.message || 'Không xóa được.');
+        this.toast('success','Đã xóa thành công.'); this.closeDetail(); await this.loadParts(true);
       } catch(e) { this.toast('error', this.readError(e)); }
     }
   }
