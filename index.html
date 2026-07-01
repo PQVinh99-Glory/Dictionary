@@ -408,6 +408,31 @@
               Nếu chọn ảnh mới, hệ thống tự đặt đường dẫn upload và tự lấy mã hàng từ tên ảnh nếu ô mã hàng đang trống.
             </p>
 
+            <div class="mt-3 rounded-2xl bg-emerald-50/80 border border-emerald-100 p-3">
+              <label class="flex items-center justify-between gap-3 cursor-pointer">
+                <span class="flex items-center gap-2 text-sm font-black text-slate-800">
+                  <i data-lucide="wand-sparkles" class="w-4 h-4 text-emerald-700"></i>
+                  Tách nền nhanh khi upload
+                </span>
+                <input type="checkbox" v-model="bgRemove.enabled" class="w-5 h-5 accent-emerald-600" />
+              </label>
+
+              <div v-if="bgRemove.enabled" class="mt-3">
+                <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-1">
+                  <span>Độ mạnh tách nền</span>
+                  <span>{{ bgRemove.tolerance }}</span>
+                </div>
+                <input type="range" min="35" max="110" step="1" v-model.number="bgRemove.tolerance" class="w-full accent-emerald-600" />
+                <label class="mt-2 flex items-center gap-2 text-[11px] font-bold text-slate-600">
+                  <input type="checkbox" v-model="bgRemove.removeInnerBg" class="accent-emerald-600" />
+                  Xóa nền trong các lỗ/hốc linh kiện nếu màu giống nền
+                </label>
+                <p class="mt-2 text-[11px] text-slate-500 leading-relaxed">
+                  Thuật toán này hợp với ảnh chụp trên nền bàn/gỗ/trắng. Nếu ảnh đã là PNG/WebP trong suốt thì hệ thống vẫn giữ nền trong suốt.
+                </p>
+              </div>
+            </div>
+
             <label class="btn mt-3 w-full h-11 bg-white border border-emerald-200 hover:bg-emerald-50 cursor-pointer text-emerald-700">
               <i data-lucide="box" class="w-5 h-5"></i>
               Chọn ảnh 360 / nhiều góc
@@ -737,6 +762,11 @@
             frameFiles: [],
             framePreviews: [],
             form: this.emptyForm()
+          },
+          bgRemove: {
+            enabled: true,
+            tolerance: 64,
+            removeInnerBg: true
           },
           zoom: {
             open: false,
@@ -1108,6 +1138,170 @@
           });
           return row?.id || null;
         },
+        colorDistanceSq(r1, g1, b1, r2, g2, b2) {
+          const dr = r1 - r2;
+          const dg = g1 - g2;
+          const db = b1 - b2;
+          return dr * dr + dg * dg + db * db;
+        },
+        estimateBorderBackground(data, width, height) {
+          const samples = [];
+          const step = Math.max(1, Math.floor(Math.min(width, height) / 90));
+
+          const push = (x, y) => {
+            const i = (y * width + x) * 4;
+            const a = data[i + 3];
+            if (a < 20) return;
+            samples.push([data[i], data[i + 1], data[i + 2]]);
+          };
+
+          for (let x = 0; x < width; x += step) {
+            push(x, 0);
+            push(x, height - 1);
+          }
+
+          for (let y = 0; y < height; y += step) {
+            push(0, y);
+            push(width - 1, y);
+          }
+
+          if (!samples.length) return null;
+
+          const avg = samples.reduce((acc, c) => {
+            acc.r += c[0]; acc.g += c[1]; acc.b += c[2];
+            return acc;
+          }, { r: 0, g: 0, b: 0 });
+
+          avg.r /= samples.length;
+          avg.g /= samples.length;
+          avg.b /= samples.length;
+
+          // Trim bớt mẫu quá lệch, tránh dính vật thể nếu vật thể chạm gần mép ảnh.
+          const sorted = samples
+            .map(c => ({
+              r: c[0],
+              g: c[1],
+              b: c[2],
+              d: this.colorDistanceSq(c[0], c[1], c[2], avg.r, avg.g, avg.b)
+            }))
+            .sort((a, b) => a.d - b.d);
+
+          const keep = sorted.slice(0, Math.max(8, Math.floor(sorted.length * 0.82)));
+          const bg = keep.reduce((acc, c) => {
+            acc.r += c.r; acc.g += c.g; acc.b += c.b;
+            return acc;
+          }, { r: 0, g: 0, b: 0 });
+
+          bg.r = bg.r / keep.length;
+          bg.g = bg.g / keep.length;
+          bg.b = bg.b / keep.length;
+
+          return bg;
+        },
+        quickRemoveBackgroundFromCanvas(canvas, options = {}) {
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          const width = canvas.width;
+          const height = canvas.height;
+          if (!width || !height) return;
+
+          const imageData = ctx.getImageData(0, 0, width, height);
+          const data = imageData.data;
+          const bg = this.estimateBorderBackground(data, width, height);
+
+          // Nếu ảnh vốn đã transparent ở viền, không cần xử lý mạnh.
+          if (!bg) {
+            ctx.putImageData(imageData, 0, 0);
+            return;
+          }
+
+          const tolerance = Number(options.tolerance || 64);
+          const removeInnerBg = options.removeInnerBg !== false;
+
+          const bgTolSq = tolerance * tolerance * 3;
+          const innerTolSq = (tolerance + 18) * (tolerance + 18) * 3;
+          const total = width * height;
+          const visited = new Uint8Array(total);
+          const queue = new Int32Array(total);
+          let head = 0;
+          let tail = 0;
+
+          const isCloseToBg = (idx, tolSq = bgTolSq) => {
+            const i = idx * 4;
+            const a = data[i + 3];
+            if (a < 18) return true;
+            return this.colorDistanceSq(data[i], data[i + 1], data[i + 2], bg.r, bg.g, bg.b) <= tolSq;
+          };
+
+          const pushIfBg = (idx) => {
+            if (idx < 0 || idx >= total || visited[idx]) return;
+            if (!isCloseToBg(idx)) return;
+            visited[idx] = 1;
+            queue[tail++] = idx;
+          };
+
+          // Seed từ 4 cạnh ảnh, chỉ lấy vùng nền nối với mép.
+          for (let x = 0; x < width; x++) {
+            pushIfBg(x);
+            pushIfBg((height - 1) * width + x);
+          }
+
+          for (let y = 0; y < height; y++) {
+            pushIfBg(y * width);
+            pushIfBg(y * width + width - 1);
+          }
+
+          // Flood-fill nền ngoài vật thể.
+          while (head < tail) {
+            const idx = queue[head++];
+            const x = idx % width;
+            const y = Math.floor(idx / width);
+
+            if (x > 0) pushIfBg(idx - 1);
+            if (x < width - 1) pushIfBg(idx + 1);
+            if (y > 0) pushIfBg(idx - width);
+            if (y < height - 1) pushIfBg(idx + width);
+          }
+
+          // Xóa nền nối với mép.
+          for (let idx = 0; idx < total; idx++) {
+            if (visited[idx]) data[idx * 4 + 3] = 0;
+          }
+
+          // Xóa nền trong lỗ/hốc nếu màu giống nền, ví dụ các lỗ trên linh kiện.
+          if (removeInnerBg) {
+            for (let idx = 0; idx < total; idx++) {
+              const i = idx * 4;
+              if (data[i + 3] === 0) continue;
+              if (isCloseToBg(idx, innerTolSq)) {
+                data[i + 3] = 0;
+              }
+            }
+          }
+
+          // Mềm biên nhẹ: các pixel sát nền và gần màu nền sẽ giảm alpha.
+          const alphaCopy = new Uint8ClampedArray(total);
+          for (let idx = 0; idx < total; idx++) alphaCopy[idx] = data[idx * 4 + 3];
+
+          for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+              const idx = y * width + x;
+              const i = idx * 4;
+              if (alphaCopy[idx] === 0) continue;
+
+              const nearTransparent =
+                alphaCopy[idx - 1] === 0 ||
+                alphaCopy[idx + 1] === 0 ||
+                alphaCopy[idx - width] === 0 ||
+                alphaCopy[idx + width] === 0;
+
+              if (nearTransparent && isCloseToBg(idx, innerTolSq * 1.15)) {
+                data[i + 3] = Math.round(data[i + 3] * 0.35);
+              }
+            }
+          }
+
+          ctx.putImageData(imageData, 0, 0);
+        },
         async compressImageToWebp(file, maxEdge = 1600, quality = 0.78) {
           if (!file?.type?.startsWith('image/')) return file;
 
@@ -1129,12 +1323,17 @@
             canvas.width = width;
             canvas.height = height;
 
-            // QUAN TRỌNG:
-            // alpha:true + clearRect giúp giữ nền trong suốt của PNG/WebP.
-            // Bản cũ dùng alpha:false + fill trắng nên ảnh xóa phông bị dính nền trắng.
-            const ctx = canvas.getContext('2d', { alpha: true });
+            // Giữ alpha để PNG/WebP transparent không bị đổi thành nền trắng.
+            const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: true });
             ctx.clearRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
+
+            if (this.bgRemove?.enabled) {
+              this.quickRemoveBackgroundFromCanvas(canvas, {
+                tolerance: this.bgRemove.tolerance,
+                removeInnerBg: this.bgRemove.removeInnerBg
+              });
+            }
 
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
             if (!blob) return file;
