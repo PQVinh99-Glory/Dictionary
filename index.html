@@ -398,13 +398,22 @@
               </div>
             </div>
 
-            <label class="btn mt-3 w-full h-11 bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer">
-              <i data-lucide="camera" class="w-5 h-5"></i>
-              Chọn / chụp ảnh
-              <input type="file" accept="image/*" capture="environment" class="hidden" @change="onEditorFileChange" />
-            </label>
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label class="btn w-full h-11 bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer">
+                <i data-lucide="images" class="w-5 h-5"></i>
+                Chọn ảnh từ máy
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onEditorFileChange" />
+              </label>
+
+              <label class="btn w-full h-11 bg-white border border-emerald-200 hover:bg-emerald-50 cursor-pointer text-emerald-700">
+                <i data-lucide="camera" class="w-5 h-5"></i>
+                Chụp camera
+                <input type="file" accept="image/*" capture="environment" class="hidden" @change="onEditorFileChange" />
+              </label>
+            </div>
 
             <p class="mt-3 text-xs text-slate-500 leading-relaxed">
+              Trên mobile: dùng <b>Chọn ảnh từ máy</b> để lấy ảnh trong thư viện, hoặc <b>Chụp camera</b> để chụp mới.
               Nếu chọn ảnh mới, hệ thống tự đặt đường dẫn upload và tự lấy mã hàng từ tên ảnh nếu ô mã hàng đang trống.
             </p>
 
@@ -435,8 +444,8 @@
 
             <label class="btn mt-3 w-full h-11 bg-white border border-emerald-200 hover:bg-emerald-50 cursor-pointer text-emerald-700">
               <i data-lucide="box" class="w-5 h-5"></i>
-              Chọn ảnh 360 / nhiều góc
-              <input type="file" accept="image/*" multiple class="hidden" @change="onFrameFilesChange" />
+              Chọn ảnh 360 / nhiều góc từ máy
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/*" multiple class="hidden" @change="onFrameFilesChange" />
             </label>
 
             <div v-if="editor.framePreviews.length" class="mt-3">
@@ -1007,6 +1016,7 @@
         onEditorFileChange(e) {
           const file = e.target.files?.[0];
           if (!file) return;
+          e.target.value = '';
           this.editor.file = file;
           if (this.editor.localPreview) URL.revokeObjectURL(this.editor.localPreview);
           this.editor.localPreview = URL.createObjectURL(file);
