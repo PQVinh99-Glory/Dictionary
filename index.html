@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Catalogue</title>
+  <title>Catalogue AI</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23059669'/%3E%3Cpath d='M18 38h12v8H18zM34 18h12v8H34zM21 18h9v9h-9zM36 35h10v10H36z' fill='white' opacity='.95'/%3E%3Cpath d='M30 31h7M32 27v8M25 38l10-12' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -65,20 +65,64 @@
     }
     .part-img { filter: drop-shadow(0 14px 18px rgba(15,23,42,.18)); }
     .modal-shell { max-height:calc(100dvh - 24px); }
+    .detail-overlay {
+      background:
+        radial-gradient(circle at top left, rgba(16,185,129,.18), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(132,204,22,.18), transparent 30%),
+        rgba(241,245,249,.70);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
     .viewer-stage {
-      background:linear-gradient(135deg, rgba(15,23,42,.96), rgba(30,41,59,.88));
-      border:1px solid rgba(255,255,255,.10);
+      height:clamp(360px, 68dvh, 690px);
+      min-height:360px;
+      background:
+        radial-gradient(circle at 30% 15%, rgba(255,255,255,.96), rgba(255,255,255,.78) 36%, transparent 58%),
+        linear-gradient(135deg, #f8fafc, #eefdf4 48%, #f7fee7);
+      border:1px solid rgba(15,23,42,.08);
+      box-shadow:0 22px 65px rgba(15,23,42,.16);
       touch-action:none;
+      user-select:none;
+      cursor:grab;
+      overscroll-behavior:contain;
+    }
+    .viewer-stage.dragging { cursor:grabbing; }
+    .viewer-object {
+      transform-origin:center center;
+      will-change:transform;
+      -webkit-user-drag:none;
+      user-select:none;
     }
     .sim-scene { perspective:1200px; }
-    .sim-card { transform-style:preserve-3d; transition:transform .35s ease; }
-    .sim-face { backface-visibility:hidden; -webkit-backface-visibility:hidden; }
-    .sim-back { transform:rotateY(180deg); }
+    .sim-card { transform-style:preserve-3d; transition:transform .12s ease-out; will-change:transform; }
+    .sim-face {
+      backface-visibility:hidden; -webkit-backface-visibility:hidden;
+      transform:translateZ(var(--thickness, 8px));
+      background:rgba(255,255,255,.92);
+    }
+    .sim-back { transform:rotateY(180deg) translateZ(var(--thickness, 8px)); }
+    .sim-edge {
+      position:absolute; inset:0; border-radius:1.5rem;
+      background:linear-gradient(135deg, rgba(15,23,42,.20), rgba(15,23,42,.06));
+      transform:translateZ(calc(var(--thickness, 8px) * -1));
+      box-shadow:0 18px 40px rgba(15,23,42,.18);
+      pointer-events:none;
+    }
+    .detail-side { max-height:86dvh; }
+    @media (max-width: 1024px) {
+      .detail-grid { max-width:760px; }
+      .viewer-stage { height:48dvh; min-height:290px; }
+      .detail-side { max-height:none; }
+    }
     @media (max-width: 760px) {
       .modal-shell { max-height:100dvh; border-radius:1.35rem 1.35rem 0 0 !important; }
       .mobile-bottom { align-items:flex-end !important; padding:0 !important; }
       .mobile-bottom .modal-shell { width:100% !important; }
       .hide-mobile { display:none !important; }
+      .detail-overlay { padding:0 !important; align-items:flex-start !important; }
+      .detail-grid { gap:.55rem !important; margin:0 !important; width:100%; }
+      .viewer-stage { height:42dvh; min-height:250px; border-radius:0 0 1.25rem 1.25rem !important; padding:.5rem !important; }
+      .detail-side { border-radius:1.25rem 1.25rem 0 0 !important; width:100%; max-height:none !important; }
     }
   </style>
 </head>
@@ -90,8 +134,8 @@
       <div class="w-16 h-16 rounded-3xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-300/50">
         <i data-lucide="blocks" class="w-9 h-9"></i>
       </div>
-      <h1 class="mt-5 text-3xl font-black tracking-tight">Catalogue</h1>
-      <p class="mt-1 text-slate-500 font-semibold">AI Library</p>
+      <h1 class="mt-5 text-3xl font-black tracking-tight">Catalogue AI</h1>
+      <p class="mt-1 text-slate-500 font-semibold"></p>
 
       <form @submit.prevent="login" class="mt-6 space-y-3">
         <input class="input" v-model.trim="loginForm.username" placeholder="Tên đăng nhập" autocomplete="username" />
@@ -113,7 +157,7 @@
             <i data-lucide="blocks" class="w-7 h-7"></i>
           </div>
           <div class="min-w-0">
-            <h1 class="text-xl sm:text-2xl font-black truncate">Catalogue Linh Kiện</h1>
+            <h1 class="text-xl sm:text-2xl font-black truncate">Catalogue AI</h1>
             <p class="text-xs sm:text-sm text-slate-500 font-semibold truncate">Xin chào, <b>{{ session.user.display_name || session.user.username }}</b> · Quyền: <b>{{ session.user.role_name }}</b></p>
           </div>
         </div>
@@ -160,7 +204,7 @@
       <div v-else-if="!parts.length" class="mt-6 glass rounded-[2rem] p-10 text-center">
         <div class="mx-auto w-20 h-20 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center"><i data-lucide="image-off" class="w-10 h-10"></i></div>
         <h2 class="mt-4 text-2xl font-black">Chưa có dữ liệu phù hợp</h2>
-        <p class="mt-2 text-slate-500 font-semibold">Bấm Thêm mã để upload ảnh lên R2 và lưu metadata vào Supabase.</p>
+        <p class="mt-2 text-slate-500 font-semibold">Bấm Thêm mã để upload ảnh.</p>
       </div>
 
       <div v-else class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -196,28 +240,36 @@
   </main>
 
   <!-- DETAIL -->
-  <div v-if="detail.open" class="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto flex items-start justify-center" @click.self="closeDetail">
-    <div class="w-full max-w-6xl grid lg:grid-cols-[minmax(0,1fr)_360px] gap-3 sm:gap-4 my-2 sm:my-4">
-      <section class="viewer-stage rounded-[1.6rem] sm:rounded-[2rem] min-h-[42dvh] sm:min-h-[620px] overflow-hidden relative flex items-center justify-center p-3">
+  <div v-if="detail.open" class="detail-overlay fixed inset-0 z-50 p-2 sm:p-4 overflow-y-auto flex items-start justify-center" @click.self="closeDetail">
+    <div class="detail-grid w-full max-w-6xl grid lg:grid-cols-[minmax(0,1fr)_360px] gap-3 sm:gap-4 my-2 sm:my-4">
+      <section :class="['viewer-stage rounded-[1.6rem] sm:rounded-[2rem] overflow-hidden relative flex items-center justify-center p-3', detail.dragging ? 'dragging' : '']"
+        @wheel.prevent="onViewerWheel"
+        @pointerdown="onViewerPointerDown"
+        @pointermove="onViewerPointerMove"
+        @pointerup="onViewerPointerUp"
+        @pointercancel="onViewerPointerUp"
+        @lostpointercapture="onViewerPointerUp">
         <div v-if="detail.tab==='sim'" class="sim-scene w-full h-full flex items-center justify-center">
-          <div class="relative w-full max-w-3xl aspect-[4/3] sim-card" :style="simTransform" @click="flipSim">
-            <div class="sim-face absolute inset-0 checker rounded-3xl flex items-center justify-center overflow-hidden border border-white/10">
-              <img :src="assetTypeUrl('front')" class="part-img max-w-[94%] max-h-[94%] object-contain" />
+          <div class="relative w-full max-w-3xl aspect-[4/3] sim-card" :style="simTransform" draggable="false">
+            <div class="sim-edge"></div>
+            <div class="sim-face absolute inset-0 checker rounded-3xl flex items-center justify-center overflow-hidden border border-white/70">
+              <img :src="assetTypeUrl('front') || assetTypeUrl('back')" class="part-img max-w-[94%] max-h-[94%] object-contain viewer-object" draggable="false" />
             </div>
-            <div v-if="assetTypeUrl('back')" class="sim-face sim-back absolute inset-0 checker rounded-3xl flex items-center justify-center overflow-hidden border border-white/10">
-              <img :src="assetTypeUrl('back')" class="part-img max-w-[94%] max-h-[94%] object-contain" />
+            <div class="sim-face sim-back absolute inset-0 checker rounded-3xl flex items-center justify-center overflow-hidden border border-white/70">
+              <img :src="assetTypeUrl('back') || assetTypeUrl('front')" class="part-img max-w-[94%] max-h-[94%] object-contain viewer-object" draggable="false" />
             </div>
           </div>
         </div>
-        <img v-else-if="activeAssetUrl" :src="activeAssetUrl" class="part-img max-w-[96%] max-h-[76dvh] object-contain" />
-        <div v-else class="text-white text-center font-black">Không có ảnh</div>
-        <div class="absolute left-3 bottom-3 flex flex-wrap gap-2 text-xs font-black text-white">
-          <span class="px-3 py-2 rounded-full bg-slate-950/60 border border-white/10">{{ detail.tab==='sim' ? '3D mô phỏng: bấm để lật mặt' : detailTabLabel }}</span>
-          <span v-if="detail.item?.is_symmetric" class="px-3 py-2 rounded-full bg-emerald-600/90">Đối xứng</span>
+        <img v-else-if="activeAssetUrl" :src="activeAssetUrl" class="viewer-object part-img max-w-[96%] max-h-[96%] object-contain" :style="viewerTransform" draggable="false" />
+        <div v-else class="text-slate-700 text-center font-black">Không có ảnh</div>
+        <div class="absolute left-3 bottom-3 flex flex-wrap gap-2 text-xs font-black text-slate-700">
+          <span class="px-3 py-2 rounded-full bg-white/85 border border-emerald-100 shadow-sm">{{ detail.tab==='sim' ? '3D mô phỏng: front/back + độ dày giả ' : detailTabLabel }}</span>
+          <span class="px-3 py-2 rounded-full bg-white/85 border border-emerald-100 shadow-sm">Zoom {{ detail.zoom.toFixed(1) }}x</span>
+          <span v-if="detail.item?.is_symmetric" class="px-3 py-2 rounded-full bg-emerald-600/90 text-white">Đối xứng</span>
         </div>
       </section>
 
-      <aside class="glass rounded-[1.6rem] sm:rounded-[2rem] p-4 sm:p-5 max-h-[86dvh] overflow-auto scrollbar-soft">
+      <aside class="detail-side glass rounded-[1.6rem] sm:rounded-[2rem] p-4 sm:p-5 overflow-auto scrollbar-soft">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0"><p class="text-xs font-black tracking-[.22em] text-emerald-700 uppercase">Chi tiết mã</p><h2 class="mt-1 text-2xl font-black break-all">{{ detail.item?.code }}</h2></div>
           <button @click="closeDetail" class="btn w-11 h-11 bg-white border border-emerald-100"><i data-lucide="x" class="w-6 h-6"></i></button>
@@ -236,6 +288,16 @@
           <button @click="setDetailTab('sim')" :class="tabBtnClass('sim')"><i data-lucide="box" class="w-4 h-4"></i>3D mô phỏng</button>
         </div>
 
+        <div class="mt-3 grid grid-cols-4 gap-2">
+          <button @click="zoomOut" class="btn h-10 bg-white border border-emerald-100 hover:bg-emerald-50"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
+          <button @click="resetViewer" class="btn h-10 bg-white border border-emerald-100 hover:bg-emerald-50"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
+          <button @click="zoomIn" class="btn h-10 bg-white border border-emerald-100 hover:bg-emerald-50"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+          <button @click="flipSim" class="btn h-10 bg-white border border-emerald-100 hover:bg-emerald-50" :disabled="detail.tab!=='sim'"><i data-lucide="repeat-2" class="w-4 h-4"></i></button>
+        </div>
+        <p class="mt-2 text-[11px] leading-relaxed text-slate-500 font-semibold">
+          PC: lăn chuột để zoom, kéo ảnh để xem chi tiết. Mobile: dùng 2 ngón để phóng to/thu nhỏ, 1 ngón để kéo ảnh.
+        </p>
+
         <div v-if="detailAssets.length" class="mt-3 grid grid-cols-4 gap-2">
           <button v-for="a in detailAssets" :key="a.id || a.image_path" @click="detail.activeAsset=a" class="checker rounded-xl overflow-hidden aspect-square border border-emerald-100">
             <img :src="assetUrl(a)" class="w-full h-full object-contain" loading="lazy" />
@@ -243,7 +305,7 @@
         </div>
 
         <button v-if="canEdit" @click="openEditor(detail.item)" class="btn mt-4 w-full h-12 bg-slate-950 text-white hover:bg-slate-800"><i data-lucide="pencil" class="w-5 h-5"></i>Chỉnh sửa mã này</button>
-        <button v-if="canEdit" @click="deleteCurrentPart" class="btn mt-2 w-full h-11 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100"><i data-lucide="trash-2" class="w-5 h-5"></i>Xóa metadata mã này</button>
+        <button v-if="canEdit" @click="deleteCurrentPart" class="btn mt-2 w-full h-11 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100"><i data-lucide="trash-2" class="w-5 h-5"></i>Xóa mã này</button>
       </aside>
     </div>
   </div>
@@ -268,18 +330,21 @@
             <label class="btn h-11 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-pointer"><i data-lucide="scan-search" class="w-5 h-5"></i>Ảnh chi tiết 1<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('detail', 1, $event)" /></label>
             <label class="btn h-11 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-pointer"><i data-lucide="scan-search" class="w-5 h-5"></i>Ảnh chi tiết 2<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('detail', 2, $event)" /></label>
           </div>
-          <p class="text-xs text-slate-500 leading-relaxed">Ảnh nên tách nền bằng remove.bg trước, xuất PNG/WebP rồi app tự nén WebP và upload lên Cloudflare R2. Không dùng tách nền trong browser để tránh lag mobile/Safari.</p>
+          <p class="text-xs text-slate-500 leading-relaxed">Ảnh nên tách nền trước, xuất PNG rồi app tự nén WebP và upload lên Database.</p>
         </section>
 
         <form @submit.prevent="savePart" class="space-y-3">
           <div class="grid sm:grid-cols-2 gap-3">
             <label class="block"><span class="text-sm font-black text-slate-600">Mã hàng</span><input v-model.trim="editor.form.code" required class="input mt-1" placeholder="Ví dụ: 3446350101" /></label>
-            <label class="block"><span class="text-sm font-black text-slate-600">ID / mã phụ</span><input v-model.trim="editor.form.part_id" class="input mt-1" placeholder="Ví dụ: (5633,5634)+..." /></label>
+            <label class="block"><span class="text-sm font-black text-slate-600">ID</span><input v-model.trim="editor.form.part_id" class="input mt-1" placeholder="Ví dụ: (5633,5634)+..." /></label>
           </div>
           <div class="grid sm:grid-cols-3 gap-3">
             <label class="block"><span class="text-sm font-black text-slate-600">Vị trí</span><select v-model="editor.form.usage_side" class="input mt-1"><option value="unknown">Chưa xác định</option><option value="left">Bên trái</option><option value="right">Bên phải</option><option value="both">Cả hai</option></select></label>
             <label class="block"><span class="text-sm font-black text-slate-600">Kiểu ảnh</span><select v-model="editor.form.view_mode" class="input mt-1"><option value="single_face">1 mặt</option><option value="dual_face">2 mặt front/back</option><option value="detail_set">Có ảnh chi tiết</option></select></label>
             <label class="block"><span class="text-sm font-black text-slate-600">Đối xứng</span><select v-model="editor.form.is_symmetric" class="input mt-1"><option :value="false">Không / chưa rõ</option><option :value="true">Có đối xứng</option></select></label>
+          </div>
+          <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-3 text-xs text-slate-600 leading-relaxed">
+            <b>Gợi ý:</b> Mã đối xứng chỉ cần upload <b>ảnh mặt chính</b> và chọn <b>Đối xứng = Có</b>. Mã không đối xứng nên upload đủ <b>front/back</b> để 3D mô phỏng lật 2 mặt rõ hơn.
           </div>
           <label class="block"><span class="text-sm font-black text-slate-600">Đặc điểm nhận dạng</span><textarea v-model.trim="editor.form.identifying_features" class="input mt-1 min-h-[110px]" placeholder="Ví dụ: thân chính, có 2 ngàm chữ L, cụm lỗ lệch..."></textarea></label>
           <label class="block"><span class="text-sm font-black text-slate-600">Ghi chú dễ nhầm</span><textarea v-model.trim="editor.form.confusing_note" class="input mt-1 min-h-[86px]" placeholder="Ví dụ: dễ nhầm với mã ..., khác ở đường cắt/lỗ/ngàm..."></textarea></label>
@@ -327,8 +392,9 @@ createApp({
       loginForm:{ username:'', password:'' },
       filters:{ search:'', usage:'all', viewMode:'all' },
       parts:[], page:0, hasMore:false,
-      detail:{ open:false, item:null, assets:[], tab:'front', activeAsset:null, flipped:false },
-      editor:{ open:false, form:this.emptyForm(), assets:[], files:{}, previews:{} }
+      detail:{ open:false, item:null, assets:[], tab:'front', activeAsset:null, flipped:false, zoom:1, panX:0, panY:0, dragging:false, pointerId:null, startX:0, startY:0, startPanX:0, startPanY:0, pinchStartDistance:0, pinchStartZoom:1 },
+      editor:{ open:false, form:this.emptyForm(), assets:[], files:{}, previews:{} },
+      pointerCache:null
     };
   },
   computed:{
@@ -339,7 +405,12 @@ createApp({
       return this.assetTypeUrl(this.detail.tab);
     },
     detailTabLabel() { return {front:'Mặt chính', back:'Mặt sau', detail:'Ảnh chi tiết', sim:'3D mô phỏng'}[this.detail.tab] || 'Ảnh'; },
-    simTransform() { return this.detail.flipped ? 'transform: rotateY(180deg);' : 'transform: rotateY(0deg);'; },
+    viewerTransform() { return `transform: translate3d(${this.detail.panX}px, ${this.detail.panY}px, 0) scale(${this.detail.zoom});`; },
+    simTransform() {
+      const y = this.detail.flipped ? 180 : 0;
+      const thickness = this.detail.item?.is_symmetric ? '5px' : '9px';
+      return `--thickness:${thickness}; transform: translate3d(${this.detail.panX}px, ${this.detail.panY}px, 0) scale(${this.detail.zoom}) rotateX(-4deg) rotateY(${y}deg);`;
+    },
     editorPreview() {
       return this.editor.previews['front_1'] || this.assetPathUrl(this.findEditorAsset('front',1)?.image_path, this.findEditorAsset('front',1)?.storage_provider) || '';
     },
@@ -430,16 +501,105 @@ createApp({
     async loadMore() { this.page += 1; await this.loadParts(false); },
 
     async openDetail(item) {
-      this.detail = {open:true, item, assets:[], tab:'front', activeAsset:null, flipped:false};
+      this.detail = {open:true, item, assets:[], tab:'front', activeAsset:null, flipped:false, zoom:1, panX:0, panY:0, dragging:false, pointerId:null, startX:0, startY:0, startPanX:0, startPanY:0, pinchStartDistance:0, pinchStartZoom:1};
       try {
         this.detail.assets = await this.rpcRows('app_get_part_assets', {p_session_token:this.session.token, p_image_id:item.id});
         if (!this.assetTypeUrl('front') && this.assetTypeUrl('back')) this.detail.tab='back';
       } catch(e) { this.toast('error', this.readError(e)); }
     },
-    closeDetail() { this.detail.open=false; this.detail.assets=[]; this.detail.item=null; },
-    setDetailTab(t) { this.detail.tab=t; if(t==='detail') this.detail.activeAsset=this.detailAssets[0] || null; },
+    closeDetail() { this.resetViewer(); this.detail.open=false; this.detail.assets=[]; this.detail.item=null; },
+    setDetailTab(t) { this.detail.tab=t; if(t==='detail') this.detail.activeAsset=this.detailAssets[0] || null; this.resetViewer(); },
     tabBtnClass(t) { return ['btn h-11 px-2 text-xs sm:text-sm border', this.detail.tab===t ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-emerald-100 hover:bg-emerald-50'].join(' '); },
-    flipSim() { this.detail.flipped = !this.detail.flipped; },
+    flipSim() {
+      if (this.detail.tab !== 'sim') this.detail.tab = 'sim';
+      this.detail.flipped = !this.detail.flipped;
+    },
+    clamp(n,min,max) { return Math.max(min, Math.min(max, n)); },
+    ensurePointerCache() {
+      if (!this.pointerCache) this.pointerCache = new Map();
+      return this.pointerCache;
+    },
+    resetViewer() {
+      this.detail.zoom = 1;
+      this.detail.panX = 0;
+      this.detail.panY = 0;
+      this.detail.dragging = false;
+      this.detail.pointerId = null;
+      this.detail.pinchStartDistance = 0;
+      const cache = this.ensurePointerCache();
+      cache.clear();
+    },
+    zoomIn() { this.detail.zoom = this.clamp(this.detail.zoom * 1.22, 1, 8); },
+    zoomOut() {
+      this.detail.zoom = this.clamp(this.detail.zoom / 1.22, 1, 8);
+      if (this.detail.zoom === 1) { this.detail.panX = 0; this.detail.panY = 0; }
+    },
+    onViewerWheel(e) {
+      const delta = e.deltaY < 0 ? 1.12 : 0.88;
+      this.detail.zoom = this.clamp(this.detail.zoom * delta, 1, 8);
+      if (this.detail.zoom === 1) { this.detail.panX = 0; this.detail.panY = 0; }
+    },
+    pointerDistance(cache) {
+      const pts = [...cache.values()];
+      if (pts.length < 2) return 0;
+      return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    },
+    onViewerPointerDown(e) {
+      const cache = this.ensurePointerCache();
+      e.currentTarget?.setPointerCapture?.(e.pointerId);
+      cache.set(e.pointerId, {x:e.clientX, y:e.clientY});
+      this.detail.dragging = true;
+
+      if (cache.size === 1) {
+        this.detail.pointerId = e.pointerId;
+        this.detail.startX = e.clientX;
+        this.detail.startY = e.clientY;
+        this.detail.startPanX = this.detail.panX;
+        this.detail.startPanY = this.detail.panY;
+      }
+      if (cache.size === 2) {
+        this.detail.pinchStartDistance = this.pointerDistance(cache);
+        this.detail.pinchStartZoom = this.detail.zoom;
+      }
+    },
+    onViewerPointerMove(e) {
+      const cache = this.ensurePointerCache();
+      if (!cache.has(e.pointerId)) return;
+      cache.set(e.pointerId, {x:e.clientX, y:e.clientY});
+
+      if (cache.size >= 2 && this.detail.pinchStartDistance > 0) {
+        const dist = this.pointerDistance(cache);
+        if (dist > 0) this.detail.zoom = this.clamp(this.detail.pinchStartZoom * (dist / this.detail.pinchStartDistance), 1, 8);
+        return;
+      }
+
+      if (this.detail.dragging && e.pointerId === this.detail.pointerId) {
+        this.detail.panX = this.detail.startPanX + (e.clientX - this.detail.startX);
+        this.detail.panY = this.detail.startPanY + (e.clientY - this.detail.startY);
+      }
+    },
+    onViewerPointerUp(e) {
+      const cache = this.ensurePointerCache();
+      try { e.currentTarget?.releasePointerCapture?.(e.pointerId); } catch(_) {}
+      cache.delete(e.pointerId);
+
+      if (cache.size === 0) {
+        this.detail.dragging = false;
+        this.detail.pointerId = null;
+        this.detail.pinchStartDistance = 0;
+        return;
+      }
+
+      if (cache.size === 1) {
+        const [id, pt] = [...cache.entries()][0];
+        this.detail.pointerId = id;
+        this.detail.startX = pt.x;
+        this.detail.startY = pt.y;
+        this.detail.startPanX = this.detail.panX;
+        this.detail.startPanY = this.detail.panY;
+        this.detail.pinchStartDistance = 0;
+      }
+    },
 
     async openEditor(item=null) {
       if(!this.canEdit) return this.toast('error','Tài khoản không có quyền thêm/sửa.');
@@ -489,8 +649,9 @@ createApp({
     },
     async makeThumbFile(file) { return this.compressImageToWebp(file, 460, .74); },
     async uploadToR2(file, code, assetType) {
-      const maxEdge = assetType === 'thumb' ? 460 : (assetType === 'detail' ? 1300 : 1600);
-      const quality = assetType === 'thumb' ? .74 : .82;
+      const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent || '');
+      const maxEdge = assetType === 'thumb' ? 420 : (assetType === 'detail' ? (isIOS ? 1100 : 1300) : (isIOS ? 1350 : 1600));
+      const quality = assetType === 'thumb' ? .70 : (isIOS ? .78 : .82);
       const prepared = assetType === 'thumb' ? await this.makeThumbFile(file) : await this.compressImageToWebp(file, maxEdge, quality);
       const form = new FormData();
       form.append('file', prepared);
@@ -512,7 +673,7 @@ createApp({
       this.saving=true;
       try {
         const code = this.editor.form.code.trim().toUpperCase();
-        if(!code) throw new Error('Anh cần nhập mã hàng.');
+        if(!code) throw new Error('Cần nhập mã hàng.');
         let assets = this.editor.assets.map(a => ({ asset_type:a.asset_type, storage_provider:a.storage_provider || 'r2', bucket_name:a.bucket_name || 'catalogue-images', image_path:a.image_path, image_name:a.image_name || null, sort_order:Number(a.sort_order||1) }));
 
         for(const [key,file] of Object.entries(this.editor.files)) {
@@ -526,7 +687,7 @@ createApp({
         }
         assets = assets.filter(a => a.image_path);
         const primary = assets.find(a => a.asset_type==='thumb') || assets.find(a => a.asset_type==='front') || assets[0];
-        if(!primary) throw new Error('Anh cần chọn ít nhất ảnh mặt chính/front hoặc giữ ảnh cũ.');
+        if(!primary) throw new Error('Cần chọn ít nhất ảnh mặt chính/front hoặc giữ ảnh cũ.');
 
         const saved = await this.rpcRow('app_upsert_part_metadata', {
           p_session_token:this.session.token,
@@ -541,7 +702,7 @@ createApp({
           p_primary_image_path:primary.image_path,
           p_primary_image_name:primary.image_name || null
         });
-        if(!saved?.ok) throw new Error(saved?.message || 'Không lưu được metadata');
+        if(!saved?.ok) throw new Error(saved?.message || 'Không lưu được data');
 
         const rep = await this.rpcRow('app_replace_part_assets', { p_session_token:this.session.token, p_image_id:saved.id, p_assets:assets });
         if(!rep?.ok) throw new Error(rep?.message || 'Không lưu được assets');
@@ -551,7 +712,7 @@ createApp({
       } catch(e) { this.toast('error', this.readError(e)); } finally { this.saving=false; }
     },
     async deleteCurrentPart() {
-      if(!this.detail.item || !confirm('Xóa metadata mã này? File ảnh trên R2 chưa bị xóa để tránh mất nhầm.')) return;
+      if(!this.detail.item || !confirm('Xóa mã này? File ảnh chưa bị xóa để tránh mất nhầm.')) return;
       try {
         const row = await this.rpcRow('app_delete_part', {p_session_token:this.session.token, p_image_id:this.detail.item.id});
         if(!row?.ok) throw new Error(row?.message || 'Không xóa được');
