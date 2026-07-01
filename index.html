@@ -1,1764 +1,565 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Catalogue</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%2310b981'/%3E%3Cstop offset='100%25' stop-color='%2384cc16'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='4' y='4' width='56' height='56' rx='16' fill='url(%23g)'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='4.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='14' y='24' width='14' height='14' rx='2'/%3E%3Crect x='36' y='14' width='14' height='14' rx='2'/%3E%3Crect x='36' y='36' width='14' height='14' rx='2'/%3E%3Cpath d='M28 31h8M43 28v8'/%3E%3Cpath d='M28 31l8-10M28 31l8 12'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23059669'/%3E%3Cpath d='M18 38h12v8H18zM34 18h12v8H34zM21 18h9v9h-9zM36 35h10v10H36z' fill='white' opacity='.95'/%3E%3Cpath d='M30 31h7M32 27v8M25 38l10-12' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
 
-  <!-- CDN: Không cần build, up thẳng index.html lên GitHub Pages -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          boxShadow: {
-            soft: '0 18px 60px rgba(16, 185, 129, 0.16)',
-            card: '0 10px 28px rgba(15, 23, 42, 0.09)'
-          },
-          colors: {
-            leaf: {
-              50: '#f0fdf4',
-              100: '#dcfce7',
-              500: '#22c55e',
-              600: '#16a34a',
-              700: '#15803d'
-            }
-          }
-        }
-      }
-    }
-  </script>
-
   <style>
-    [v-cloak] { display: none; }
+    :root {
+      --green:#059669;
+      --lime:#84cc16;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --glass:rgba(255,255,255,.76);
+    }
+    * { box-sizing:border-box; }
     body {
+      margin:0;
+      min-height:100dvh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color:var(--ink);
       background:
-        radial-gradient(circle at top left, rgba(34,197,94,.24), transparent 34%),
-        radial-gradient(circle at top right, rgba(132,204,22,.18), transparent 30%),
-        linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 45%, #f7fee7 100%);
-      min-height: 100vh;
+        radial-gradient(circle at top left, rgba(16,185,129,.22), transparent 32%),
+        radial-gradient(circle at top right, rgba(132,204,22,.22), transparent 28%),
+        linear-gradient(135deg,#ecfdf5,#f7fee7 48%,#ecfeff);
+      overflow-x:hidden;
     }
+    [v-cloak] { display:none; }
     .glass {
-      background: rgba(255,255,255,.78);
+      background:var(--glass);
       backdrop-filter: blur(18px);
-      border: 1px solid rgba(255,255,255,.72);
+      -webkit-backdrop-filter: blur(18px);
+      border:1px solid rgba(255,255,255,.72);
+      box-shadow: 0 18px 55px rgba(15,23,42,.10);
     }
-    .card-img-bg {
-      background-image:
-        linear-gradient(45deg, rgba(22,163,74,.07) 25%, transparent 25%),
-        linear-gradient(-45deg, rgba(22,163,74,.07) 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, rgba(22,163,74,.07) 75%),
-        linear-gradient(-45deg, transparent 75%, rgba(22,163,74,.07) 75%);
-      background-size: 18px 18px;
-      background-position: 0 0, 0 9px, 9px -9px, -9px 0px;
+    .btn {
+      display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+      border-radius:1rem; font-weight:900; transition:.16s ease; user-select:none;
+      white-space:nowrap;
     }
-    .viewer-stage {
-      perspective: 1400px;
-      touch-action: none;
-      cursor: grab;
-      user-select: none;
-      background:
-        radial-gradient(circle at center, rgba(16,185,129,.14), transparent 36%),
-        linear-gradient(135deg, rgba(15,23,42,.18), rgba(15,23,42,.45));
-      position: relative;
+    .btn:active { transform:scale(.98); }
+    .input {
+      width:100%; border-radius:1rem; border:1px solid #bbf7d0; background:rgba(255,255,255,.88);
+      padding:.78rem .95rem; outline:none; transition:.16s ease;
     }
-    .viewer-stage::after {
-      content: "";
-      position: absolute;
-      inset: auto 8% 7% 8%;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.42), transparent);
-      opacity: .6;
-      pointer-events: none;
-    }
-    .viewer-stage.is-dragging {
-      cursor: grabbing;
-    }
-    .viewer-object {
-      transform-style: preserve-3d;
-      will-change: transform;
-      transition: filter .18s ease;
-    }
-    .viewer-object.viewer-3d {
-      filter: drop-shadow(0 26px 34px rgba(0,0,0,.28));
-    }
-    .transparent-preview-bg {
-      background-color: transparent;
+    .input:focus { border-color:#10b981; box-shadow:0 0 0 4px rgba(16,185,129,.14); }
+    .soft-card { background:rgba(255,255,255,.82); border:1px solid rgba(187,247,208,.8); }
+    .scrollbar-soft::-webkit-scrollbar { width:8px; height:8px; }
+    .scrollbar-soft::-webkit-scrollbar-thumb { background:#a7f3d0; border-radius:999px; }
+    .checker {
+      background-color:rgba(255,255,255,.55);
       background-image:
         linear-gradient(45deg, rgba(148,163,184,.18) 25%, transparent 25%),
         linear-gradient(-45deg, rgba(148,163,184,.18) 25%, transparent 25%),
         linear-gradient(45deg, transparent 75%, rgba(148,163,184,.18) 75%),
         linear-gradient(-45deg, transparent 75%, rgba(148,163,184,.18) 75%);
-      background-size: 18px 18px;
-      background-position: 0 0, 0 9px, 9px -9px, -9px 0px;
+      background-size:18px 18px;
+      background-position:0 0,0 9px,9px -9px,-9px 0;
     }
-    .line-clamp-2 {
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+    .part-img { filter: drop-shadow(0 14px 18px rgba(15,23,42,.18)); }
+    .modal-shell { max-height:calc(100dvh - 24px); }
+    .viewer-stage {
+      background:linear-gradient(135deg, rgba(15,23,42,.96), rgba(30,41,59,.88));
+      border:1px solid rgba(255,255,255,.10);
+      touch-action:none;
     }
-    .scrollbar-soft::-webkit-scrollbar { width: 8px; height: 8px; }
-    .scrollbar-soft::-webkit-scrollbar-thumb { background: #86efac; border-radius: 999px; }
-    .scrollbar-soft::-webkit-scrollbar-track { background: transparent; }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: .45rem;
-      border-radius: 1rem;
-      font-weight: 800;
-      transition: .18s ease;
-    }
-    .btn:active { transform: scale(.98); }
-
-    @media (max-width: 640px) {
-      .btn { gap: .28rem; }
-      .viewer-stage { border-radius: 1.5rem; }
-    }
-
-    .input {
-      width: 100%;
-      border-radius: 1rem;
-      border: 1px solid #bbf7d0;
-      background: rgba(255,255,255,.88);
-      padding: .72rem .9rem;
-      outline: none;
-      transition: .18s ease;
-    }
-    .input:focus {
-      border-color: #22c55e;
-      box-shadow: 0 0 0 4px rgba(34,197,94,.14);
+    .sim-scene { perspective:1200px; }
+    .sim-card { transform-style:preserve-3d; transition:transform .35s ease; }
+    .sim-face { backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+    .sim-back { transform:rotateY(180deg); }
+    @media (max-width: 760px) {
+      .modal-shell { max-height:100dvh; border-radius:1.35rem 1.35rem 0 0 !important; }
+      .mobile-bottom { align-items:flex-end !important; padding:0 !important; }
+      .mobile-bottom .modal-shell { width:100% !important; }
+      .hide-mobile { display:none !important; }
     }
   </style>
 </head>
 <body>
-  <div id="app" v-cloak class="min-h-screen text-slate-800">
-    <!-- LOGIN -->
-    <section v-if="!session.user" class="min-h-screen flex items-center justify-center p-4">
-      <div class="w-full max-w-5xl grid lg:grid-cols-[1.05fr_.95fr] gap-6 items-stretch">
-        <div class="glass rounded-[2rem] shadow-soft p-7 md:p-10 overflow-hidden relative">
-          <div class="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-emerald-300/40 blur-3xl"></div>
-          <div class="relative">
-            <div class="w-16 h-16 rounded-3xl bg-gradient-to-br from-emerald-500 to-lime-400 text-white flex items-center justify-center shadow-card mb-6">
-              <i data-lucide="images" class="w-9 h-9"></i>
-            </div>
-            <p class="text-sm font-black tracking-[.24em] text-emerald-700 uppercase">Catalogue AI</p>
-            <h1 class="mt-3 text-4xl md:text-5xl font-black leading-tight text-slate-900">
-              Thư viện tra cứu hình ảnh
-            </h1>
-            <p class="mt-4 text-slate-600 text-lg leading-relaxed">
-              Giao diện tìm theo mã hàng, ID, đặc điểm nhận dạng và mục đích sử dụng.
-            </p>
+<div id="app" v-cloak>
+  <!-- LOGIN -->
+  <section v-if="!session.user" class="min-h-screen flex items-center justify-center p-4">
+    <div class="glass w-full max-w-md rounded-[2rem] p-6 sm:p-8">
+      <div class="w-16 h-16 rounded-3xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-300/50">
+        <i data-lucide="blocks" class="w-9 h-9"></i>
+      </div>
+      <h1 class="mt-5 text-3xl font-black tracking-tight">Catalogue AI</h1>
+      <p class="mt-1 text-slate-500 font-semibold">Đăng nhập.</p>
 
-            <div class="mt-8 grid sm:grid-cols-3 gap-3">
-              <div class="rounded-3xl bg-white/70 p-4 border border-emerald-100">
-                <i data-lucide="shield-check" class="w-7 h-7 text-emerald-600"></i>
-                <p class="mt-3 font-black">Đăng nhập riêng</p>
-                <p class="text-sm text-slate-500">Lưu phiên 30 ngày</p>
+      <form @submit.prevent="login" class="mt-6 space-y-3">
+        <input class="input" v-model.trim="loginForm.username" placeholder="Tên đăng nhập" autocomplete="username" />
+        <input class="input" v-model="loginForm.password" type="password" placeholder="Mật khẩu" autocomplete="current-password" />
+        <button class="btn w-full h-12 bg-slate-950 text-white hover:bg-slate-800" :disabled="loading">
+          <i data-lucide="log-in" class="w-5 h-5"></i>{{ loading ? 'Đang đăng nhập...' : 'Đăng nhập' }}
+        </button>
+      </form>
+      <p v-if="notice.text" :class="['mt-4 rounded-2xl p-3 text-sm font-bold', notice.type==='error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200']">{{ notice.text }}</p>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <main v-else class="pb-10">
+    <header class="sticky top-0 z-30 bg-white/55 backdrop-blur-xl border-b border-white/60">
+      <div class="max-w-7xl mx-auto px-3 sm:px-5 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-lime-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-emerald-200">
+            <i data-lucide="blocks" class="w-7 h-7"></i>
+          </div>
+          <div class="min-w-0">
+            <h1 class="text-xl sm:text-2xl font-black truncate">Catalogue Linh Kiện</h1>
+            <p class="text-xs sm:text-sm text-slate-500 font-semibold truncate">Xin chào, <b>{{ session.user.display_name || session.user.username }}</b> · Quyền: <b>{{ session.user.role_name }}</b></p>
+          </div>
+        </div>
+        <div class="flex gap-2 shrink-0">
+          <button @click="openEditor()" v-if="canEdit" class="btn h-10 px-3 sm:px-4 bg-emerald-600 text-white hover:bg-emerald-700">
+            <i data-lucide="plus" class="w-5 h-5"></i><span class="hide-mobile">Thêm mã</span>
+          </button>
+          <button @click="logout" class="btn h-10 px-3 sm:px-4 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100">
+            <i data-lucide="log-out" class="w-5 h-5"></i><span class="hide-mobile">Đăng xuất</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section class="max-w-7xl mx-auto px-3 sm:px-5 pt-5">
+      <div class="glass rounded-[1.6rem] sm:rounded-[2rem] p-3 sm:p-5">
+        <div class="grid grid-cols-1 md:grid-cols-[1fr_180px_180px_84px] gap-2 sm:gap-3">
+          <label class="relative block">
+            <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600"></i>
+            <input v-model.trim="filters.search" @keyup.enter="loadParts(true)" class="input pl-12 h-12" placeholder="Tìm mã hàng, ID, đặc điểm nhận dạng..." />
+          </label>
+          <select v-model="filters.usage" @change="loadParts(true)" class="input h-12">
+            <option value="all">Tất cả vị trí</option><option value="left">Bên trái</option><option value="right">Bên phải</option><option value="both">Cả hai bên</option><option value="unknown">Chưa xác định</option>
+          </select>
+          <select v-model="filters.viewMode" @change="loadParts(true)" class="input h-12">
+            <option value="all">Tất cả kiểu ảnh</option><option value="single_face">1 mặt</option><option value="dual_face">2 mặt</option><option value="detail_set">Có chi tiết</option>
+          </select>
+          <button @click="loadParts(true)" class="btn h-12 bg-white border border-emerald-100 hover:bg-emerald-50">
+            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2 text-xs font-black text-slate-600">
+          <span class="px-3 py-2 rounded-full bg-white/80 border border-emerald-100">Đã tải: {{ parts.length }}</span>
+          <span class="px-3 py-2 rounded-full bg-emerald-100 text-emerald-800">R2: catalogue-images</span>
+          <span class="px-3 py-2 rounded-full bg-white/80 border border-emerald-100">Lazy load thumb</span>
+          <span class="px-3 py-2 rounded-full bg-white/80 border border-emerald-100">Cập nhật: {{ nowText }}</span>
+        </div>
+      </div>
+
+      <p v-if="notice.text" :class="['mt-4 rounded-2xl px-4 py-3 text-sm font-bold', notice.type==='error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200']">{{ notice.text }}</p>
+
+      <div v-if="loadingImages" class="mt-6 glass rounded-[2rem] p-10 text-center font-black text-slate-500">Đang tải dữ liệu...</div>
+
+      <div v-else-if="!parts.length" class="mt-6 glass rounded-[2rem] p-10 text-center">
+        <div class="mx-auto w-20 h-20 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center"><i data-lucide="image-off" class="w-10 h-10"></i></div>
+        <h2 class="mt-4 text-2xl font-black">Chưa có dữ liệu phù hợp</h2>
+        <p class="mt-2 text-slate-500 font-semibold">Bấm Thêm mã để upload ảnh lên R2 và lưu metadata vào Supabase.</p>
+      </div>
+
+      <div v-else class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <article v-for="item in parts" :key="item.id" class="glass rounded-[1.6rem] overflow-hidden group">
+          <button @click="openDetail(item)" class="block w-full text-left">
+            <div class="checker aspect-[4/3] flex items-center justify-center overflow-hidden">
+              <img v-if="partThumbUrl(item)" :src="partThumbUrl(item)" loading="lazy" class="part-img max-w-[92%] max-h-[92%] object-contain transition duration-300 group-hover:scale-[1.04]" />
+              <i v-else data-lucide="image-off" class="w-12 h-12 text-emerald-700"></i>
+            </div>
+            <div class="p-4">
+              <div class="flex items-start justify-between gap-2">
+                <h3 class="text-lg font-black break-all">{{ item.code }}</h3>
+                <span :class="['px-2 py-1 rounded-full text-[10px] font-black shrink-0', item.view_mode==='dual_face' ? 'bg-lime-100 text-lime-700' : item.view_mode==='detail_set' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700']">{{ viewModeLabel(item.view_mode) }}</span>
               </div>
-              <div class="rounded-3xl bg-white/70 p-4 border border-emerald-100">
-                <i data-lucide="search" class="w-7 h-7 text-emerald-600"></i>
-                <p class="mt-3 font-black">Tìm nhanh</p>
-                <p class="text-sm text-slate-500">Mã / ID / mô tả</p>
+              <p class="mt-1 text-sm text-slate-500 font-semibold line-clamp-1">ID: {{ item.part_id || 'Chưa có' }}</p>
+              <p class="mt-2 text-sm text-slate-600 line-clamp-2 min-h-[2.5rem]">{{ item.identifying_features || 'Chưa nhập đặc điểm nhận dạng' }}</p>
+              <div class="mt-3 flex flex-wrap gap-2 text-[11px] font-black">
+                <span class="px-2.5 py-1 rounded-full bg-white/80 border border-emerald-100">{{ usageLabel(item.usage_side) }}</span>
+                <span v-if="item.back_path" class="px-2.5 py-1 rounded-full bg-white/80 border border-emerald-100">Có mặt sau</span>
+                <span v-if="item.detail_count" class="px-2.5 py-1 rounded-full bg-white/80 border border-emerald-100">{{ item.detail_count }} detail</span>
               </div>
-              <div class="rounded-3xl bg-white/70 p-4 border border-emerald-100">
-                <i data-lucide="smartphone" class="w-7 h-7 text-emerald-600"></i>
-                <p class="mt-3 font-black">PC & Mobile</p>
-                <p class="text-sm text-slate-500">Tối ưu responsive</p>
-              </div>
+            </div>
+          </button>
+        </article>
+      </div>
+
+      <div v-if="parts.length && hasMore" class="mt-6 flex justify-center">
+        <button @click="loadMore" class="btn h-12 px-6 bg-white border border-emerald-100 hover:bg-emerald-50">
+          <i data-lucide="chevrons-down" class="w-5 h-5"></i>Tải thêm
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- DETAIL -->
+  <div v-if="detail.open" class="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto flex items-start justify-center" @click.self="closeDetail">
+    <div class="w-full max-w-6xl grid lg:grid-cols-[minmax(0,1fr)_360px] gap-3 sm:gap-4 my-2 sm:my-4">
+      <section class="viewer-stage rounded-[1.6rem] sm:rounded-[2rem] min-h-[42dvh] sm:min-h-[620px] overflow-hidden relative flex items-center justify-center p-3">
+        <div v-if="detail.tab==='sim'" class="sim-scene w-full h-full flex items-center justify-center">
+          <div class="relative w-full max-w-3xl aspect-[4/3] sim-card" :style="simTransform" @click="flipSim">
+            <div class="sim-face absolute inset-0 checker rounded-3xl flex items-center justify-center overflow-hidden border border-white/10">
+              <img :src="assetTypeUrl('front')" class="part-img max-w-[94%] max-h-[94%] object-contain" />
+            </div>
+            <div v-if="assetTypeUrl('back')" class="sim-face sim-back absolute inset-0 checker rounded-3xl flex items-center justify-center overflow-hidden border border-white/10">
+              <img :src="assetTypeUrl('back')" class="part-img max-w-[94%] max-h-[94%] object-contain" />
             </div>
           </div>
         </div>
+        <img v-else-if="activeAssetUrl" :src="activeAssetUrl" class="part-img max-w-[96%] max-h-[76dvh] object-contain" />
+        <div v-else class="text-white text-center font-black">Không có ảnh</div>
+        <div class="absolute left-3 bottom-3 flex flex-wrap gap-2 text-xs font-black text-white">
+          <span class="px-3 py-2 rounded-full bg-slate-950/60 border border-white/10">{{ detail.tab==='sim' ? '3D mô phỏng: bấm để lật mặt' : detailTabLabel }}</span>
+          <span v-if="detail.item?.is_symmetric" class="px-3 py-2 rounded-full bg-emerald-600/90">Đối xứng</span>
+        </div>
+      </section>
 
-        <form @submit.prevent="login" class="glass rounded-[2rem] shadow-soft p-7 md:p-9 flex flex-col justify-center">
-          <div class="flex items-center gap-3 mb-6">
-            <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center">
-              <i data-lucide="lock-keyhole" class="w-7 h-7"></i>
-            </div>
-            <div>
-              <h2 class="text-2xl font-black text-slate-900">Đăng nhập</h2>
-              <p class="text-sm text-slate-500">Dùng user cá nhân được cấp phép</p>
-            </div>
-          </div>
+      <aside class="glass rounded-[1.6rem] sm:rounded-[2rem] p-4 sm:p-5 max-h-[86dvh] overflow-auto scrollbar-soft">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0"><p class="text-xs font-black tracking-[.22em] text-emerald-700 uppercase">Chi tiết mã</p><h2 class="mt-1 text-2xl font-black break-all">{{ detail.item?.code }}</h2></div>
+          <button @click="closeDetail" class="btn w-11 h-11 bg-white border border-emerald-100"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </div>
+        <div class="mt-4 space-y-2.5 text-sm">
+          <div class="soft-card rounded-2xl p-3"><b>ID:</b> {{ detail.item?.part_id || 'Chưa có' }}</div>
+          <div class="soft-card rounded-2xl p-3"><b>Vị trí:</b> {{ usageLabel(detail.item?.usage_side) }}</div>
+          <div class="soft-card rounded-2xl p-3"><b>Đặc điểm:</b><br>{{ detail.item?.identifying_features || 'Chưa nhập' }}</div>
+          <div v-if="detail.item?.confusing_note" class="soft-card rounded-2xl p-3"><b>Ghi chú dễ nhầm:</b><br>{{ detail.item.confusing_note }}</div>
+        </div>
 
-          <label class="text-sm font-black text-slate-700 mb-2">Tên đăng nhập</label>
-          <input v-model.trim="loginForm.username" class="input" placeholder="Ví dụ: Vinh" autocomplete="username" />
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <button @click="setDetailTab('front')" :class="tabBtnClass('front')"><i data-lucide="panel-top" class="w-4 h-4"></i>Mặt chính</button>
+          <button @click="setDetailTab('back')" :class="tabBtnClass('back')" :disabled="!assetTypeUrl('back')"><i data-lucide="panel-bottom" class="w-4 h-4"></i>Mặt sau</button>
+          <button @click="setDetailTab('detail')" :class="tabBtnClass('detail')" :disabled="!detailAssets.length"><i data-lucide="scan-search" class="w-4 h-4"></i>Chi tiết</button>
+          <button @click="setDetailTab('sim')" :class="tabBtnClass('sim')"><i data-lucide="box" class="w-4 h-4"></i>3D mô phỏng</button>
+        </div>
 
-          <label class="text-sm font-black text-slate-700 mt-4 mb-2">Mật khẩu</label>
-          <div class="relative">
-            <input :type="showPassword ? 'text' : 'password'" v-model="loginForm.password" class="input pr-12" placeholder="Nhập mật khẩu" autocomplete="current-password" />
-            <button type="button" @click="showPassword=!showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl hover:bg-emerald-50">
-              <i :data-lucide="showPassword ? 'eye-off' : 'eye'" class="w-5 h-5 text-slate-500"></i>
-            </button>
-          </div>
-
-          <button class="btn mt-6 h-12 bg-emerald-600 hover:bg-emerald-700 text-white shadow-card" :disabled="loading">
-            <i data-lucide="log-in" class="w-5 h-5"></i>
-            {{ loading ? 'Đang đăng nhập...' : 'Đăng nhập' }}
+        <div v-if="detailAssets.length" class="mt-3 grid grid-cols-4 gap-2">
+          <button v-for="a in detailAssets" :key="a.id || a.image_path" @click="detail.activeAsset=a" class="checker rounded-xl overflow-hidden aspect-square border border-emerald-100">
+            <img :src="assetUrl(a)" class="w-full h-full object-contain" loading="lazy" />
           </button>
+        </div>
 
-          <div v-if="notice.text" :class="['mt-4 rounded-2xl p-4 text-sm font-bold', notice.type==='error' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100']">
-            {{ notice.text }}
+        <button v-if="canEdit" @click="openEditor(detail.item)" class="btn mt-4 w-full h-12 bg-slate-950 text-white hover:bg-slate-800"><i data-lucide="pencil" class="w-5 h-5"></i>Chỉnh sửa mã này</button>
+        <button v-if="canEdit" @click="deleteCurrentPart" class="btn mt-2 w-full h-11 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100"><i data-lucide="trash-2" class="w-5 h-5"></i>Xóa metadata mã này</button>
+      </aside>
+    </div>
+  </div>
+
+  <!-- EDITOR -->
+  <div v-if="editor.open" class="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto flex items-start justify-center mobile-bottom" @click.self="closeEditor">
+    <div class="modal-shell glass w-full max-w-4xl rounded-[2rem] p-4 sm:p-6 overflow-auto scrollbar-soft my-2 sm:my-4">
+      <div class="flex items-start justify-between gap-3">
+        <div><p class="text-xs font-black tracking-[.22em] text-emerald-700 uppercase">{{ editor.form.id ? 'Cập nhật' : 'Thêm mới' }}</p><h2 class="text-2xl font-black">Thông tin linh kiện</h2></div>
+        <button @click="closeEditor" class="btn w-11 h-11 bg-white border border-emerald-100"><i data-lucide="x" class="w-6 h-6"></i></button>
+      </div>
+
+      <div class="mt-5 grid lg:grid-cols-[300px_minmax(0,1fr)] gap-5">
+        <section class="space-y-3">
+          <div class="checker rounded-3xl aspect-square flex items-center justify-center overflow-hidden border border-emerald-100">
+            <img v-if="editorPreview" :src="editorPreview" class="part-img max-w-[92%] max-h-[92%] object-contain" />
+            <div v-else class="text-center text-emerald-700 font-black"><i data-lucide="image-plus" class="w-12 h-12 mx-auto mb-2"></i>Chọn ảnh mặt chính</div>
+          </div>
+          <div class="grid grid-cols-1 gap-2">
+            <label class="btn h-11 bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"><i data-lucide="images" class="w-5 h-5"></i>Ảnh mặt chính / Front<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('front', 1, $event)" /></label>
+            <label class="btn h-11 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-pointer"><i data-lucide="panel-bottom" class="w-5 h-5"></i>Ảnh mặt sau / Back<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('back', 1, $event)" /></label>
+            <label class="btn h-11 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-pointer"><i data-lucide="scan-search" class="w-5 h-5"></i>Ảnh chi tiết 1<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('detail', 1, $event)" /></label>
+            <label class="btn h-11 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-pointer"><i data-lucide="scan-search" class="w-5 h-5"></i>Ảnh chi tiết 2<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('detail', 2, $event)" /></label>
+          </div>
+          <p class="text-xs text-slate-500 leading-relaxed">Ảnh nên tách nền bằng remove.bg trước, xuất PNG/WebP rồi app tự nén WebP và upload lên Cloudflare R2. Không dùng tách nền trong browser để tránh lag mobile/Safari.</p>
+        </section>
+
+        <form @submit.prevent="savePart" class="space-y-3">
+          <div class="grid sm:grid-cols-2 gap-3">
+            <label class="block"><span class="text-sm font-black text-slate-600">Mã hàng</span><input v-model.trim="editor.form.code" required class="input mt-1" placeholder="Ví dụ: 3446350101" /></label>
+            <label class="block"><span class="text-sm font-black text-slate-600">ID / mã phụ</span><input v-model.trim="editor.form.part_id" class="input mt-1" placeholder="Ví dụ: (5633,5634)+..." /></label>
+          </div>
+          <div class="grid sm:grid-cols-3 gap-3">
+            <label class="block"><span class="text-sm font-black text-slate-600">Vị trí</span><select v-model="editor.form.usage_side" class="input mt-1"><option value="unknown">Chưa xác định</option><option value="left">Bên trái</option><option value="right">Bên phải</option><option value="both">Cả hai</option></select></label>
+            <label class="block"><span class="text-sm font-black text-slate-600">Kiểu ảnh</span><select v-model="editor.form.view_mode" class="input mt-1"><option value="single_face">1 mặt</option><option value="dual_face">2 mặt front/back</option><option value="detail_set">Có ảnh chi tiết</option></select></label>
+            <label class="block"><span class="text-sm font-black text-slate-600">Đối xứng</span><select v-model="editor.form.is_symmetric" class="input mt-1"><option :value="false">Không / chưa rõ</option><option :value="true">Có đối xứng</option></select></label>
+          </div>
+          <label class="block"><span class="text-sm font-black text-slate-600">Đặc điểm nhận dạng</span><textarea v-model.trim="editor.form.identifying_features" class="input mt-1 min-h-[110px]" placeholder="Ví dụ: thân chính, có 2 ngàm chữ L, cụm lỗ lệch..."></textarea></label>
+          <label class="block"><span class="text-sm font-black text-slate-600">Ghi chú dễ nhầm</span><textarea v-model.trim="editor.form.confusing_note" class="input mt-1 min-h-[86px]" placeholder="Ví dụ: dễ nhầm với mã ..., khác ở đường cắt/lỗ/ngàm..."></textarea></label>
+
+          <div v-if="editorAssetList.length" class="soft-card rounded-2xl p-3">
+            <p class="text-sm font-black text-emerald-700 mb-2">Ảnh sẽ lưu</p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div v-for="a in editorAssetList" :key="a.asset_type + '_' + a.sort_order" class="checker rounded-xl overflow-hidden aspect-square border border-emerald-100 relative">
+                <img :src="a.preview || assetPathUrl(a.image_path, a.storage_provider)" class="w-full h-full object-contain" />
+                <span class="absolute left-1 bottom-1 px-2 py-1 rounded-full bg-slate-950/70 text-white text-[10px] font-black">{{ a.asset_type }} {{ a.sort_order }}</span>
+              </div>
+            </div>
           </div>
 
-          <div class="mt-6 text-xs text-slate-500 leading-relaxed bg-white/70 border border-emerald-100 rounded-2xl p-4">
-            Nếu mới đăng nhập lần đầu tiên nên đổi mật khẩu ngay sau lần đăng nhập đầu tiên.
+          <div class="flex flex-col sm:flex-row gap-2 pt-2">
+            <button class="btn h-12 px-5 bg-emerald-600 text-white hover:bg-emerald-700" :disabled="saving"><i data-lucide="save" class="w-5 h-5"></i>{{ saving ? 'Đang lưu...' : 'Lưu dữ liệu' }}</button>
+            <button type="button" @click="closeEditor" class="btn h-12 px-5 bg-white border border-emerald-100 hover:bg-emerald-50">Hủy</button>
           </div>
         </form>
       </div>
-    </section>
-
-    <!-- APP -->
-    <section v-else class="pb-24">
-      <header class="sticky top-0 z-40 border-b border-emerald-100 bg-white/82 backdrop-blur-xl">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-lime-400 text-white flex items-center justify-center shadow-card shrink-0">
-              <i data-lucide="component" class="w-7 h-7"></i>
-            </div>
-            <div class="min-w-0">
-              <h1 class="font-black text-lg md:text-2xl text-slate-900 truncate">Catalogue Ảnh</h1>
-              <p class="text-xs md:text-sm text-slate-500 truncate">Xin chào, <b>{{ session.user.display_name }}</b> · Quyền: <b>{{ roleLabel(session.user.role_name) }}</b></p>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2 shrink-0">
-            <button v-if="session.user.role_name === 'admin'" @click="openAdmin" class="btn h-10 px-3 bg-slate-900 text-white hover:bg-slate-800 text-sm">
-              <i data-lucide="users" class="w-4 h-4"></i>
-              <span class="hidden sm:inline">User</span>
-            </button>
-            <button @click="openPasswordModal" class="btn h-10 px-3 bg-white border border-emerald-200 hover:bg-emerald-50 text-sm">
-              <i data-lucide="key-round" class="w-4 h-4"></i>
-              <span class="hidden sm:inline">Mật khẩu</span>
-            </button>
-            <button @click="logout" class="btn h-10 px-3 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 text-sm">
-              <i data-lucide="log-out" class="w-4 h-4"></i>
-              <span class="hidden sm:inline">Đăng xuất</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main class="max-w-7xl mx-auto px-4 pt-5">
-        <div v-if="session.user.must_change_password" class="mb-4 rounded-3xl border border-amber-200 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-800">
-          <div class="flex gap-3">
-            <i data-lucide="triangle-alert" class="w-6 h-6 shrink-0"></i>
-            <div>
-              <p class="font-black">Tài khoản đang dùng mật khẩu mặc định</p>
-              <p class="text-sm">Nên đổi mật khẩu để bảo mật trước khi dùng lâu dài.</p>
-            </div>
-          </div>
-          <button @click="openPasswordModal" class="btn h-10 px-4 bg-amber-600 text-white hover:bg-amber-700">Đổi ngay</button>
-        </div>
-
-        <!-- TOOLS -->
-        <section class="glass rounded-[1.8rem] shadow-soft p-4 md:p-5 mb-5">
-          <div class="grid lg:grid-cols-[1fr_190px_190px_auto] gap-3">
-            <div class="relative">
-              <i data-lucide="search" class="w-5 h-5 text-emerald-600 absolute left-4 top-1/2 -translate-y-1/2"></i>
-              <input v-model.trim="filters.search" @keyup.enter="loadImages(true)" class="input pl-12 h-12" placeholder="Tìm mã hàng, ID, đặc điểm nhận dạng, tên ảnh..." />
-            </div>
-
-            <select v-model="filters.usage" @change="loadImages(true)" class="input h-12">
-              <option value="all">Tất cả vị trí</option>
-              <option value="left">Bên trái</option>
-              <option value="right">Bên phải</option>
-              <option value="both">Cả hai bên</option>
-              <option value="unknown">Chưa xác định</option>
-            </select>
-
-            <select v-model.number="filters.limit" @change="loadImages(true)" class="input h-12">
-              <option :value="40">40 ảnh</option>
-              <option :value="80">80 ảnh</option>
-              <option :value="120">120 ảnh</option>
-              <option :value="200">200 ảnh</option>
-            </select>
-
-            <div class="flex gap-2">
-              <button @click="loadImages(true)" class="btn h-12 px-4 bg-white border border-emerald-200 hover:bg-emerald-50">
-                <i data-lucide="refresh-cw" class="w-5 h-5"></i>
-              </button>
-              <button v-if="canEdit" @click="openEditor()" class="btn h-12 px-4 bg-emerald-600 text-white hover:bg-emerald-700 shadow-card">
-                <i data-lucide="plus" class="w-5 h-5"></i>
-                <span class="hidden sm:inline">Thêm</span>
-              </button>
-              <label v-if="canEdit" class="btn h-12 px-4 bg-lime-500 text-white hover:bg-lime-600 shadow-card cursor-pointer">
-                <i data-lucide="upload-cloud" class="w-5 h-5"></i>
-                <span class="hidden sm:inline">Import</span>
-                <input type="file" accept="image/*" multiple class="hidden" @change="bulkImport" />
-              </label>
-            </div>
-          </div>
-
-          <div class="mt-4 flex flex-wrap gap-2 text-xs font-black">
-            <span class="px-3 py-2 rounded-full bg-white border border-emerald-100 text-slate-600">Đã tải: {{ images.length }}</span>
-            <span class="px-3 py-2 rounded-full bg-emerald-100 text-emerald-700">Bucket: {{ CONFIG.BUCKET }}</span>
-            <span class="px-3 py-2 rounded-full bg-white border border-emerald-100 text-slate-600">Gợi ý mã: {{ codeSuggestions.length }}</span>
-            <span v-if="lastLoadAt" class="px-3 py-2 rounded-full bg-white border border-emerald-100 text-slate-600">Cập nhật: {{ formatTime(lastLoadAt) }}</span>
-          </div>
-        </section>
-
-        <!-- STATUS -->
-        <div v-if="notice.text && session.user" :class="['mb-4 rounded-3xl p-4 text-sm font-bold flex gap-3 items-start', notice.type==='error' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100']">
-          <i :data-lucide="notice.type==='error' ? 'circle-alert' : 'circle-check'" class="w-5 h-5 shrink-0"></i>
-          <span>{{ notice.text }}</span>
-        </div>
-
-        <!-- LOADING -->
-        <div v-if="loadingImages" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          <div v-for="n in 15" :key="n" class="rounded-[1.5rem] bg-white/70 border border-emerald-100 shadow-card overflow-hidden animate-pulse">
-            <div class="aspect-square bg-emerald-100"></div>
-            <div class="p-4 space-y-3">
-              <div class="h-4 bg-emerald-100 rounded-full"></div>
-              <div class="h-3 bg-emerald-100 rounded-full w-2/3"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- EMPTY -->
-        <div v-else-if="images.length === 0" class="glass rounded-[2rem] p-10 text-center shadow-soft">
-          <div class="w-20 h-20 rounded-[2rem] bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
-            <i data-lucide="image-off" class="w-10 h-10"></i>
-          </div>
-          <h2 class="mt-4 text-2xl font-black">Chưa có dữ liệu phù hợp</h2>
-          <p class="text-slate-500 mt-2">Thử đổi từ khóa tìm kiếm hoặc import metadata từ Storage bằng SQL.</p>
-        </div>
-
-        <!-- CARD GRID -->
-        <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          <article v-for="item in images" :key="item.id" class="group rounded-[1.5rem] bg-white border border-emerald-100 shadow-card hover:shadow-soft hover:-translate-y-1 transition overflow-hidden">
-            <button @click="openZoom(item)" class="relative aspect-square w-full overflow-hidden card-img-bg bg-emerald-50 block">
-              <img v-if="imageUrl(item)" :src="imageUrl(item)" :alt="item.code" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" @error="markImageError(item)" />
-              <div v-else class="w-full h-full flex flex-col items-center justify-center text-emerald-700 p-4 text-center">
-                <i data-lucide="image" class="w-10 h-10 mb-2"></i>
-                <span class="text-xs font-bold break-all">{{ item.image_name || item.image_path }}</span>
-              </div>
-              <span class="absolute top-2 left-2 px-2.5 py-1 rounded-full text-[11px] font-black shadow bg-white/90 text-emerald-700 border border-emerald-100">
-                {{ usageLabel(item.usage_side) }}
-              </span>
-              <span class="absolute bottom-2 right-2 w-9 h-9 rounded-full bg-white/90 border border-emerald-100 flex items-center justify-center text-emerald-700 shadow">
-                <i data-lucide="zoom-in" class="w-5 h-5"></i>
-              </span>
-            </button>
-
-            <div class="p-3">
-              <h3 class="font-black text-slate-900 truncate" :title="item.code">{{ item.code }}</h3>
-              <p class="text-xs text-slate-500 mt-1 truncate">ID: <b>{{ item.part_id || 'Chưa có' }}</b></p>
-              <p class="text-xs text-slate-500 mt-2 line-clamp-2 min-h-[32px]" :title="item.identifying_features || ''">
-                {{ item.identifying_features || 'Chưa nhập đặc điểm nhận dạng' }}
-              </p>
-
-              <div class="mt-3 flex gap-2">
-                <button @click="openZoom(item)" class="btn flex-1 h-9 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs">
-                  <i data-lucide="eye" class="w-4 h-4"></i>Xem
-                </button>
-                <button v-if="canEdit" @click="openEditor(item)" class="btn flex-1 h-9 bg-slate-900 text-white hover:bg-slate-800 text-xs">
-                  <i data-lucide="pencil" class="w-4 h-4"></i>Sửa
-                </button>
-              </div>
-            </div>
-          </article>
-        </div>
-
-        <div v-if="images.length > 0" class="mt-7 flex justify-center">
-          <button @click="loadMore" class="btn h-12 px-6 bg-white border border-emerald-200 hover:bg-emerald-50 shadow-card" :disabled="loadingImages">
-            <i data-lucide="chevrons-down" class="w-5 h-5"></i>
-            Tải thêm
-          </button>
-        </div>
-      </main>
-    </section>
-
-    <!-- EDITOR MODAL -->
-    <div v-if="editor.open" class="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="closeEditor">
-      <div class="w-full max-w-3xl max-h-[92vh] overflow-auto scrollbar-soft glass rounded-[2rem] shadow-soft p-5 md:p-6">
-        <div class="flex items-start justify-between gap-4 mb-5">
-          <div>
-            <p class="text-sm font-black tracking-[.2em] uppercase text-emerald-700">{{ editor.form.id ? 'Chỉnh sửa' : 'Thêm mới' }}</p>
-            <h2 class="text-2xl font-black text-slate-900">Thông tin ảnh</h2>
-          </div>
-          <button @click="closeEditor" class="w-10 h-10 rounded-2xl bg-white border border-emerald-100 hover:bg-emerald-50 flex items-center justify-center">
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
-        </div>
-
-        <div class="grid md:grid-cols-[240px_1fr] gap-5">
-          <div>
-            <div class="aspect-square rounded-[1.5rem] overflow-hidden bg-emerald-50 border border-emerald-100 card-img-bg flex items-center justify-center">
-              <img v-if="editorPreviewUrl" :src="editorPreviewUrl" class="w-full h-full object-cover" />
-              <div v-else class="text-center p-4 text-emerald-700">
-                <i data-lucide="image-plus" class="w-10 h-10 mx-auto mb-2"></i>
-                <p class="text-sm font-bold">Chọn ảnh mới hoặc giữ ảnh cũ</p>
-              </div>
-            </div>
-
-            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label class="btn w-full h-11 bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer">
-                <i data-lucide="images" class="w-5 h-5"></i>
-                Chọn ảnh từ máy
-                <input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onEditorFileChange" />
-              </label>
-
-              <label class="btn w-full h-11 bg-white border border-emerald-200 hover:bg-emerald-50 cursor-pointer text-emerald-700">
-                <i data-lucide="camera" class="w-5 h-5"></i>
-                Chụp camera
-                <input type="file" accept="image/*" capture="environment" class="hidden" @change="onEditorFileChange" />
-              </label>
-            </div>
-
-            <p class="mt-3 text-xs text-slate-500 leading-relaxed">
-              Trên mobile: dùng <b>Chọn ảnh từ máy</b> để lấy ảnh trong thư viện, hoặc <b>Chụp camera</b> để chụp mới.
-              Nếu chọn ảnh mới, hệ thống tự đặt đường dẫn upload và tự lấy mã hàng từ tên ảnh nếu ô mã hàng đang trống.
-            </p>
-
-            <div class="mt-3 rounded-2xl bg-emerald-50/80 border border-emerald-100 p-3">
-              <label class="flex items-center justify-between gap-3 cursor-pointer">
-                <span class="flex items-center gap-2 text-sm font-black text-slate-800">
-                  <i data-lucide="wand-sparkles" class="w-4 h-4 text-emerald-700"></i>
-                  Tách nền nhanh khi upload
-                </span>
-                <input type="checkbox" v-model="bgRemove.enabled" class="w-5 h-5 accent-emerald-600" />
-              </label>
-
-              <div v-if="bgRemove.enabled" class="mt-3">
-                <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-1">
-                  <span>Độ mạnh tách nền</span>
-                  <span>{{ bgRemove.tolerance }}</span>
-                </div>
-                <input type="range" min="35" max="110" step="1" v-model.number="bgRemove.tolerance" class="w-full accent-emerald-600" />
-                <label class="mt-2 flex items-center gap-2 text-[11px] font-bold text-slate-600">
-                  <input type="checkbox" v-model="bgRemove.removeInnerBg" class="accent-emerald-600" />
-                  Xóa nền trong các lỗ/hốc linh kiện nếu màu giống nền
-                </label>
-                <p class="mt-2 text-[11px] text-slate-500 leading-relaxed">
-                  Thuật toán này hợp với ảnh chụp trên nền bàn/gỗ/trắng. Nếu ảnh đã là PNG/WebP trong suốt thì hệ thống vẫn giữ nền trong suốt.
-                </p>
-              </div>
-            </div>
-
-            <label class="btn mt-3 w-full h-11 bg-white border border-emerald-200 hover:bg-emerald-50 cursor-pointer text-emerald-700">
-              <i data-lucide="box" class="w-5 h-5"></i>
-              Chọn ảnh 360 / nhiều góc từ máy
-              <input type="file" accept="image/png,image/jpeg,image/webp,image/*" multiple class="hidden" @change="onFrameFilesChange" />
-            </label>
-
-            <div v-if="editor.framePreviews.length" class="mt-3">
-              <div class="flex items-center justify-between gap-2 mb-2">
-                <p class="text-xs font-black text-emerald-700">Frame 360: {{ editor.framePreviews.length }} ảnh</p>
-                <button type="button" @click="clearFrameFiles" class="text-xs font-black text-red-600 hover:underline">Xóa frame</button>
-              </div>
-              <div class="grid grid-cols-4 gap-1.5">
-                <div v-for="(src,idx) in editor.framePreviews" :key="idx" class="aspect-square rounded-xl overflow-hidden border border-emerald-100 bg-emerald-50 relative">
-                  <img :src="src" class="w-full h-full object-cover" />
-                  <span class="absolute left-1 bottom-1 px-1.5 py-.5 rounded bg-slate-900/70 text-white text-[10px] font-black">{{ idx + 1 }}</span>
-                </div>
-              </div>
-              <p class="mt-2 text-[11px] text-slate-500 leading-relaxed">
-                Có thể chọn 4 / 8 / 12 / 24 ảnh. Hệ thống tự nén WebP và lưu đúng thứ tự frame.
-              </p>
-            </div>
-          </div>
-
-          <form @submit.prevent="saveEditor" class="space-y-4">
-            <div>
-              <label class="text-sm font-black text-slate-700">Mã hàng</label>
-              <input v-model.trim="editor.form.code" list="code-list" class="input mt-1" placeholder="Ví dụ: 3627680004" />
-            </div>
-            <div>
-              <label class="text-sm font-black text-slate-700">ID</label>
-              <input v-model.trim="editor.form.part_id" list="part-id-list" class="input mt-1" placeholder="ID / mã phụ nếu có" />
-            </div>
-            <div>
-              <label class="text-sm font-black text-slate-700">Mục đích sử dụng</label>
-              <select v-model="editor.form.usage_side" class="input mt-1">
-                <option value="unknown">Chưa xác định</option>
-                <option value="left">Bên trái</option>
-                <option value="right">Bên phải</option>
-                <option value="both">Cả hai bên</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-sm font-black text-slate-700">Đặc điểm nhận dạng</label>
-              <textarea v-model.trim="editor.form.identifying_features" class="input mt-1 min-h-[110px] resize-y" placeholder="Ví dụ: màu đen, có 2 lỗ, tem xanh, dùng bên trái..."></textarea>
-            </div>
-            <div>
-              <label class="text-sm font-black text-slate-700">Đường dẫn ảnh trong Storage</label>
-              <input v-model.trim="editor.form.image_path" class="input mt-1" placeholder="uploads/2026-06/xxx.jpg" />
-              <p class="mt-1 text-xs text-slate-500">Khi sửa metadata, có thể giữ nguyên đường dẫn ảnh cũ.</p>
-            </div>
-
-            <div class="flex flex-col sm:flex-row gap-2 pt-2">
-              <button class="btn h-12 px-5 bg-emerald-600 text-white hover:bg-emerald-700 shadow-card" :disabled="saving">
-                <i data-lucide="save" class="w-5 h-5"></i>
-                {{ saving ? 'Đang lưu...' : 'Lưu dữ liệu' }}
-              </button>
-              <button type="button" @click="closeEditor" class="btn h-12 px-5 bg-white border border-emerald-200 hover:bg-emerald-50">
-                Hủy
-              </button>
-              <button v-if="editor.form.id" type="button" @click="deleteCurrent" class="btn h-12 px-5 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 sm:ml-auto">
-                <i data-lucide="trash-2" class="w-5 h-5"></i>
-                Xóa
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
     </div>
-
-    <!-- ZOOM MODAL -->
-    <div
-      v-if="zoom.open"
-      class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto flex items-start lg:items-center justify-center"
-      @click.self="closeZoom"
-    >
-      <div class="w-full max-w-7xl min-w-0 grid lg:grid-cols-[minmax(0,1fr)_390px] gap-3 sm:gap-4 py-2 sm:py-0">
-        <div
-          class="viewer-stage rounded-[1.5rem] sm:rounded-[2rem] border border-white/10 overflow-hidden flex items-center justify-center min-h-[42dvh] max-h-[54dvh] lg:min-h-[560px] lg:max-h-[86vh]"
-          :class="{ 'is-dragging': zoom.dragging }"
-          @wheel.prevent="onZoomWheel"
-          @pointerdown="onViewerPointerDown"
-          @pointermove="onViewerPointerMove"
-          @pointerup="onViewerPointerUp"
-          @pointercancel="onViewerPointerUp"
-          @pointerleave="onViewerPointerUp"
-        >
-          <img
-            v-if="zoomImageSrc()"
-            :src="zoomImageSrc()"
-            :style="{ transform: zoomTransform() }"
-            :class="['viewer-object max-w-[94vw] lg:max-w-[96%] max-h-[50dvh] lg:max-h-[84vh] object-contain select-none', zoom.mode3d ? 'viewer-3d' : '']"
-            draggable="false"
-          />
-          <div v-else class="text-white text-center p-8">Không tải được ảnh</div>
-
-          <div class="absolute left-3 right-3 bottom-3 flex flex-wrap gap-2 text-[11px] sm:text-xs font-bold text-white/90">
-            <span class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-slate-950/45 border border-white/10 backdrop-blur">
-              {{ zoom.mode360 ? '360°: kéo trái/phải đổi góc' : (zoom.mode3d ? '3D: kéo để xoay' : 'Kéo để di chuyển') }}
-            </span>
-            <span v-if="zoom.frames.length > 1" class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-emerald-600/80 border border-white/10 backdrop-blur">
-              Frame {{ zoom.frameIndex + 1 }}/{{ zoom.frames.length }}
-            </span>
-            <span class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-slate-950/45 border border-white/10 backdrop-blur hidden sm:inline">
-              Lăn chuột để zoom · 2 ngón để pinch
-            </span>
-          </div>
-        </div>
-
-        <div class="glass rounded-[1.5rem] sm:rounded-[2rem] p-3 sm:p-5 overflow-auto scrollbar-soft max-h-none lg:max-h-[86vh] min-w-0">
-          <div class="flex justify-between gap-3 items-start">
-            <div class="min-w-0">
-              <p class="text-[11px] sm:text-xs font-black tracking-[.18em] uppercase text-emerald-700">Chi tiết ảnh</p>
-              <h2 class="text-xl sm:text-2xl font-black text-slate-900 mt-1 break-all">{{ zoom.item?.code }}</h2>
-            </div>
-            <button @click="closeZoom" class="w-10 h-10 rounded-2xl bg-white border border-emerald-100 hover:bg-emerald-50 flex items-center justify-center shrink-0">
-              <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
-          </div>
-
-          <div class="mt-4 sm:mt-5 space-y-2.5 sm:space-y-3 text-sm min-w-0">
-            <div class="rounded-2xl bg-white/70 border border-emerald-100 p-3"><b>ID:</b> {{ zoom.item?.part_id || 'Chưa có' }}</div>
-            <div class="rounded-2xl bg-white/70 border border-emerald-100 p-3"><b>Mục đích:</b> {{ usageLabel(zoom.item?.usage_side) }}</div>
-            <div class="rounded-2xl bg-white/70 border border-emerald-100 p-3"><b>Đặc điểm:</b><br>{{ zoom.item?.identifying_features || 'Chưa nhập' }}</div>
-
-            <details class="rounded-2xl bg-white/70 border border-emerald-100 p-3 break-all">
-              <summary class="font-bold cursor-pointer">Path ảnh</summary>
-              <div class="mt-2 text-xs text-slate-600">{{ zoom.mode360 && zoom.frames.length ? zoom.frames[zoom.frameIndex]?.image_path : zoom.item?.image_path }}</div>
-            </details>
-          </div>
-
-          <div class="mt-4 sm:mt-5 grid grid-cols-5 gap-1.5 sm:gap-2">
-            <button @click="zoomOut" class="btn h-10 sm:h-11 min-w-0 bg-white border border-emerald-100 hover:bg-emerald-50 text-xs" title="Thu nhỏ">
-              <i data-lucide="zoom-out" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-            </button>
-            <button @click="zoomIn" class="btn h-10 sm:h-11 min-w-0 bg-white border border-emerald-100 hover:bg-emerald-50 text-xs" title="Phóng to">
-              <i data-lucide="zoom-in" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-            </button>
-            <button @click="zoom.rotate=(zoom.rotate+90)%360" class="btn h-10 sm:h-11 min-w-0 bg-white border border-emerald-100 hover:bg-emerald-50 text-xs" title="Xoay ảnh 90 độ">
-              <i data-lucide="rotate-cw" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-            </button>
-            <button
-              @click="toggle3dMode"
-              :class="['btn h-10 sm:h-11 min-w-0 border text-xs', zoom.mode3d ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-emerald-100 hover:bg-emerald-50']"
-              title="Bật/tắt không gian 3D mô phỏng"
-            >
-              <i data-lucide="box" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-              <span>3D</span>
-            </button>
-            <button @click="resetZoom" class="btn h-10 sm:h-11 min-w-0 bg-white border border-emerald-100 hover:bg-emerald-50 text-xs" title="Reset góc nhìn">
-              <i data-lucide="scan" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-              <span class="hidden sm:inline">Reset</span>
-            </button>
-          </div>
-
-          <div v-if="zoom.loadingFrames" class="mt-3 rounded-2xl bg-white/80 border border-emerald-100 p-3 text-xs font-bold text-slate-600">
-            Đang tải frame 360...
-          </div>
-
-          <div v-if="zoom.frames.length > 1" class="mt-2 grid grid-cols-[44px_1fr_44px] gap-2">
-            <button @click="prev360Frame" class="btn h-10 sm:h-11 bg-white border border-emerald-100 hover:bg-emerald-50" title="Frame trước">
-              <i data-lucide="chevron-left" class="w-5 h-5"></i>
-            </button>
-            <button
-              @click="toggle360Mode"
-              :class="['btn h-10 sm:h-11 border text-xs', zoom.mode360 ? 'bg-lime-500 text-white border-lime-500' : 'bg-white border-emerald-100 hover:bg-emerald-50']"
-              title="Bật/tắt xem 360° nhiều ảnh"
-            >
-              <i data-lucide="rotate-3d" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-              360° {{ zoom.frameIndex + 1 }}/{{ zoom.frames.length }}
-            </button>
-            <button @click="next360Frame" class="btn h-10 sm:h-11 bg-white border border-emerald-100 hover:bg-emerald-50" title="Frame sau">
-              <i data-lucide="chevron-right" class="w-5 h-5"></i>
-            </button>
-          </div>
-
-          <div v-if="zoom.frames.length > 1" class="mt-2 grid grid-cols-4 gap-1.5">
-            <button
-              v-for="(f,idx) in zoom.frames"
-              :key="f.image_path"
-              @click="set360Frame(idx)"
-              :class="['aspect-square rounded-xl overflow-hidden border-2 bg-emerald-50', idx===zoom.frameIndex ? 'border-emerald-600' : 'border-transparent']"
-            >
-              <img :src="imageUrls[f.image_path] || ''" class="w-full h-full object-cover" />
-            </button>
-          </div>
-
-          <div class="mt-3 rounded-2xl bg-emerald-50 border border-emerald-100 p-3 text-[11px] sm:text-xs text-slate-600 leading-relaxed">
-            <b>PC:</b> lăn chuột để zoom, kéo ảnh để {{ zoom.mode360 ? 'đổi góc 360°' : (zoom.mode3d ? 'xoay 3D mô phỏng' : 'di chuyển ảnh') }}.<br>
-            <b>Mobile:</b> kéo 1 ngón để {{ zoom.mode360 ? 'đổi frame' : (zoom.mode3d ? 'xoay mô phỏng' : 'di chuyển') }}, dùng 2 ngón để phóng to/thu nhỏ.
-          </div>
-
-          <button v-if="canEdit" @click="openEditor(zoom.item); closeZoom()" class="btn mt-3 w-full h-11 sm:h-12 bg-slate-900 text-white hover:bg-slate-800 text-sm">
-            <i data-lucide="pencil" class="w-5 h-5"></i>
-            Chỉnh sửa ảnh này
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- PASSWORD MODAL -->
-    <div v-if="passwordModal.open" class="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="passwordModal.open=false">
-      <form @submit.prevent="changePassword" class="w-full max-w-md glass rounded-[2rem] shadow-soft p-6">
-        <div class="flex items-start justify-between gap-3 mb-5">
-          <div>
-            <p class="text-sm font-black tracking-[.2em] uppercase text-emerald-700">Security</p>
-            <h2 class="text-2xl font-black text-slate-900">Đổi mật khẩu</h2>
-          </div>
-          <button type="button" @click="passwordModal.open=false" class="w-10 h-10 rounded-2xl bg-white border border-emerald-100 hover:bg-emerald-50 flex items-center justify-center">
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
-        </div>
-
-        <label class="text-sm font-black text-slate-700">Mật khẩu cũ</label>
-        <input type="password" v-model="passwordModal.old" class="input mt-1 mb-4" autocomplete="current-password" />
-        <label class="text-sm font-black text-slate-700">Mật khẩu mới</label>
-        <input type="password" v-model="passwordModal.new" class="input mt-1 mb-4" autocomplete="new-password" placeholder="Tối thiểu 10 ký tự" />
-        <button class="btn w-full h-12 bg-emerald-600 text-white hover:bg-emerald-700" :disabled="saving">
-          <i data-lucide="key-round" class="w-5 h-5"></i>
-          Cập nhật mật khẩu
-        </button>
-      </form>
-    </div>
-
-    <!-- ADMIN MODAL -->
-    <div v-if="admin.open" class="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4" @click.self="admin.open=false">
-      <div class="w-full max-w-5xl max-h-[92vh] overflow-auto scrollbar-soft glass rounded-[2rem] shadow-soft p-5 md:p-6">
-        <div class="flex items-start justify-between gap-4 mb-5">
-          <div>
-            <p class="text-sm font-black tracking-[.2em] uppercase text-emerald-700">Admin</p>
-            <h2 class="text-2xl font-black text-slate-900">Quản lý user</h2>
-          </div>
-          <button @click="admin.open=false" class="w-10 h-10 rounded-2xl bg-white border border-emerald-100 hover:bg-emerald-50 flex items-center justify-center">
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
-        </div>
-
-        <div class="overflow-auto rounded-3xl border border-emerald-100 bg-white">
-          <table class="w-full text-sm min-w-[820px]">
-            <thead class="bg-emerald-50 text-emerald-800">
-              <tr>
-                <th class="p-3 text-left">Tên</th>
-                <th class="p-3 text-left">Username</th>
-                <th class="p-3 text-left">Quyền</th>
-                <th class="p-3 text-left">Trạng thái</th>
-                <th class="p-3 text-left">Đăng nhập cuối</th>
-                <th class="p-3 text-left">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="u in admin.users" :key="u.id" class="border-t border-emerald-50">
-                <td class="p-3 font-black">{{ u.display_name }}</td>
-                <td class="p-3">{{ u.username }}</td>
-                <td class="p-3">
-                  <select v-model="u.role_name" @change="adminSetRole(u)" class="rounded-xl border border-emerald-100 px-3 py-2 font-bold">
-                    <option value="admin">Admin</option>
-                    <option value="editor">Editor</option>
-                    <option value="viewer">Viewer</option>
-                  </select>
-                </td>
-                <td class="p-3">
-                  <button @click="adminToggleActive(u)" :class="['btn h-9 px-3 text-xs', u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100']">
-                    {{ u.is_active ? 'Đang mở' : 'Đang khóa' }}
-                  </button>
-                </td>
-                <td class="p-3 text-slate-500">{{ u.last_login_at ? formatTime(u.last_login_at) : 'Chưa có' }}</td>
-                <td class="p-3">
-                  <button @click="adminResetPassword(u)" class="btn h-9 px-3 bg-slate-900 text-white text-xs">Reset mật khẩu</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <datalist id="code-list">
-      <option v-for="c in codeSuggestions" :key="c" :value="c"></option>
-    </datalist>
-    <datalist id="part-id-list">
-      <option v-for="p in partIdSuggestions" :key="p" :value="p"></option>
-    </datalist>
   </div>
+</div>
 
-  <script>
-    /**********************************************************************
-     * CẤU HÌNH SUPABASE - ANH ĐIỀN Ở ĐÂY
-     * 1) SUPABASE_URL: Project URL, dạng https://xxxx.supabase.co
-     * 2) SUPABASE_ANON_KEY: Publishable key hoặc Legacy anon public key
-     * 3) BUCKET: bucket ảnh hiện tại của anh = product-images
-     *
-     * TUYỆT ĐỐI KHÔNG DÁN SERVICE_ROLE / SECRET KEY VÀO FILE HTML.
-     **********************************************************************/
-    const CONFIG = {
-      SUPABASE_URL: 'https://vhsikdgkzecdfopkpzum.supabase.co',
-      SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc2lrZGdremVjZGZvcGtwenVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjgyMTcsImV4cCI6MjA5Njg0NDIxN30.bj1yl4azsk8X-V2I1C6l5Qpa0kqt6j0TP4ZCJ3Du0l4',
-      BUCKET: 'product-images',
-      LOCAL_TOKEN_KEY: 'catalogue_app_session_token_v1',
-      SIGNED_URL_SECONDS: 60 * 60
+<script>
+const CONFIG = {
+  SUPABASE_URL: 'https://vhsikdgkzecdfopkpzum.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc2lrZGdremVjZGZvcGtwenVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjgyMTcsImV4cCI6MjA5Njg0NDIxN30.bj1yl4azsk8X-V2I1C6l5Qpa0kqt6j0TP4ZCJ3Du0l4',
+  R2_PUBLIC_URL: 'https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev',
+  R2_WORKER_URL: 'https://catalogue-r2-upload-api.pqvinh1999.workers.dev',
+  ALLOWED_ORIGIN: 'https://pqvinh99-glory.github.io',
+  SUPABASE_BUCKET_FALLBACK: 'product-images',
+  LOCAL_TOKEN_KEY: 'catalogue_app_session_token_v3_r2',
+  PAGE_LIMIT: 60
+};
+
+const { createApp, nextTick } = Vue;
+
+createApp({
+  data() {
+    return {
+      sb:null, loading:false, loadingImages:false, saving:false,
+      notice:{type:'', text:''}, nowText:'',
+      session:{ token: localStorage.getItem(CONFIG.LOCAL_TOKEN_KEY) || '', user:null },
+      loginForm:{ username:'', password:'' },
+      filters:{ search:'', usage:'all', viewMode:'all' },
+      parts:[], page:0, hasMore:false,
+      detail:{ open:false, item:null, assets:[], tab:'front', activeAsset:null, flipped:false },
+      editor:{ open:false, form:this.emptyForm(), assets:[], files:{}, previews:{} }
     };
-
-    const { createApp, nextTick } = Vue;
-
-    createApp({
-      data() {
-        return {
-          CONFIG,
-          sb: null,
-          loading: false,
-          loadingImages: false,
-          saving: false,
-          showPassword: false,
-          notice: { type: '', text: '' },
-          session: {
-            token: localStorage.getItem(CONFIG.LOCAL_TOKEN_KEY) || '',
-            user: null
-          },
-          loginForm: { username: '', password: '' },
-          filters: { search: '', usage: 'all', limit: 80, offset: 0 },
-          images: [],
-          imageUrls: {},
-          brokenImages: {},
-          lastLoadAt: '',
-          editor: {
-            open: false,
-            file: null,
-            localPreview: '',
-            frameFiles: [],
-            framePreviews: [],
-            form: this.emptyForm()
-          },
-          bgRemove: {
-            enabled: true,
-            tolerance: 64,
-            removeInnerBg: true
-          },
-          zoom: {
-            open: false,
-            item: null,
-            scale: 1,
-            rotate: 0,
-            x: 0,
-            y: 0,
-            rotateX: 0,
-            rotateY: 0,
-            mode3d: false,
-            mode360: false,
-            frames: [],
-            frameIndex: 0,
-            frameDragAccum: 0,
-            loadingFrames: false,
-            dragging: false,
-            pointers: {},
-            lastPointer: null,
-            pinchStartDistance: 0,
-            pinchStartScale: 1
-          },
-          passwordModal: { open: false, old: '', new: '' },
-          admin: { open: false, users: [] }
-        }
-      },
-      computed: {
-        canEdit() {
-          return this.session.user && ['admin', 'editor'].includes(this.session.user.role_name);
-        },
-        codeSuggestions() {
-          return [...new Set(this.images.map(x => x.code).filter(Boolean))].slice(0, 300).sort();
-        },
-        partIdSuggestions() {
-          return [...new Set(this.images.map(x => x.part_id).filter(Boolean))].slice(0, 300).sort();
-        },
-        editorPreviewUrl() {
-          if (this.editor.localPreview) return this.editor.localPreview;
-          if (this.editor.form.image_path) return this.imageUrls[this.editor.form.image_path] || '';
-          return '';
-        }
-      },
-      async mounted() {
-        this.sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
-          auth: { persistSession: false, autoRefreshToken: false }
-        });
-
-        this.paintIcons();
-
-        if (CONFIG.SUPABASE_URL.includes('YOUR_PROJECT') || CONFIG.SUPABASE_ANON_KEY.includes('YOUR_')) {
-          this.toast('error', 'Anh chưa điền SUPABASE_URL và SUPABASE_ANON_KEY trong file HTML.');
-          return;
-        }
-
-        if (this.session.token) {
-          await this.restoreSession();
-        }
-      },
-      updated() {
-        this.paintIcons();
-      },
-      methods: {
-        paintIcons() {
-          nextTick(() => window.lucide && window.lucide.createIcons());
-        },
-        emptyForm() {
-          return {
-            id: null,
-            code: '',
-            part_id: '',
-            usage_side: 'unknown',
-            identifying_features: '',
-            image_path: '',
-            image_name: ''
-          }
-        },
-        toast(type, text) {
-          this.notice = { type, text };
-          if (text) setTimeout(() => {
-            if (this.notice.text === text) this.notice = { type: '', text: '' };
-          }, type === 'error' ? 9000 : 4500);
-        },
-        async rpcRows(fn, params = {}) {
-          const { data, error } = await this.sb.rpc(fn, params);
-          if (error) throw error;
-          return Array.isArray(data) ? data : (data ? [data] : []);
-        },
-        async rpcRow(fn, params = {}) {
-          const rows = await this.rpcRows(fn, params);
-          return rows[0] || null;
-        },
-        async login() {
-          if (!this.loginForm.username || !this.loginForm.password) {
-            this.toast('error', 'Anh nhập đủ tên đăng nhập và mật khẩu nhé.');
-            return;
-          }
-          this.loading = true;
-          try {
-            const row = await this.rpcRow('app_login', {
-              p_username: this.loginForm.username,
-              p_password: this.loginForm.password
-            });
-            if (!row || !row.ok) throw new Error(row?.message || 'Đăng nhập thất bại');
-
-            this.session.token = row.session_token;
-            this.session.user = {
-              user_id: row.user_id,
-              username: row.username,
-              display_name: row.display_name,
-              role_name: row.role_name,
-              must_change_password: row.must_change_password
-            };
-            localStorage.setItem(CONFIG.LOCAL_TOKEN_KEY, row.session_token);
-            this.loginForm.password = '';
-            this.toast('success', 'Đăng nhập thành công.');
-            await this.loadImages(true);
-          } catch (err) {
-            this.toast('error', this.readError(err));
-          } finally {
-            this.loading = false;
-          }
-        },
-        async restoreSession() {
-          this.loading = true;
-          try {
-            const row = await this.rpcRow('app_me', { p_session_token: this.session.token });
-            if (!row || !row.ok) throw new Error('Phiên đăng nhập đã hết hạn.');
-            this.session.user = {
-              user_id: row.user_id,
-              username: row.username,
-              display_name: row.display_name,
-              role_name: row.role_name,
-              must_change_password: row.must_change_password
-            };
-            await this.loadImages(true);
-          } catch (err) {
-            localStorage.removeItem(CONFIG.LOCAL_TOKEN_KEY);
-            this.session.token = '';
-            this.session.user = null;
-            this.toast('error', 'Phiên đăng nhập cũ không còn hợp lệ, anh đăng nhập lại nhé.');
-          } finally {
-            this.loading = false;
-          }
-        },
-        async logout() {
-          try {
-            if (this.session.token) await this.rpcRow('app_logout', { p_session_token: this.session.token });
-          } catch (_) {}
-          localStorage.removeItem(CONFIG.LOCAL_TOKEN_KEY);
-          this.session = { token: '', user: null };
-          this.images = [];
-          this.imageUrls = {};
-          this.toast('success', 'Đã đăng xuất.');
-        },
-        async loadImages(reset = false) {
-          if (!this.session.token) return;
-          if (reset) {
-            this.filters.offset = 0;
-            this.images = [];
-          }
-          this.loadingImages = true;
-          try {
-            const rows = await this.rpcRows('app_search_images', {
-              p_session_token: this.session.token,
-              p_search: this.filters.search || '',
-              p_usage_side: this.filters.usage || 'all',
-              p_limit: this.filters.limit,
-              p_offset: this.filters.offset
-            });
-            this.images = reset ? rows : [...this.images, ...rows];
-            this.lastLoadAt = new Date().toISOString();
-            await this.loadImageUrls(rows);
-          } catch (err) {
-            this.toast('error', this.readError(err));
-          } finally {
-            this.loadingImages = false;
-          }
-        },
-        async loadMore() {
-          this.filters.offset += this.filters.limit;
-          await this.loadImages(false);
-        },
-        async loadImageUrls(rows) {
-          const paths = [...new Set(rows.map(x => x.image_path).filter(Boolean))]
-            .filter(p => !this.imageUrls[p] && !this.brokenImages[p]);
-          if (!paths.length) return;
-
-          try {
-            const { data, error } = await this.sb.storage
-              .from(CONFIG.BUCKET)
-              .createSignedUrls(paths, CONFIG.SIGNED_URL_SECONDS);
-            if (error) throw error;
-            (data || []).forEach(x => {
-              const signed = x.signedUrl || x.signedURL;
-              if (x.path && signed) this.imageUrls[x.path] = signed;
-            });
-          } catch (err) {
-            // Fallback nếu bucket đang public hoặc policy cũ cho phép public URL.
-            paths.forEach(path => {
-              const { data } = this.sb.storage.from(CONFIG.BUCKET).getPublicUrl(path);
-              if (data?.publicUrl) this.imageUrls[path] = data.publicUrl;
-            });
-          }
-        },
-        imageUrl(item) {
-          if (!item?.image_path || this.brokenImages[item.image_path]) return '';
-          return this.imageUrls[item.image_path] || '';
-        },
-        markImageError(item) {
-          if (item?.image_path) this.brokenImages[item.image_path] = true;
-        },
-        openEditor(item = null) {
-          this.editor.file = null;
-          this.editor.localPreview = '';
-          this.clearFrameFiles();
-          if (item) {
-            this.editor.form = {
-              id: item.id,
-              code: item.code || '',
-              part_id: item.part_id || '',
-              usage_side: item.usage_side || 'unknown',
-              identifying_features: item.identifying_features || '',
-              image_path: item.image_path || '',
-              image_name: item.image_name || ''
-            };
-          } else {
-            this.editor.form = this.emptyForm();
-          }
-          this.editor.open = true;
-        },
-        closeEditor() {
-          this.editor.open = false;
-          if (this.editor.localPreview) URL.revokeObjectURL(this.editor.localPreview);
-          this.clearFrameFiles();
-          this.editor.file = null;
-          this.editor.localPreview = '';
-        },
-        onEditorFileChange(e) {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          e.target.value = '';
-          this.editor.file = file;
-          if (this.editor.localPreview) URL.revokeObjectURL(this.editor.localPreview);
-          this.editor.localPreview = URL.createObjectURL(file);
-          if (!this.editor.form.code) this.editor.form.code = this.codeFromFilename(file.name);
-          if (!this.editor.form.image_name) this.editor.form.image_name = file.name;
-        },
-        onFrameFilesChange(e) {
-          const files = Array.from(e.target.files || []);
-          e.target.value = '';
-          if (!files.length) return;
-          this.clearFrameFiles();
-          this.editor.frameFiles = files;
-          this.editor.framePreviews = files.map(file => URL.createObjectURL(file));
-        },
-        clearFrameFiles() {
-          (this.editor.framePreviews || []).forEach(src => {
-            try { URL.revokeObjectURL(src); } catch (_) {}
-          });
-          this.editor.frameFiles = [];
-          this.editor.framePreviews = [];
-        },
-        async saveEditor() {
-          if (!this.canEdit) return this.toast('error', 'Tài khoản không có quyền thêm/sửa.');
-          this.saving = true;
-
-          const selectedFrameFiles = [...(this.editor.frameFiles || [])];
-          const hasFrameFiles = selectedFrameFiles.length > 0;
-
-          try {
-            if (!this.editor.form.code && hasFrameFiles) {
-              this.editor.form.code = this.codeFromFilename(selectedFrameFiles[0].name);
-            }
-
-            if (!this.editor.form.code) {
-              throw new Error('Anh cần nhập mã hàng trước khi lưu.');
-            }
-
-            let imagePath = this.editor.form.image_path;
-            let imageName = this.editor.form.image_name;
-            let uploadedFrames = [];
-
-            if (this.editor.file) {
-              const uploaded = await this.uploadFile(this.editor.file, { kind: 'main' });
-              imagePath = uploaded.path;
-              imageName = uploaded.name;
-            }
-
-            // Nếu anh chỉ chọn ảnh 360 mà chưa chọn ảnh chính:
-            // dùng luôn frame đầu tiên làm ảnh đại diện để tránh lỗi "thiếu đường dẫn ảnh".
-            if (!imagePath && hasFrameFiles) {
-              const code = this.editor.form.code || this.codeFromFilename(selectedFrameFiles[0].name);
-              for (let i = 0; i < selectedFrameFiles.length; i++) {
-                const uploadedFrame = await this.uploadFile(selectedFrameFiles[i], {
-                  kind: '360',
-                  code,
-                  frameIndex: i + 1
-                });
-                uploadedFrames.push({
-                  frame_index: i + 1,
-                  image_path: uploadedFrame.path,
-                  image_name: uploadedFrame.name
-                });
-              }
-
-              imagePath = uploadedFrames[0]?.image_path || '';
-              imageName = uploadedFrames[0]?.image_name || selectedFrameFiles[0]?.name || '';
-            }
-
-            if (!imagePath) {
-              throw new Error('Thiếu đường dẫn ảnh. Anh chọn ít nhất 1 ảnh chính hoặc chọn bộ ảnh 360 để hệ thống tự lấy frame đầu làm ảnh đại diện.');
-            }
-
-            const row = await this.rpcRow('app_upsert_image_metadata', {
-              p_session_token: this.session.token,
-              p_id: this.editor.form.id,
-              p_code: this.editor.form.code,
-              p_part_id: this.editor.form.part_id || null,
-              p_usage_side: this.editor.form.usage_side || 'unknown',
-              p_identifying_features: this.editor.form.identifying_features || null,
-              p_image_path: imagePath,
-              p_image_name: imageName || null
-            });
-
-            if (!row || !row.ok) throw new Error(row?.message || 'Không lưu được dữ liệu');
-
-            if (hasFrameFiles) {
-              const imageId = row.id || row.image_id || this.editor.form.id || await this.getImageIdByPath(imagePath);
-              if (!imageId) throw new Error('Đã lưu ảnh chính nhưng không lấy được image_id để lưu frame 360.');
-
-              // Nếu đã upload frame ở bước dùng frame đầu làm ảnh đại diện thì tái sử dụng,
-              // không upload lặp lại. Nếu có ảnh chính riêng thì upload frame tại đây.
-              if (!uploadedFrames.length) {
-                const code = this.editor.form.code || this.codeFromFilename(imageName || imagePath);
-                for (let i = 0; i < selectedFrameFiles.length; i++) {
-                  const uploadedFrame = await this.uploadFile(selectedFrameFiles[i], {
-                    kind: '360',
-                    code,
-                    frameIndex: i + 1
-                  });
-                  uploadedFrames.push({
-                    frame_index: i + 1,
-                    image_path: uploadedFrame.path,
-                    image_name: uploadedFrame.name
-                  });
-                }
-              }
-
-              const frameRow = await this.rpcRow('app_replace_360_frames', {
-                p_session_token: this.session.token,
-                p_image_id: imageId,
-                p_frames: uploadedFrames
-              });
-              if (!frameRow || !frameRow.ok) throw new Error(frameRow?.message || 'Không lưu được frame 360');
-            }
-
-            this.closeEditor();
-            this.toast('success', hasFrameFiles ? 'Đã lưu dữ liệu và frame 360.' : (row.message || 'Đã lưu dữ liệu.'));
-            await this.loadImages(true);
-          } catch (err) {
-            this.toast('error', this.readError(err));
-          } finally {
-            this.saving = false;
-          }
-        },
-        async getImageIdByPath(imagePath) {
-          const row = await this.rpcRow('app_get_image_by_path', {
-            p_session_token: this.session.token,
-            p_image_path: imagePath
-          });
-          return row?.id || null;
-        },
-        colorDistanceSq(r1, g1, b1, r2, g2, b2) {
-          const dr = r1 - r2;
-          const dg = g1 - g2;
-          const db = b1 - b2;
-          return dr * dr + dg * dg + db * db;
-        },
-        estimateBorderBackground(data, width, height) {
-          const samples = [];
-          const step = Math.max(1, Math.floor(Math.min(width, height) / 90));
-
-          const push = (x, y) => {
-            const i = (y * width + x) * 4;
-            const a = data[i + 3];
-            if (a < 20) return;
-            samples.push([data[i], data[i + 1], data[i + 2]]);
-          };
-
-          for (let x = 0; x < width; x += step) {
-            push(x, 0);
-            push(x, height - 1);
-          }
-
-          for (let y = 0; y < height; y += step) {
-            push(0, y);
-            push(width - 1, y);
-          }
-
-          if (!samples.length) return null;
-
-          const avg = samples.reduce((acc, c) => {
-            acc.r += c[0]; acc.g += c[1]; acc.b += c[2];
-            return acc;
-          }, { r: 0, g: 0, b: 0 });
-
-          avg.r /= samples.length;
-          avg.g /= samples.length;
-          avg.b /= samples.length;
-
-          // Trim bớt mẫu quá lệch, tránh dính vật thể nếu vật thể chạm gần mép ảnh.
-          const sorted = samples
-            .map(c => ({
-              r: c[0],
-              g: c[1],
-              b: c[2],
-              d: this.colorDistanceSq(c[0], c[1], c[2], avg.r, avg.g, avg.b)
-            }))
-            .sort((a, b) => a.d - b.d);
-
-          const keep = sorted.slice(0, Math.max(8, Math.floor(sorted.length * 0.82)));
-          const bg = keep.reduce((acc, c) => {
-            acc.r += c.r; acc.g += c.g; acc.b += c.b;
-            return acc;
-          }, { r: 0, g: 0, b: 0 });
-
-          bg.r = bg.r / keep.length;
-          bg.g = bg.g / keep.length;
-          bg.b = bg.b / keep.length;
-
-          return bg;
-        },
-        quickRemoveBackgroundFromCanvas(canvas, options = {}) {
-          const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          const width = canvas.width;
-          const height = canvas.height;
-          if (!width || !height) return;
-
-          const imageData = ctx.getImageData(0, 0, width, height);
-          const data = imageData.data;
-          const bg = this.estimateBorderBackground(data, width, height);
-
-          // Nếu ảnh vốn đã transparent ở viền, không cần xử lý mạnh.
-          if (!bg) {
-            ctx.putImageData(imageData, 0, 0);
-            return;
-          }
-
-          const tolerance = Number(options.tolerance || 64);
-          const removeInnerBg = options.removeInnerBg !== false;
-
-          const bgTolSq = tolerance * tolerance * 3;
-          const innerTolSq = (tolerance + 18) * (tolerance + 18) * 3;
-          const total = width * height;
-          const visited = new Uint8Array(total);
-          const queue = new Int32Array(total);
-          let head = 0;
-          let tail = 0;
-
-          const isCloseToBg = (idx, tolSq = bgTolSq) => {
-            const i = idx * 4;
-            const a = data[i + 3];
-            if (a < 18) return true;
-            return this.colorDistanceSq(data[i], data[i + 1], data[i + 2], bg.r, bg.g, bg.b) <= tolSq;
-          };
-
-          const pushIfBg = (idx) => {
-            if (idx < 0 || idx >= total || visited[idx]) return;
-            if (!isCloseToBg(idx)) return;
-            visited[idx] = 1;
-            queue[tail++] = idx;
-          };
-
-          // Seed từ 4 cạnh ảnh, chỉ lấy vùng nền nối với mép.
-          for (let x = 0; x < width; x++) {
-            pushIfBg(x);
-            pushIfBg((height - 1) * width + x);
-          }
-
-          for (let y = 0; y < height; y++) {
-            pushIfBg(y * width);
-            pushIfBg(y * width + width - 1);
-          }
-
-          // Flood-fill nền ngoài vật thể.
-          while (head < tail) {
-            const idx = queue[head++];
-            const x = idx % width;
-            const y = Math.floor(idx / width);
-
-            if (x > 0) pushIfBg(idx - 1);
-            if (x < width - 1) pushIfBg(idx + 1);
-            if (y > 0) pushIfBg(idx - width);
-            if (y < height - 1) pushIfBg(idx + width);
-          }
-
-          // Xóa nền nối với mép.
-          for (let idx = 0; idx < total; idx++) {
-            if (visited[idx]) data[idx * 4 + 3] = 0;
-          }
-
-          // Xóa nền trong lỗ/hốc nếu màu giống nền, ví dụ các lỗ trên linh kiện.
-          if (removeInnerBg) {
-            for (let idx = 0; idx < total; idx++) {
-              const i = idx * 4;
-              if (data[i + 3] === 0) continue;
-              if (isCloseToBg(idx, innerTolSq)) {
-                data[i + 3] = 0;
-              }
-            }
-          }
-
-          // Mềm biên nhẹ: các pixel sát nền và gần màu nền sẽ giảm alpha.
-          const alphaCopy = new Uint8ClampedArray(total);
-          for (let idx = 0; idx < total; idx++) alphaCopy[idx] = data[idx * 4 + 3];
-
-          for (let y = 1; y < height - 1; y++) {
-            for (let x = 1; x < width - 1; x++) {
-              const idx = y * width + x;
-              const i = idx * 4;
-              if (alphaCopy[idx] === 0) continue;
-
-              const nearTransparent =
-                alphaCopy[idx - 1] === 0 ||
-                alphaCopy[idx + 1] === 0 ||
-                alphaCopy[idx - width] === 0 ||
-                alphaCopy[idx + width] === 0;
-
-              if (nearTransparent && isCloseToBg(idx, innerTolSq * 1.15)) {
-                data[i + 3] = Math.round(data[i + 3] * 0.35);
-              }
-            }
-          }
-
-          ctx.putImageData(imageData, 0, 0);
-        },
-        async compressImageToWebp(file, maxEdge = 1600, quality = 0.78) {
-          if (!file?.type?.startsWith('image/')) return file;
-
-          const img = new Image();
-          const objectUrl = URL.createObjectURL(file);
-
-          try {
-            await new Promise((resolve, reject) => {
-              img.onload = resolve;
-              img.onerror = reject;
-              img.src = objectUrl;
-            });
-
-            const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
-            const width = Math.max(1, Math.round(img.naturalWidth * scale));
-            const height = Math.max(1, Math.round(img.naturalHeight * scale));
-
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-
-            // Giữ alpha để PNG/WebP transparent không bị đổi thành nền trắng.
-            const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: true });
-            ctx.clearRect(0, 0, width, height);
-            ctx.drawImage(img, 0, 0, width, height);
-
-            if (this.bgRemove?.enabled) {
-              this.quickRemoveBackgroundFromCanvas(canvas, {
-                tolerance: this.bgRemove.tolerance,
-                removeInnerBg: this.bgRemove.removeInnerBg
-              });
-            }
-
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
-            if (!blob) return file;
-
-            const base = String(file.name || 'image')
-              .replace(/\.[^.]+$/, '')
-              .replace(/[^A-Za-z0-9_-]+/g, '_');
-
-            return new File([blob], `${base}.webp`, { type: 'image/webp' });
-          } catch (_) {
-            return file;
-          } finally {
-            URL.revokeObjectURL(objectUrl);
-          }
-        },
-        async uploadFile(file, options = {}) {
-          const kind = options.kind || 'main';
-          const frameIndex = options.frameIndex || 1;
-          const originalName = file.name || 'image.jpg';
-          const compressed = await this.compressImageToWebp(file, kind === '360' ? 1400 : 1600, kind === '360' ? 0.76 : 0.78);
-
-          const ext = (compressed.name.split('.').pop() || 'webp').toLowerCase().replace(/[^a-z0-9]/g, '') || 'webp';
-          const code = (options.code || this.codeFromFilename(originalName) || 'NO_CODE').toUpperCase();
-          const now = new Date();
-          const yyyy = now.getFullYear();
-          const mm = String(now.getMonth() + 1).padStart(2, '0');
-          const stamp = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-
-          let path;
-          if (kind === '360') {
-            path = `uploads/360/${code}/${code}_frame_${String(frameIndex).padStart(2, '0')}_${stamp}.${ext}`;
-          } else {
-            path = `uploads/${yyyy}-${mm}/${code}_${stamp}.${ext}`;
-          }
-
-          const { data, error } = await this.sb.storage
-            .from(CONFIG.BUCKET)
-            .upload(path, compressed, {
-              cacheControl: '31536000',
-              upsert: false,
-              contentType: compressed.type || `image/${ext}`
-            });
-
-          if (error) {
-            throw new Error('Upload ảnh lỗi. Nếu bucket đang private và không dùng Supabase Auth thì cần policy Storage/Edge Function riêng. Chi tiết: ' + error.message);
-          }
-          return { path: data.path, name: originalName };
-        },
-        async bulkImport(e) {
-          const files = Array.from(e.target.files || []);
-          e.target.value = '';
-          if (!files.length) return;
-          if (!this.canEdit) return this.toast('error', 'Tài khoản không có quyền import.');
-
-          this.loading = true;
-          let ok = 0;
-          let fail = 0;
-          try {
-            for (const file of files) {
-              try {
-                const uploaded = await this.uploadFile(file);
-                const code = this.codeFromFilename(file.name);
-                const row = await this.rpcRow('app_upsert_image_metadata', {
-                  p_session_token: this.session.token,
-                  p_id: null,
-                  p_code: code,
-                  p_part_id: null,
-                  p_usage_side: 'unknown',
-                  p_identifying_features: null,
-                  p_image_path: uploaded.path,
-                  p_image_name: file.name
-                });
-                if (row?.ok) ok++; else fail++;
-              } catch (err) {
-                console.warn('Import failed:', file.name, err);
-                fail++;
-              }
-            }
-            this.toast(fail ? 'error' : 'success', `Import xong: thành công ${ok}, lỗi ${fail}.`);
-            await this.loadImages(true);
-          } finally {
-            this.loading = false;
-          }
-        },
-        async deleteCurrent() {
-          if (!this.editor.form.id) return;
-          if (!confirm('Anh chắc muốn xóa metadata ảnh này? File trong Storage sẽ chưa bị xóa nếu policy không cho phép.')) return;
-          this.saving = true;
-          try {
-            const oldPath = this.editor.form.image_path;
-            const row = await this.rpcRow('app_delete_image_metadata', {
-              p_session_token: this.session.token,
-              p_id: this.editor.form.id
-            });
-            if (!row || !row.ok) throw new Error(row?.message || 'Không xóa được');
-
-            // Thử xóa file nếu policy storage cho phép. Không bắt buộc.
-            try { if (oldPath) await this.sb.storage.from(CONFIG.BUCKET).remove([oldPath]); } catch (_) {}
-
-            this.closeEditor();
-            this.toast('success', row.message || 'Đã xóa metadata.');
-            await this.loadImages(true);
-          } catch (err) {
-            this.toast('error', this.readError(err));
-          } finally {
-            this.saving = false;
-          }
-        },
-        async openZoom(item) {
-          this.zoom = {
-            open: true,
-            item,
-            scale: 1,
-            rotate: 0,
-            x: 0,
-            y: 0,
-            rotateX: 0,
-            rotateY: 0,
-            mode3d: false,
-            mode360: false,
-            frames: [],
-            frameIndex: 0,
-            frameDragAccum: 0,
-            loadingFrames: true,
-            dragging: false,
-            pointers: {},
-            lastPointer: null,
-            pinchStartDistance: 0,
-            pinchStartScale: 1
-          };
-          await this.load360Frames(item);
-        },
-        closeZoom() {
-          this.zoom.open = false;
-          this.zoom.dragging = false;
-          this.zoom.pointers = {};
-        },
-        async load360Frames(item) {
-          if (!item?.id || !this.session.token) {
-            this.zoom.loadingFrames = false;
-            return;
-          }
-
-          try {
-            const frames = await this.rpcRows('app_get_360_frames', {
-              p_session_token: this.session.token,
-              p_image_id: item.id
-            });
-            this.zoom.frames = frames || [];
-            this.zoom.frameIndex = 0;
-            if (this.zoom.frames.length > 1) {
-              await this.loadImageUrls(this.zoom.frames);
-              this.zoom.mode360 = true;
-            }
-          } catch (_) {
-            this.zoom.frames = [];
-          } finally {
-            this.zoom.loadingFrames = false;
-          }
-        },
-        zoomImageSrc() {
-          if (this.zoom.mode360 && this.zoom.frames.length) {
-            const frame = this.zoom.frames[this.zoom.frameIndex];
-            return frame ? (this.imageUrls[frame.image_path] || '') : '';
-          }
-          return this.zoom.item ? this.imageUrl(this.zoom.item) : '';
-        },
-        clampZoom(value) {
-          return Math.min(8, Math.max(0.35, Number(value) || 1));
-        },
-        zoomIn() {
-          this.zoom.scale = this.clampZoom(this.zoom.scale + 0.25);
-        },
-        zoomOut() {
-          this.zoom.scale = this.clampZoom(this.zoom.scale - 0.25);
-        },
-        resetZoom() {
-          this.zoom.scale = 1;
-          this.zoom.rotate = 0;
-          this.zoom.x = 0;
-          this.zoom.y = 0;
-          this.zoom.rotateX = 0;
-          this.zoom.rotateY = 0;
-          this.zoom.frameDragAccum = 0;
-          this.zoom.pointers = {};
-          this.zoom.lastPointer = null;
-          this.zoom.dragging = false;
-        },
-        toggle3dMode() {
-          this.zoom.mode3d = !this.zoom.mode3d;
-          if (this.zoom.mode3d) this.zoom.mode360 = false;
-          this.zoom.x = 0;
-          this.zoom.y = 0;
-          this.zoom.rotateX = 0;
-          this.zoom.rotateY = 0;
-          this.zoom.frameDragAccum = 0;
-          this.zoom.pointers = {};
-          this.zoom.lastPointer = null;
-          this.zoom.dragging = false;
-        },
-        toggle360Mode() {
-          if (this.zoom.frames.length <= 1) return;
-          this.zoom.mode360 = !this.zoom.mode360;
-          if (this.zoom.mode360) this.zoom.mode3d = false;
-          this.resetZoom();
-        },
-        set360Frame(index) {
-          if (!this.zoom.frames.length) return;
-          this.zoom.frameIndex = Math.max(0, Math.min(this.zoom.frames.length - 1, index));
-          this.zoom.mode360 = true;
-          this.zoom.mode3d = false;
-        },
-        next360Frame() {
-          if (!this.zoom.frames.length) return;
-          this.zoom.frameIndex = (this.zoom.frameIndex + 1) % this.zoom.frames.length;
-          this.zoom.mode360 = true;
-          this.zoom.mode3d = false;
-        },
-        prev360Frame() {
-          if (!this.zoom.frames.length) return;
-          this.zoom.frameIndex = (this.zoom.frameIndex - 1 + this.zoom.frames.length) % this.zoom.frames.length;
-          this.zoom.mode360 = true;
-          this.zoom.mode3d = false;
-        },
-        zoomTransform() {
-          const z = this.zoom;
-          if (z.mode3d) {
-            return `translate3d(${z.x}px, ${z.y}px, 0) scale(${z.scale}) rotate(${z.rotate}deg) rotateX(${z.rotateX}deg) rotateY(${z.rotateY}deg)`;
-          }
-          return `translate3d(${z.x}px, ${z.y}px, 0) scale(${z.scale}) rotate(${z.rotate}deg)`;
-        },
-        onZoomWheel(event) {
-          const factor = event.deltaY < 0 ? 1.12 : 0.88;
-          this.zoom.scale = this.clampZoom(this.zoom.scale * factor);
-        },
-        pointerDistance(a, b) {
-          const dx = a.x - b.x;
-          const dy = a.y - b.y;
-          return Math.sqrt(dx * dx + dy * dy);
-        },
-        onViewerPointerDown(event) {
-          if (!this.zoom.open) return;
-          event.currentTarget.setPointerCapture?.(event.pointerId);
-          this.zoom.pointers[event.pointerId] = { x: event.clientX, y: event.clientY };
-          const points = Object.values(this.zoom.pointers);
-
-          this.zoom.dragging = true;
-
-          if (points.length === 1) {
-            this.zoom.lastPointer = { x: event.clientX, y: event.clientY };
-          }
-
-          if (points.length === 2) {
-            this.zoom.pinchStartDistance = this.pointerDistance(points[0], points[1]);
-            this.zoom.pinchStartScale = this.zoom.scale;
-            this.zoom.lastPointer = null;
-          }
-        },
-        onViewerPointerMove(event) {
-          if (!this.zoom.open || !this.zoom.pointers[event.pointerId]) return;
-
-          this.zoom.pointers[event.pointerId] = { x: event.clientX, y: event.clientY };
-          const points = Object.values(this.zoom.pointers);
-
-          if (points.length >= 2) {
-            const d = this.pointerDistance(points[0], points[1]);
-            if (this.zoom.pinchStartDistance > 0) {
-              this.zoom.scale = this.clampZoom(this.zoom.pinchStartScale * (d / this.zoom.pinchStartDistance));
-            }
-            return;
-          }
-
-          if (!this.zoom.lastPointer) {
-            this.zoom.lastPointer = { x: event.clientX, y: event.clientY };
-            return;
-          }
-
-          const dx = event.clientX - this.zoom.lastPointer.x;
-          const dy = event.clientY - this.zoom.lastPointer.y;
-
-          if (this.zoom.mode360 && this.zoom.frames.length > 1 && this.zoom.scale <= 1.15) {
-            this.zoom.frameDragAccum += dx;
-            if (Math.abs(this.zoom.frameDragAccum) > 34) {
-              this.zoom.frameDragAccum > 0 ? this.prev360Frame() : this.next360Frame();
-              this.zoom.frameDragAccum = 0;
-            }
-          } else if (this.zoom.mode3d) {
-            this.zoom.rotateY = (this.zoom.rotateY + dx * 0.55) % 360;
-            this.zoom.rotateX = Math.max(-70, Math.min(70, this.zoom.rotateX - dy * 0.35));
-          } else {
-            this.zoom.x += dx;
-            this.zoom.y += dy;
-          }
-
-          this.zoom.lastPointer = { x: event.clientX, y: event.clientY };
-        },
-        onViewerPointerUp(event) {
-          if (this.zoom.pointers[event.pointerId]) delete this.zoom.pointers[event.pointerId];
-          const points = Object.values(this.zoom.pointers);
-
-          if (points.length === 0) {
-            this.zoom.dragging = false;
-            this.zoom.lastPointer = null;
-            this.zoom.pinchStartDistance = 0;
-            this.zoom.frameDragAccum = 0;
-          } else if (points.length === 1) {
-            this.zoom.lastPointer = { x: points[0].x, y: points[0].y };
-            this.zoom.pinchStartDistance = 0;
-          }
-        },
-        openPasswordModal() {
-          this.passwordModal = { open: true, old: '', new: '' };
-        },
-        async changePassword() {
-          this.saving = true;
-          try {
-            const row = await this.rpcRow('app_change_password', {
-              p_session_token: this.session.token,
-              p_old_password: this.passwordModal.old,
-              p_new_password: this.passwordModal.new
-            });
-            if (!row || !row.ok) throw new Error(row?.message || 'Không đổi được mật khẩu');
-            this.passwordModal.open = false;
-            this.session.user.must_change_password = false;
-            this.toast('success', row.message || 'Đã đổi mật khẩu.');
-          } catch (err) {
-            this.toast('error', this.readError(err));
-          } finally {
-            this.saving = false;
-          }
-        },
-        async openAdmin() {
-          this.admin.open = true;
-          await this.loadAdminUsers();
-        },
-        async loadAdminUsers() {
-          try {
-            this.admin.users = await this.rpcRows('app_admin_list_users', { p_session_token: this.session.token });
-          } catch (err) {
-            this.toast('error', this.readError(err));
-          }
-        },
-        async adminSetRole(u) {
-          try {
-            const row = await this.rpcRow('app_admin_set_user_role', {
-              p_session_token: this.session.token,
-              p_username: u.username,
-              p_role_name: u.role_name
-            });
-            if (!row?.ok) throw new Error(row?.message || 'Không cập nhật được quyền');
-            this.toast('success', 'Đã cập nhật quyền.');
-          } catch (err) {
-            this.toast('error', this.readError(err));
-            await this.loadAdminUsers();
-          }
-        },
-        async adminToggleActive(u) {
-          try {
-            const row = await this.rpcRow('app_admin_set_user_active', {
-              p_session_token: this.session.token,
-              p_username: u.username,
-              p_is_active: !u.is_active
-            });
-            if (!row?.ok) throw new Error(row?.message || 'Không cập nhật được trạng thái');
-            u.is_active = !u.is_active;
-            this.toast('success', 'Đã cập nhật trạng thái user.');
-          } catch (err) {
-            this.toast('error', this.readError(err));
-          }
-        },
-        async adminResetPassword(u) {
-          const pass = prompt(`Nhập mật khẩu mới cho ${u.display_name} - tối thiểu 10 ký tự:`);
-          if (!pass) return;
-          try {
-            const row = await this.rpcRow('app_admin_reset_password', {
-              p_session_token: this.session.token,
-              p_username: u.username,
-              p_new_password: pass
-            });
-            if (!row?.ok) throw new Error(row?.message || 'Không reset được mật khẩu');
-            this.toast('success', 'Đã reset mật khẩu.');
-          } catch (err) {
-            this.toast('error', this.readError(err));
-          }
-        },
-        codeFromFilename(name) {
-          const base = String(name || '')
-            .replace(/^.*[\\/]/, '')
-            .replace(/\.[^.]+$/, '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/đ/g, 'd')
-            .replace(/Đ/g, 'D')
-            .replace(/[^A-Za-z0-9]+/g, '_')
-            .replace(/^_+|_+$/g, '')
-            .toUpperCase();
-          return base || 'NO_CODE';
-        },
-        usageLabel(v) {
-          return ({ left: 'Bên trái', right: 'Bên phải', both: 'Cả hai bên', unknown: 'Chưa xác định', all: 'Tất cả' })[v] || 'Chưa xác định';
-        },
-        roleLabel(v) {
-          return ({ admin: 'Admin', editor: 'Editor', viewer: 'Viewer' })[v] || v;
-        },
-        formatTime(v) {
-          try { return new Date(v).toLocaleString('vi-VN'); } catch (_) { return v; }
-        },
-        readError(err) {
-          const msg = err?.message || String(err || 'Có lỗi không xác định');
-          if (msg.includes('UNAUTHORIZED')) return 'Không có quyền hoặc phiên đăng nhập đã hết hạn.';
-          if (msg.includes('Failed to fetch')) return 'Không kết nối được Supabase. Kiểm tra URL/API key/CORS/mạng.';
-          return msg;
-        }
+  },
+  computed:{
+    canEdit() { return ['admin','editor'].includes(this.session.user?.role_name); },
+    detailAssets() { return this.detail.assets.filter(a => a.asset_type === 'detail'); },
+    activeAssetUrl() {
+      if (this.detail.tab === 'detail') return this.detail.activeAsset ? this.assetUrl(this.detail.activeAsset) : (this.detailAssets[0] ? this.assetUrl(this.detailAssets[0]) : '');
+      return this.assetTypeUrl(this.detail.tab);
+    },
+    detailTabLabel() { return {front:'Mặt chính', back:'Mặt sau', detail:'Ảnh chi tiết', sim:'3D mô phỏng'}[this.detail.tab] || 'Ảnh'; },
+    simTransform() { return this.detail.flipped ? 'transform: rotateY(180deg);' : 'transform: rotateY(0deg);'; },
+    editorPreview() {
+      return this.editor.previews['front_1'] || this.assetPathUrl(this.findEditorAsset('front',1)?.image_path, this.findEditorAsset('front',1)?.storage_provider) || '';
+    },
+    editorAssetList() {
+      const map = new Map();
+      for (const a of this.editor.assets) map.set(`${a.asset_type}_${a.sort_order||1}`, {...a});
+      for (const k of Object.keys(this.editor.previews)) {
+        const [type, order] = k.split('_');
+        map.set(k, { asset_type:type, sort_order:Number(order||1), preview:this.editor.previews[k], storage_provider:'r2', image_path:'' });
       }
-    }).mount('#app');
-  </script>
+      return [...map.values()].sort((a,b) => (this.assetSort(a)-this.assetSort(b)) || ((a.sort_order||1)-(b.sort_order||1)));
+    }
+  },
+  async mounted() {
+    this.sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    this.updateTime(); setInterval(this.updateTime, 30000);
+    await this.checkSession();
+    this.renderIcons();
+  },
+  updated() { this.renderIcons(); },
+  methods:{
+    emptyForm() { return { id:null, code:'', part_id:'', usage_side:'unknown', view_mode:'single_face', is_symmetric:false, identifying_features:'', confusing_note:'', image_path:'', image_name:'' }; },
+    updateTime() { this.nowText = new Date().toLocaleString('vi-VN'); },
+    renderIcons() { nextTick(() => lucide?.createIcons?.()); },
+    toast(type,text) { this.notice={type,text}; if(text) setTimeout(()=>{ if(this.notice.text===text) this.notice={type:'',text:''}; }, 5500); },
+    readError(err) { return err?.message || String(err) || 'Có lỗi xảy ra'; },
+    async rpcRow(fn,args) { const {data,error} = await this.sb.rpc(fn,args); if(error) throw error; return Array.isArray(data) ? data[0] : data; },
+    async rpcRows(fn,args) { const {data,error} = await this.sb.rpc(fn,args); if(error) throw error; return data || []; },
+
+    async checkSession() {
+      if (!this.session.token) return;
+      try {
+        const me = await this.rpcRow('app_me', {p_session_token:this.session.token});
+        if (!me?.ok) throw new Error(me?.message || 'Session hết hạn');
+        this.session.user = me;
+        await this.loadParts(true);
+      } catch(e) { localStorage.removeItem(CONFIG.LOCAL_TOKEN_KEY); this.session.token=''; this.session.user=null; }
+    },
+    async login() {
+      this.loading=true;
+      try {
+        const row = await this.rpcRow('app_login', { p_username:this.loginForm.username, p_password:this.loginForm.password });
+        if (!row?.ok) throw new Error(row?.message || 'Đăng nhập thất bại');
+        this.session.token = row.session_token;
+        localStorage.setItem(CONFIG.LOCAL_TOKEN_KEY, row.session_token);
+        await this.checkSession();
+        this.toast('success','Đăng nhập thành công.');
+      } catch(e) { this.toast('error', this.readError(e)); } finally { this.loading=false; }
+    },
+    async logout() {
+      try { if(this.session.token) await this.rpcRow('app_logout', {p_session_token:this.session.token}); } catch(_) {}
+      localStorage.removeItem(CONFIG.LOCAL_TOKEN_KEY); this.session={token:'',user:null}; this.parts=[];
+    },
+
+    usageLabel(v) { return {left:'Bên trái', right:'Bên phải', both:'Cả hai bên', unknown:'Chưa xác định'}[v] || 'Chưa xác định'; },
+    viewModeLabel(v) { return {single_face:'1 mặt', dual_face:'2 mặt', detail_set:'Chi tiết'}[v] || '1 mặt'; },
+    assetSort(a) { return {thumb:0, front:1, back:2, detail:3, compare:4}[a.asset_type] ?? 9; },
+    assetPathUrl(path, provider='r2') {
+      if (!path) return '';
+      if (/^https?:\/\//i.test(path)) return path;
+      const clean = String(path).replace(/^\/+/, '');
+      if ((provider || 'r2') === 'r2') return `${CONFIG.R2_PUBLIC_URL}/${clean}`;
+      const { data } = this.sb.storage.from(CONFIG.SUPABASE_BUCKET_FALLBACK).getPublicUrl(clean);
+      return data?.publicUrl || '';
+    },
+    assetUrl(asset) { return this.assetPathUrl(asset?.image_path, asset?.storage_provider); },
+    partThumbUrl(item) { return this.assetPathUrl(item.thumb_path || item.front_path || item.fallback_path, item.thumb_provider || item.front_provider || item.fallback_provider || 'r2'); },
+    findAsset(type, order=1) { return this.detail.assets.find(a => a.asset_type===type && Number(a.sort_order||1)===order) || null; },
+    assetTypeUrl(type) { const a = type==='detail' ? this.detailAssets[0] : this.findAsset(type,1); return a ? this.assetUrl(a) : ''; },
+    findEditorAsset(type, order=1) { return this.editor.assets.find(a => a.asset_type===type && Number(a.sort_order||1)===order) || null; },
+
+    async loadParts(reset=false) {
+      if(reset) { this.page=0; this.parts=[]; }
+      this.loadingImages=true;
+      try {
+        const rows = await this.rpcRows('app_search_catalogue', {
+          p_session_token:this.session.token,
+          p_search:this.filters.search || '',
+          p_usage_side:this.filters.usage,
+          p_view_mode:this.filters.viewMode,
+          p_limit:CONFIG.PAGE_LIMIT,
+          p_offset:this.page * CONFIG.PAGE_LIMIT
+        });
+        this.hasMore = rows.length === CONFIG.PAGE_LIMIT;
+        this.parts = reset ? rows : this.parts.concat(rows);
+      } catch(e) { this.toast('error', this.readError(e)); } finally { this.loadingImages=false; this.renderIcons(); }
+    },
+    async loadMore() { this.page += 1; await this.loadParts(false); },
+
+    async openDetail(item) {
+      this.detail = {open:true, item, assets:[], tab:'front', activeAsset:null, flipped:false};
+      try {
+        this.detail.assets = await this.rpcRows('app_get_part_assets', {p_session_token:this.session.token, p_image_id:item.id});
+        if (!this.assetTypeUrl('front') && this.assetTypeUrl('back')) this.detail.tab='back';
+      } catch(e) { this.toast('error', this.readError(e)); }
+    },
+    closeDetail() { this.detail.open=false; this.detail.assets=[]; this.detail.item=null; },
+    setDetailTab(t) { this.detail.tab=t; if(t==='detail') this.detail.activeAsset=this.detailAssets[0] || null; },
+    tabBtnClass(t) { return ['btn h-11 px-2 text-xs sm:text-sm border', this.detail.tab===t ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-emerald-100 hover:bg-emerald-50'].join(' '); },
+    flipSim() { this.detail.flipped = !this.detail.flipped; },
+
+    async openEditor(item=null) {
+      if(!this.canEdit) return this.toast('error','Tài khoản không có quyền thêm/sửa.');
+      this.clearEditorFiles();
+      this.editor.open=true;
+      if(item) {
+        this.editor.form = { id:item.id, code:item.code || '', part_id:item.part_id || '', usage_side:item.usage_side || 'unknown', view_mode:item.view_mode || 'single_face', is_symmetric:!!item.is_symmetric, identifying_features:item.identifying_features || '', confusing_note:item.confusing_note || '', image_path:item.fallback_path || '', image_name:'' };
+        try { this.editor.assets = await this.rpcRows('app_get_part_assets', {p_session_token:this.session.token, p_image_id:item.id}); } catch(e) { this.editor.assets=[]; }
+      } else {
+        this.editor.form = this.emptyForm();
+        this.editor.assets = [];
+      }
+      this.renderIcons();
+    },
+    closeEditor() { this.editor.open=false; this.clearEditorFiles(); },
+    clearEditorFiles() {
+      for (const src of Object.values(this.editor?.previews || {})) { try { URL.revokeObjectURL(src); } catch(_) {} }
+      if (this.editor) { this.editor.files={}; this.editor.previews={}; }
+    },
+    onFileChange(type, order, e) {
+      const file = e.target.files?.[0]; e.target.value=''; if(!file) return;
+      const key = `${type}_${order}`;
+      if(this.editor.previews[key]) URL.revokeObjectURL(this.editor.previews[key]);
+      this.editor.files[key]=file;
+      this.editor.previews[key]=URL.createObjectURL(file);
+      if(!this.editor.form.code) this.editor.form.code = this.codeFromFilename(file.name);
+      if(type==='back' && this.editor.form.view_mode === 'single_face') this.editor.form.view_mode='dual_face';
+      if(type==='detail') this.editor.form.view_mode='detail_set';
+    },
+    codeFromFilename(name) { return String(name||'').replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g,'').toUpperCase(); },
+
+    async compressImageToWebp(file, maxEdge=1600, quality=.82) {
+      if(!file?.type?.startsWith('image/')) return file;
+      const img = new Image(); const objectUrl = URL.createObjectURL(file);
+      try {
+        await new Promise((resolve,reject)=>{ img.onload=resolve; img.onerror=reject; img.src=objectUrl; });
+        const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.max(1, Math.round(img.naturalWidth * scale));
+        const h = Math.max(1, Math.round(img.naturalHeight * scale));
+        const canvas = document.createElement('canvas'); canvas.width=w; canvas.height=h;
+        const ctx = canvas.getContext('2d', {alpha:true}); ctx.clearRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+        if(!blob) return file;
+        const base = String(file.name||'image').replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_-]+/g,'_');
+        return new File([blob], `${base}.webp`, {type:'image/webp'});
+      } finally { URL.revokeObjectURL(objectUrl); }
+    },
+    async makeThumbFile(file) { return this.compressImageToWebp(file, 460, .74); },
+    async uploadToR2(file, code, assetType) {
+      const maxEdge = assetType === 'thumb' ? 460 : (assetType === 'detail' ? 1300 : 1600);
+      const quality = assetType === 'thumb' ? .74 : .82;
+      const prepared = assetType === 'thumb' ? await this.makeThumbFile(file) : await this.compressImageToWebp(file, maxEdge, quality);
+      const form = new FormData();
+      form.append('file', prepared);
+      form.append('code', code);
+      form.append('asset_type', assetType);
+      const res = await fetch(`${CONFIG.R2_WORKER_URL}/upload`, { method:'POST', headers:{'x-session-token':this.session.token}, body:form });
+      const data = await res.json().catch(()=>({}));
+      if(!res.ok || !data.ok) throw new Error(data.message || 'Upload R2 lỗi');
+      return { asset_type:data.asset_type || assetType, storage_provider:'r2', bucket_name:'catalogue-images', image_path:data.image_path, image_name:data.image_name || prepared.name };
+    },
+    mergeAsset(list, asset, sortOrder=1) {
+      const idx = list.findIndex(a => a.asset_type===asset.asset_type && Number(a.sort_order||1)===sortOrder);
+      const row = {...asset, sort_order:sortOrder};
+      if(idx>=0) list.splice(idx,1,row); else list.push(row);
+    },
+
+    async savePart() {
+      if(!this.canEdit) return;
+      this.saving=true;
+      try {
+        const code = this.editor.form.code.trim().toUpperCase();
+        if(!code) throw new Error('Anh cần nhập mã hàng.');
+        let assets = this.editor.assets.map(a => ({ asset_type:a.asset_type, storage_provider:a.storage_provider || 'r2', bucket_name:a.bucket_name || 'catalogue-images', image_path:a.image_path, image_name:a.image_name || null, sort_order:Number(a.sort_order||1) }));
+
+        for(const [key,file] of Object.entries(this.editor.files)) {
+          const [type, orderRaw] = key.split('_');
+          const uploaded = await this.uploadToR2(file, code, type);
+          this.mergeAsset(assets, uploaded, Number(orderRaw||1));
+          if(type === 'front') {
+            const thumb = await this.uploadToR2(file, code, 'thumb');
+            this.mergeAsset(assets, thumb, 1);
+          }
+        }
+        assets = assets.filter(a => a.image_path);
+        const primary = assets.find(a => a.asset_type==='thumb') || assets.find(a => a.asset_type==='front') || assets[0];
+        if(!primary) throw new Error('Anh cần chọn ít nhất ảnh mặt chính/front hoặc giữ ảnh cũ.');
+
+        const saved = await this.rpcRow('app_upsert_part_metadata', {
+          p_session_token:this.session.token,
+          p_id:this.editor.form.id,
+          p_code:code,
+          p_part_id:this.editor.form.part_id || null,
+          p_usage_side:this.editor.form.usage_side || 'unknown',
+          p_view_mode:this.editor.form.view_mode || 'single_face',
+          p_is_symmetric:!!this.editor.form.is_symmetric,
+          p_identifying_features:this.editor.form.identifying_features || null,
+          p_confusing_note:this.editor.form.confusing_note || null,
+          p_primary_image_path:primary.image_path,
+          p_primary_image_name:primary.image_name || null
+        });
+        if(!saved?.ok) throw new Error(saved?.message || 'Không lưu được metadata');
+
+        const rep = await this.rpcRow('app_replace_part_assets', { p_session_token:this.session.token, p_image_id:saved.id, p_assets:assets });
+        if(!rep?.ok) throw new Error(rep?.message || 'Không lưu được assets');
+
+        this.toast('success','Đã lưu metadata Supabase và ảnh R2.');
+        this.closeEditor(); this.closeDetail(); await this.loadParts(true);
+      } catch(e) { this.toast('error', this.readError(e)); } finally { this.saving=false; }
+    },
+    async deleteCurrentPart() {
+      if(!this.detail.item || !confirm('Xóa metadata mã này? File ảnh trên R2 chưa bị xóa để tránh mất nhầm.')) return;
+      try {
+        const row = await this.rpcRow('app_delete_part', {p_session_token:this.session.token, p_image_id:this.detail.item.id});
+        if(!row?.ok) throw new Error(row?.message || 'Không xóa được');
+        this.toast('success','Đã xóa metadata.'); this.closeDetail(); await this.loadParts(true);
+      } catch(e) { this.toast('error', this.readError(e)); }
+    }
+  }
+}).mount('#app');
+</script>
 </body>
 </html>
