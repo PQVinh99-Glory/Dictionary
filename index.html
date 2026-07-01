@@ -86,6 +86,19 @@
       cursor:grab;
       overscroll-behavior:contain;
     }
+    .viewer-stage,
+    .sim-scene,
+    .sim-card {
+      contain:layout paint style;
+      transform:translateZ(0);
+      -webkit-transform:translateZ(0);
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
+    }
+    .detail-grid,
+    .detail-side {
+      contain:layout paint style;
+    }
     .viewer-stage.dragging { cursor:grabbing; }
     .viewer-object {
       transform-origin:center center;
@@ -99,7 +112,7 @@
     }
     .sim-card {
       transform-style:preserve-3d;
-      transition:transform .06s linear;
+      transition:none;
       will-change:transform;
       pointer-events:none;
     }
@@ -172,7 +185,13 @@
       .detail-overlay { padding:0 !important; align-items:flex-start !important; }
       .detail-grid { gap:.55rem !important; margin:0 !important; width:100%; }
       .viewer-stage { height:42dvh; min-height:250px; border-radius:0 0 1.25rem 1.25rem !important; padding:.5rem !important; }
-      .detail-side { border-radius:1.25rem 1.25rem 0 0 !important; width:100%; max-height:none !important; }
+      .detail-side { border-radius:1.25rem 1.25rem 0 0 !important; width:100%; max-height:none !important; flex:1 1 auto; overflow:auto; -webkit-overflow-scrolling:touch; }
+      .detail-overlay { overflow:hidden !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+      .detail-grid { height:100dvh; display:flex !important; flex-direction:column; overflow:hidden; }
+      .viewer-stage { flex:0 0 42dvh; max-height:42dvh; box-shadow:0 8px 22px rgba(15,23,42,.10) !important; }
+      .sim-thickness-layer { display:none !important; }
+      .sim-img { filter:drop-shadow(0 8px 8px rgba(15,23,42,.16)) !important; }
+      .sim-card { max-width:96vw !important; }
     }
   </style>
 </head>
@@ -185,7 +204,7 @@
         <i data-lucide="blocks" class="w-9 h-9"></i>
       </div>
       <h1 class="mt-5 text-3xl font-black tracking-tight">Catalogue AI</h1>
-      <p class="mt-1 text-slate-500 font-semibold">Hệ thống quản lý tra cứu hình ảnh.</p>
+      <p class="mt-1 text-slate-500 font-semibold">Hệ thống quản lý tra cứu hình ảnh thống minh.</p>
 
       <form @submit.prevent="login" class="mt-6 space-y-3">
         <input class="input" v-model.trim="loginForm.username" placeholder="Tên đăng nhập" autocomplete="username" />
@@ -254,7 +273,7 @@
       <div v-else-if="!parts.length" class="mt-6 glass rounded-[2rem] p-10 text-center">
         <div class="mx-auto w-20 h-20 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center"><i data-lucide="image-off" class="w-10 h-10"></i></div>
         <h2 class="mt-4 text-2xl font-black">Chưa có dữ liệu phù hợp</h2>
-        <p class="mt-2 text-slate-500 font-semibold">Bấm Thêm mã để upload ảnh database.</p>
+        <p class="mt-2 text-slate-500 font-semibold">Chọn Thêm mã.</p>
       </div>
 
       <div v-else class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -331,8 +350,8 @@
           </div>
 
           <div class="sim-guide">
-            <span class="px-3 py-2 rounded-full bg-white/85 border border-emerald-100 shadow-sm text-xs font-black text-slate-700">Kéo ngang/dọc để xoay 3D</span>
-            <span class="px-3 py-2 rounded-full bg-emerald-600/90 text-white shadow-sm text-xs font-black">Thuật toán mô phỏng độ dày</span>
+            <span class="px-3 py-2 rounded-full bg-white/85 border border-emerald-100 shadow-sm text-xs font-black text-slate-700">Kéo nhẹ để xoay 3D</span>
+            <span class="px-3 py-2 rounded-full bg-emerald-600/90 text-white shadow-sm text-xs font-black">Thuật toán giả lập 3D</span>
           </div>
         </div>
         <img v-else-if="activeAssetUrl" :src="activeAssetUrl" class="viewer-object part-img max-w-[96%] max-h-[96%] object-contain" :style="viewerTransform" draggable="false" />
@@ -370,7 +389,7 @@
           <button @click="flipSim" class="btn h-10 bg-white border border-emerald-100 hover:bg-emerald-50" :disabled="detail.tab!=='sim'"><i data-lucide="repeat-2" class="w-4 h-4"></i></button>
         </div>
         <p class="mt-2 text-[11px] leading-relaxed text-slate-500 font-semibold">
-          PC: lăn chuột để zoom, kéo ảnh để xem chi tiết. Mobile: dùng 2 ngón để phóng to/thu nhỏ, 1 ngón để kéo ảnh.
+          PC: lăn chuột để zoom, kéo ảnh để xem chi tiết. Mobile: 2 ngón để phóng to/thu nhỏ; trong 3D kéo nhẹ để xoay, app tự bật chế độ nhẹ cho iOS/Safari.
         </p>
 
         <div v-if="detailAssets.length" class="mt-3 grid grid-cols-4 gap-2">
@@ -405,7 +424,7 @@
             <label class="btn h-11 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-pointer"><i data-lucide="scan-search" class="w-5 h-5"></i>Ảnh chi tiết 1<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('detail', 1, $event)" /></label>
             <label class="btn h-11 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 cursor-pointer"><i data-lucide="scan-search" class="w-5 h-5"></i>Ảnh chi tiết 2<input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onFileChange('detail', 2, $event)" /></label>
           </div>
-          <p class="text-xs text-slate-500 leading-relaxed">Ảnh nên tách nền trước, xuất PNG/WebP trong suốt. App sẽ giữ alpha, nén WebP và upload lên Cloud. Với mã 2 mặt khác nhau, hãy upload front/back cùng chiều scale 3D.</p>
+          <p class="text-xs text-slate-500 leading-relaxed">Ảnh nên tách nền trước, xuất PNG/WebP trong suốt. App sẽ giữ alpha, nén WebP và upload lên Cloud. Với mã 2 mặt khác nhau, hãy upload front/back cùng chiều, cùng scale để 3D lật chuẩn hơn.</p>
         </section>
 
         <form @submit.prevent="savePart" class="space-y-3">
@@ -469,6 +488,7 @@ createApp({
       parts:[], page:0, hasMore:false,
       detail:{ open:false, item:null, assets:[], tab:'front', activeAsset:null, flipped:false, zoom:1, panX:0, panY:0, rotX:-8, rotY:18, dragging:false, pointerId:null, startX:0, startY:0, startPanX:0, startPanY:0, startRotX:-8, startRotY:18, pinchStartDistance:0, pinchStartZoom:1 },
       editor:{ open:false, form:this.emptyForm(), assets:[], files:{}, previews:{} },
+      isLowPower3D:false,
       pointerCache:null
     };
   },
@@ -486,10 +506,16 @@ createApp({
       const back = this.assetTypeUrl('back');
       return this.detail.item?.is_symmetric ? front : (back || front);
     },
-    simEdgeLayers() { return [-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6]; },
+    simEdgeLayers() {
+      if (this.isLowPower3D) return [];
+      return [-3,-2,-1,0,1,2,3];
+    },
     simTransform() {
-      const thickness = '12px';
-      return `--thickness:${thickness}; transform: translate3d(${this.detail.panX}px, ${this.detail.panY}px, 0) scale(${this.detail.zoom}) rotateX(${this.detail.rotX}deg) rotateY(${this.detail.rotY}deg);`;
+      const thickness = this.isLowPower3D ? '6px' : '12px';
+      const z = Math.round(this.detail.zoom * 100) / 100;
+      const rx = Math.round(this.detail.rotX * 10) / 10;
+      const ry = Math.round(this.detail.rotY * 10) / 10;
+      return `--thickness:${thickness}; transform: translate3d(0px, 0px, 0) scale(${z}) rotateX(${rx}deg) rotateY(${ry}deg);`;
     },
     editorPreview() {
       return this.editor.previews['front_1'] || this.assetPathUrl(this.findEditorAsset('front',1)?.image_path, this.findEditorAsset('front',1)?.storage_provider) || '';
@@ -506,6 +532,8 @@ createApp({
   },
   async mounted() {
     this.sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    this.isLowPower3D = this.detectLowPower3D();
+    window.addEventListener('resize', () => { this.isLowPower3D = this.detectLowPower3D(); }, {passive:true});
     this.updateTime(); setInterval(this.updateTime, 30000);
     await this.checkSession();
     this.renderIcons();
@@ -517,6 +545,12 @@ createApp({
     renderIcons() { nextTick(() => lucide?.createIcons?.()); },
     toast(type,text) { this.notice={type,text}; if(text) setTimeout(()=>{ if(this.notice.text===text) this.notice={type:'',text:''}; }, 5500); },
     readError(err) { return err?.message || String(err) || 'Có lỗi xảy ra'; },
+    detectLowPower3D() {
+      const ua = navigator.userAgent || '';
+      const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isMobile = window.matchMedia?.('(max-width: 760px)').matches;
+      return !!(isIOS || isMobile);
+    },
     async rpcRow(fn,args) { const {data,error} = await this.sb.rpc(fn,args); if(error) throw error; return Array.isArray(data) ? data[0] : data; },
     async rpcRows(fn,args) { const {data,error} = await this.sb.rpc(fn,args); if(error) throw error; return data || []; },
 
@@ -595,9 +629,9 @@ createApp({
       this.detail.rotY = this.detail.rotY + 180;
     },
     simLayerStyle(n) {
-      const z = Number(n) * 1.15;
-      const x = Number(n) * 0.35;
-      const opacity = 0.055 + Math.max(0, 6 - Math.abs(Number(n))) * 0.015;
+      const z = Number(n) * 1.1;
+      const x = Number(n) * 0.28;
+      const opacity = 0.04 + Math.max(0, 3 - Math.abs(Number(n))) * 0.018;
       return `transform: translateZ(${z}px) translateX(${x}px); opacity:${opacity};`;
     },
     clamp(n,min,max) { return Math.max(min, Math.min(max, n)); },
@@ -670,8 +704,10 @@ createApp({
         const dy = e.clientY - this.detail.startY;
 
         if (this.detail.tab === 'sim') {
-          this.detail.rotY = this.detail.startRotY + dx * 0.42;
-          this.detail.rotX = this.clamp(this.detail.startRotX - dy * 0.25, -55, 55);
+          const nextY = Math.round((this.detail.startRotY + dx * 0.34) * 10) / 10;
+          const nextX = Math.round(this.clamp(this.detail.startRotX - dy * 0.20, -45, 45) * 10) / 10;
+          if (Math.abs(nextY - this.detail.rotY) > 0.15) this.detail.rotY = nextY;
+          if (Math.abs(nextX - this.detail.rotX) > 0.15) this.detail.rotX = nextX;
         } else {
           this.detail.panX = this.detail.startPanX + dx;
           this.detail.panY = this.detail.startPanY + dy;
@@ -775,7 +811,7 @@ createApp({
       this.saving=true;
       try {
         const code = this.editor.form.code.trim().toUpperCase();
-        if(!code) throw new Error('Cần nhập mã hàng.');
+        if(!code) throw new Error('Anh cần nhập mã hàng.');
         let assets = this.editor.assets.map(a => ({ asset_type:a.asset_type, storage_provider:a.storage_provider || 'r2', bucket_name:a.bucket_name || 'catalogue-images', image_path:a.image_path, image_name:a.image_name || null, sort_order:Number(a.sort_order||1) }));
 
         for(const [key,file] of Object.entries(this.editor.files)) {
@@ -789,7 +825,7 @@ createApp({
         }
         assets = assets.filter(a => a.image_path);
         const primary = assets.find(a => a.asset_type==='thumb') || assets.find(a => a.asset_type==='front') || assets[0];
-        if(!primary) throw new Error('Cần chọn ít nhất ảnh mặt chính/front hoặc giữ ảnh cũ.');
+        if(!primary) throw new Error('Anh cần chọn ít nhất ảnh mặt chính/front hoặc giữ ảnh cũ.');
 
         const saved = await this.rpcRow('app_upsert_part_metadata', {
           p_session_token:this.session.token,
@@ -804,17 +840,17 @@ createApp({
           p_primary_image_path:primary.image_path,
           p_primary_image_name:primary.image_name || null
         });
-        if(!saved?.ok) throw new Error(saved?.message || 'Không lưu được data');
+        if(!saved?.ok) throw new Error(saved?.message || 'Không lưu được metadata');
 
         const rep = await this.rpcRow('app_replace_part_assets', { p_session_token:this.session.token, p_image_id:saved.id, p_assets:assets });
         if(!rep?.ok) throw new Error(rep?.message || 'Không lưu được assets');
 
-        this.toast('success','Đã lưu data và ảnh.');
+        this.toast('success','Đã lưu metadata Supabase và ảnh R2.');
         this.closeEditor(); this.closeDetail(); await this.loadParts(true);
       } catch(e) { this.toast('error', this.readError(e)); } finally { this.saving=false; }
     },
     async deleteCurrentPart() {
-      if(!this.detail.item || !confirm('Xóa data mã này? File ảnh trên R2 chưa bị xóa để tránh mất nhầm.')) return;
+      if(!this.detail.item || !confirm('Xóa metadata mã này? File ảnh trên R2 chưa bị xóa để tránh mất nhầm.')) return;
       try {
         const row = await this.rpcRow('app_delete_part', {p_session_token:this.session.token, p_image_id:this.detail.item.id});
         if(!row?.ok) throw new Error(row?.message || 'Không xóa được');
