@@ -53,11 +53,28 @@ export async function callOpenRouter(config, {
   };
   if (responseFormat) body.response_format = responseFormat;
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method:"POST",
-    headers:headers(config),
-    body:JSON.stringify(body)
-  });
+  const controller = new AbortController();
+  const timeoutMs = Number(config.openrouterTimeoutMs || 30000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res;
+  try {
+    res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method:"POST",
+      headers:headers(config),
+      body:JSON.stringify(body),
+      signal:controller.signal
+    });
+  } catch (e) {
+    if (e?.name === "AbortError") {
+      const error = new Error(`OpenRouter quá thời gian chờ sau ${timeoutMs} ms.`);
+      error.status = 504;
+      throw error;
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
