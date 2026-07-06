@@ -740,6 +740,9 @@ const CONFIG = {
   SUPABASE_URL: 'https://vhsikdgkzecdfopkpzum.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc2lrZGdremVjZGZvcGtwenVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjgyMTcsImV4cCI6MjA5Njg0NDIxN30.bj1yl4azsk8X-V2I1C6l5Qpa0kqt6j0TP4ZCJ3Du0l4',
   R2_PUBLIC_URL: 'https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev',
+  // Chỉ đổi đường ĐỌC ảnh: đi qua Pages Function cùng origin.
+  // Upload giữ nguyên như hiện tại.
+  R2_MEDIA_BASE_URL: '/api/media',
   
   // Upload mới: ưu tiên Pages Function cùng origin.
   // Trên dictionary.pages.dev => https://dictionary.pages.dev/api/upload
@@ -907,12 +910,30 @@ createApp({
     usageLabel(v) { return {left:'Bên trái', right:'Bên phải', both:'Cả hai bên', unknown:'Chưa xác định'}[v] || 'Chưa xác định'; },
     viewModeLabel(v) { return {single_face:'1 mặt', dual_face:'2 mặt', detail_set:'Chi tiết'}[v] || '1 mặt'; },
     assetSort(a) { return {thumb:0, front:1, back:2, detail:3, compare:4}[a.asset_type] ?? 9; },
+    encodeObjectKey(path) {
+      return String(path || '')
+        .replace(/^\\/+/, '')
+        .split('/')
+        .filter(Boolean)
+        .map(segment => encodeURIComponent(segment))
+        .join('/');
+    },
+
     assetPathUrl(path, provider='r2') {
       if (!path) return '';
-      if (/^https?:\/\//i.test(path)) return path;
-      const clean = String(path).replace(/^\/+/, '');
-      if ((provider || 'r2') === 'r2') return `${CONFIG.R2_PUBLIC_URL}/${clean}`;
-      const { data } = this.sb.storage.from(CONFIG.SUPABASE_BUCKET_FALLBACK).getPublicUrl(clean);
+      if (/^https?:\\/\\//i.test(path)) return path;
+
+      const clean = String(path).replace(/^\\/+/, '');
+
+      if ((provider || 'r2') === 'r2') {
+        const encodedKey = this.encodeObjectKey(clean);
+        return `${CONFIG.R2_MEDIA_BASE_URL}/${encodedKey}`;
+      }
+
+      const { data } = this.sb.storage
+        .from(CONFIG.SUPABASE_BUCKET_FALLBACK)
+        .getPublicUrl(clean);
+
       return data?.publicUrl || '';
     },
     assetUrl(asset) { return this.assetPathUrl(asset?.image_path, asset?.storage_provider); },
