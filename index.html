@@ -740,6 +740,14 @@ const CONFIG = {
   SUPABASE_URL: 'https://vhsikdgkzecdfopkpzum.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc2lrZGdremVjZGZvcGtwenVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjgyMTcsImV4cCI6MjA5Njg0NDIxN30.bj1yl4azsk8X-V2I1C6l5Qpa0kqt6j0TP4ZCJ3Du0l4',
   R2_PUBLIC_URL: 'https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev',
+  
+  // Upload mới: ưu tiên Pages Function cùng origin.
+  // Trên dictionary.pages.dev => https://dictionary.pages.dev/api/upload
+  UPLOAD_PRIMARY_URL: '/api/upload',
+  UPLOAD_HEALTH_URL: '/api/upload/health',
+  UPLOAD_HEALTH_TTL_MS: 60000,
+
+  // Worker cũ vẫn giữ làm fallback/rollback. Chưa xóa.
   R2_WORKER_URL: 'https://catalogue-r2-upload-api.pqvinh1999.workers.dev',
   
   // URL CỦA WORKER PROXY REMOVE.BG (Anh thay link worker vừa deploy vào đây)
@@ -766,6 +774,10 @@ createApp({
       detail:{ open:false, item:null, assets:[], tab:'front', activeAsset:null, flipped:false, zoom:1, panX:0, panY:0, rotX:-8, rotY:18, dragging:false, pointerId:null, startX:0, startY:0, startPanX:0, startPanY:0, startRotX:-8, startRotY:18, pinchStartDistance:0, pinchStartZoom:1 },
       editor:{ open:false, autoRemoveBg: true, form:this.emptyForm(), assets:[], files:{}, previews:{} },
       bulkImport: { open: false, files: [], groups: [], uploading: false, progress: 0, current: 0, total: 0, successCount: 0, errorCount: 0, statusText: '' },
+      
+      // Cache lựa chọn đường upload để không health-check lặp lại mỗi ảnh.
+      uploadRoute: { provider:'unknown', endpoint:'', checkedAt:0, health:'' },
+
       isLowPower3D:false,
       pointerCache:null
     };
@@ -1127,22 +1139,122 @@ createApp({
     },
     async makeThumbFile(file) { return this.compressImageToWebp(file, 460, .75); },
     
+    async fetchWithTimeout(url, options={}, timeoutMs=3500) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, {...options, signal:controller.signal});
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+
+    async resolveUploadProvider(force=false) {
+      const now = Date.now();
+      const ttl = Number(CONFIG.UPLOAD_HEALTH_TTL_MS || 60000);
+
+      if (
+        !force &&
+        this.uploadRoute.endpoint &&
+        (now - Number(this.uploadRoute.checkedAt || 0)) < ttl
+      ) {
+        return this.uploadRoute;
+      }
+
+      // 1) Ưu tiên Pages Function cùng origin.
+      try {
+        const res = await this.fetchWithTimeout(
+          CONFIG.UPLOAD_HEALTH_URL,
+          {
+            method:'GET',
+            headers:{'accept':'application/json'},
+            cache:'no-store'
+          },
+          2500
+        );
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data?.ok && data?.provider === 'pages-r2') {
+          this.uploadRoute = {
+            provider:'pages-r2',
+            endpoint:CONFIG.UPLOAD_PRIMARY_URL,
+            checkedAt:now,
+            health:'healthy'
+          };
+          return this.uploadRoute;
+        }
+      } catch (_) {
+        // App cũ/GitHub Pages có thể chưa có Pages Function.
+      }
+
+      // 2) Fallback có kiểm soát về Worker cũ.
+      // Không POST thử rồi mới fallback để tránh upload trùng.
+      this.uploadRoute = {
+        provider:'legacy-worker',
+        endpoint:`${String(CONFIG.R2_WORKER_URL || '').replace(/\/+$/,'')}/upload`,
+        checkedAt:now,
+        health:'fallback'
+      };
+      return this.uploadRoute;
+    },
+
     async uploadToR2(file, code, assetType) {
       const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent || '');
       const maxEdge = assetType === 'thumb' ? 420 : (assetType === 'detail' ? (isIOS ? 1100 : 1300) : (isIOS ? 1400 : 1600));
       const quality = assetType === 'thumb' ? .75 : (isIOS ? .85 : .90);
-      
-      const prepared = assetType === 'thumb' ? await this.makeThumbFile(file) : await this.compressImageToWebp(file, maxEdge, quality);
+
+      const prepared = assetType === 'thumb'
+        ? await this.makeThumbFile(file)
+        : await this.compressImageToWebp(file, maxEdge, quality);
+
+      const route = await this.resolveUploadProvider(false);
+      if (!route?.endpoint) throw new Error('Không tìm thấy đường upload khả dụng.');
+
       const form = new FormData();
       form.append('file', prepared);
       form.append('code', code);
       form.append('asset_type', assetType);
-      
-      const res = await fetch(`${CONFIG.R2_WORKER_URL}/upload`, { method:'POST', headers:{'x-session-token':this.session.token}, body:form });
+
+      const uploadId = globalThis.crypto?.randomUUID?.()
+        || `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      form.append('upload_id', uploadId);
+
+      let res;
+      try {
+        res = await this.fetchWithTimeout(
+          route.endpoint,
+          {
+            method:'POST',
+            headers:{
+              'x-session-token':this.session.token,
+              'x-upload-id':uploadId
+            },
+            body:form
+          },
+          30000
+        );
+      } catch (e) {
+        // Không tự POST lại sang provider khác:
+        // request đầu có thể đã ghi R2 nhưng response bị mất.
+        throw new Error(
+          `Upload qua ${route.provider} thất bại: ${e?.name === 'AbortError' ? 'quá thời gian chờ' : this.readError(e)}`
+        );
+      }
+
       const data = await res.json().catch(()=>({}));
-      if(!res.ok || !data.ok) throw new Error(data.message || 'Lỗi upload lên R2');
-      
-      return { asset_type:data.asset_type || assetType, storage_provider:'r2', bucket_name:'catalogue-images', image_path:data.image_path, image_name:data.image_name || prepared.name };
+      if(!res.ok || !data.ok) {
+        throw new Error(
+          data.message || `Lỗi upload R2 qua ${route.provider} (HTTP ${res.status})`
+        );
+      }
+
+      return {
+        asset_type:data.asset_type || assetType,
+        storage_provider:'r2',
+        bucket_name:'catalogue-images',
+        image_path:data.image_path,
+        image_name:data.image_name || prepared.name
+      };
     },
     mergeAsset(list, asset, sortOrder=1) {
       const idx = list.findIndex(a => a.asset_type===asset.asset_type && Number(a.sort_order||1)===sortOrder);
