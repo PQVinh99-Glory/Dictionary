@@ -25,6 +25,7 @@ export function getDenisConfig(env) {
     maxCandidates: int(env.DENIS_MAX_CANDIDATES, 12, 4, 30),
     verifyTopK: int(env.DENIS_VERIFY_TOP_K, 4, 2, 6),
     maxScanRows: int(env.DENIS_MAX_SCAN_ROWS, 1500, 100, 5000),
+    openrouterTimeoutMs: int(env.DENIS_OPENROUTER_TIMEOUT_MS, 30000, 5000, 60000),
     appName: String(env.OPENROUTER_APP_NAME || "Denis Catalogue AI"),
     httpReferer: String(env.OPENROUTER_HTTP_REFERER || "")
   };
