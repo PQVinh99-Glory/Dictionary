@@ -30,6 +30,32 @@ function exactToken(text) {
   return matches.sort((a,b) => b.length-a.length)[0] || "";
 }
 
+function isGreeting(message) {
+  const n = norm(message);
+  if (!n) return false;
+
+  const greetingOnly = /^(hello|hi|hey|xin chao|chao|chao em|hello em|alo|good morning|good afternoon|good evening)(\s+(em|denis|anh|ban))?[!.?\s]*$/i;
+  return greetingOnly.test(n);
+}
+
+function greetingAnswer() {
+  return {
+    answer:"Chào anh 👋 Em là Denis. Em đang sẵn sàng hỗ trợ anh tìm mã hàng, phân tích đặc điểm nhận dạng, so sánh các linh kiện dễ nhầm và đối chiếu ảnh với catalogue. Anh có thể gửi mô tả hoặc đính kèm một ảnh để em bắt đầu.",
+    confidence:1,
+    abstain:false,
+    evidence:["phản hồi hội thoại trực tiếp — không cần truy xuất catalogue"],
+    warnings:[],
+    models_used:[],
+    candidates:[],
+    debug:{
+      action:"greeting",
+      candidate_count:0,
+      vision_used:false,
+      judge_used:false
+    }
+  };
+}
+
 function simpleIntent(message, hasImage) {
   const n = norm(message);
   const usageSide = /\bben trai\b|\bleft\b/.test(n)
@@ -453,6 +479,12 @@ export async function runDenis(env, {
   }
 
   const hasImage = !!imageDataUrl;
+
+  // Chào hỏi không được biến thành truy vấn catalogue.
+  if (!hasImage && isGreeting(message)) {
+    return greetingAnswer();
+  }
+
   const simple = simpleIntent(message, hasImage);
 
   let intent = simple.intent;
