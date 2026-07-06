@@ -912,7 +912,7 @@ createApp({
     assetSort(a) { return {thumb:0, front:1, back:2, detail:3, compare:4}[a.asset_type] ?? 9; },
     encodeObjectKey(path) {
       return String(path || '')
-        .replace(/^\\/+/, '')
+        .replace(/^\/+/, '')
         .split('/')
         .filter(Boolean)
         .map(segment => encodeURIComponent(segment))
@@ -921,9 +921,9 @@ createApp({
 
     assetPathUrl(path, provider='r2') {
       if (!path) return '';
-      if (/^https?:\\/\\//i.test(path)) return path;
+      if (/^https?:\/\//i.test(path)) return path;
 
-      const clean = String(path).replace(/^\\/+/, '');
+      const clean = String(path).replace(/^\/+/, '');
 
       if ((provider || 'r2') === 'r2') {
         const encodedKey = this.encodeObjectKey(clean);
