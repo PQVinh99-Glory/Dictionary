@@ -416,15 +416,36 @@
         <p class="font-black text-slate-500 text-lg">Đang tải dữ liệu từ máy chủ...</p>
       </div>
 
-      <div v-else-if="!parts.length" class="glass rounded-[2.5rem] p-16 text-center">
+      <div v-else-if="!displayedParts.length" class="glass rounded-[2.5rem] p-16 text-center">
         <div class="mx-auto w-24 h-24 rounded-[2rem] bg-slate-100 text-slate-400 flex items-center justify-center border border-slate-200 mb-6"><i data-lucide="package-search" class="w-12 h-12"></i></div>
         <h2 class="text-2xl font-black text-slate-700">Chưa có dữ liệu</h2>
         <p class="mt-2 text-slate-500 font-semibold">Thử thay đổi bộ lọc hoặc bấm Thêm mã mới.</p>
       </div>
 
+
+      <div v-if="denisSearch.active" class="glass rounded-[2rem] p-4 sm:p-5 mb-6 border border-emerald-200 bg-emerald-50/70">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black tracking-widest uppercase">Denis Top 5</span>
+              <span class="text-xs font-black text-emerald-700">{{ denisSearch.results.length }} kết quả đang được lọc trên giao diện</span>
+            </div>
+            <p class="mt-2 text-sm font-semibold text-slate-600 line-clamp-2">{{ denisSearch.summary || 'Denis đã lọc catalogue theo kết quả AI.' }}</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button @click="clearDenisSearch" class="btn h-10 px-4 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+              <i data-lucide="list-restart" class="w-4 h-4"></i> Xóa lọc AI
+            </button>
+            <button @click="openDenis" class="btn h-10 px-4 bg-emerald-600 text-white hover:bg-emerald-700">
+              <i data-lucide="brain-circuit" class="w-4 h-4"></i> Mở Denis
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Danh sách - Sử dụng CSS content-visibility để tăng hiệu năng -->
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <article v-for="item in parts" :key="item.id" class="catalog-card rounded-[2rem] overflow-hidden group">
+        <article v-for="item in displayedParts" :key="item.id" class="catalog-card rounded-[2rem] overflow-hidden group">
           <button @click="openDetail(item)" class="block w-full text-left h-full flex flex-col">
             <div class="checker aspect-[4/3] flex items-center justify-center overflow-hidden border-b border-slate-100 relative">
               <img v-if="partThumbUrl(item)" :src="partThumbUrl(item)" loading="lazy" class="part-img max-w-[85%] max-h-[85%] object-contain transition duration-500 group-hover:scale-[1.08]" />
@@ -909,7 +930,7 @@
           v-model="denis.input"
           @keydown.enter.exact.prevent="sendDenisMessage"
           class="denis-textarea"
-          placeholder="Hỏi Denis về mã hàng, hình ảnh, đặc điểm nhận dạng..."
+          placeholder="Up ảnh hoặc mô tả đặc điểm để Denis lọc Top 5..."
           :disabled="denis.busy"></textarea>
 
         <div class="denis-compose-actions">
@@ -927,7 +948,7 @@
         </div>
       </div>
       <p class="mt-2 px-1 text-[9px] leading-relaxed font-bold text-slate-400">
-        Denis chỉ dùng dữ liệu catalogue làm bằng chứng; khi thiếu dữ liệu, Denis phải nói chưa chắc chắn.
+        Denis sẽ tự lọc giao diện theo Top 5; chat chỉ dùng để giải thích bằng chứng.
       </p>
     </footer>
   </aside>
@@ -995,9 +1016,17 @@ createApp({
           {
             id:'denis-welcome',
             role:'assistant',
-            text:'Chào anh, em là Denis. Em quản lý ngữ cảnh của thư viện hình ảnh này và có thể tìm mã, phân tích đặc điểm nhận dạng, đối chiếu ảnh, chỉ ra điểm dễ nhầm và nói rõ khi bằng chứng chưa đủ.'
+            text:'Denis sẵn sàng ở chế độ AI Vision Search. Anh hãy up ảnh con hàng hoặc mô tả đặc điểm như số lỗ, màu, hình dạng, flange/ngàm/cạnh; Denis sẽ lọc Top 5 trực tiếp trên catalogue.'
           }
         ]
+      },
+      denisSearch:{
+        active:false,
+        results:[],
+        ids:[],
+        summary:'',
+        observation:null,
+        updatedAt:null
       },
 
       isLowPower3D:false,
@@ -1006,6 +1035,9 @@ createApp({
   },
   computed:{
     canEdit() { return ['admin','editor'].includes(this.session.user?.role_name); },
+    displayedParts() {
+      return this.denisSearch.active ? this.denisSearch.results : this.parts;
+    },
     detailAssets() { return this.detail.assets.filter(a => a.asset_type === 'detail'); },
     activeAssetUrl() {
       if (this.detail.tab === 'detail') {
@@ -1698,32 +1730,69 @@ createApp({
       await this.openDetail(candidate);
     },
 
+    applyDenisSearchResults(data) {
+      const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+      this.denisSearch.active = true;
+      this.denisSearch.results = candidates;
+      this.denisSearch.ids = candidates.map(c => c.id).filter(Boolean);
+      this.denisSearch.summary = data.summary || data.answer || 'Denis đã lọc Top 5 theo bằng chứng ảnh/metadata.';
+      this.denisSearch.observation = data.observation || null;
+      this.denisSearch.updatedAt = Date.now();
+
+      const msg = [
+        data.summary || data.answer || 'Em đã lọc Top 5 trực tiếp trên giao diện catalogue.',
+        candidates.length ? `\nTop ${candidates.length}: ${candidates.map(c => c.code).filter(Boolean).join(', ')}` : '',
+        Array.isArray(data.warnings) && data.warnings.length ? `\nLưu ý: ${data.warnings.join('; ')}` : ''
+      ].join('');
+
+      this.denis.messages.push({
+        id:`a-${Date.now()}`,
+        role:'assistant',
+        text:msg,
+        evidence:Array.isArray(data.evidence) ? data.evidence : [],
+        warnings:Array.isArray(data.warnings) ? data.warnings : [],
+        candidates
+      });
+    },
+
+    clearDenisSearch() {
+      this.denisSearch.active = false;
+      this.denisSearch.results = [];
+      this.denisSearch.ids = [];
+      this.denisSearch.summary = '';
+      this.denisSearch.observation = null;
+      this.denisSearch.updatedAt = null;
+      this.$nextTick(() => this.renderIcons());
+    },
+
     async sendDenisMessage() {
       if (this.denis.busy) return;
       const message = String(this.denis.input || '').trim();
       const imageDataUrl = this.denis.imageDataUrl || '';
-      if (!message && !imageDataUrl) return;
 
-      const userText = message || 'Phân tích ảnh này và tìm linh kiện phù hợp trong thư viện.';
+      if (!message && !imageDataUrl) {
+        this.toast('info', 'Anh hãy nhập mô tả hoặc đính kèm ảnh để Denis lọc Top 5.');
+        return;
+      }
+
+      const userText = message || 'Tìm linh kiện giống ảnh này. Hãy phân tích số lỗ, màu, hình dạng và đặc điểm nhận dạng để lọc Top 5.';
       this.denis.messages.push({
         id:`u-${Date.now()}`,
         role:'user',
         text:userText
       });
 
-      const history = this.denis.messages
-        .filter(m => m.role==='user' || m.role==='assistant')
-        .slice(-8)
-        .map(m => ({role:m.role, content:String(m.text || '').slice(0,1800)}));
-
       this.denis.input = '';
       this.denis.busy = true;
-      this.denis.status = imageDataUrl ? 'Đang quan sát ảnh và truy xuất catalogue...' : 'Đang truy xuất catalogue...';
+      this.denis.status = imageDataUrl
+        ? 'Đang phân tích ảnh, số lỗ và đặc điểm nhận dạng...'
+        : 'Đang phân tích mô tả và truy xuất catalogue...';
+      this.clearDenisSearch();
       this.scrollDenisToBottom();
 
       try {
         const res = await this.fetchWithTimeout(
-          '/api/denis/chat',
+          '/api/denis/search',
           {
             method:'POST',
             headers:{
@@ -1733,34 +1802,26 @@ createApp({
             body:JSON.stringify({
               message:userText,
               image_data_url:imageDataUrl || null,
-              conversation:history
+              top_k:5
             })
           },
-          90000
+          120000
         );
 
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) {
-          throw new Error(data.message || `Denis API lỗi HTTP ${res.status}`);
+          throw new Error(data.message || `Denis Search API lỗi HTTP ${res.status}`);
         }
 
-        this.denis.messages.push({
-          id:`a-${Date.now()}`,
-          role:'assistant',
-          text:data.answer || 'Denis chưa có đủ bằng chứng để trả lời.',
-          evidence:Array.isArray(data.evidence) ? data.evidence : [],
-          warnings:Array.isArray(data.warnings) ? data.warnings : [],
-          candidates:Array.isArray(data.candidates) ? data.candidates : [],
-          confidence:data.confidence ?? null
-        });
-
+        this.applyDenisSearchResults(data);
         this.clearDenisImage();
+        this.toast('success', `Denis đã lọc Top ${Math.min(5, data.candidates?.length || 0)} trên giao diện.`);
       } catch (e) {
         this.denis.messages.push({
           id:`a-${Date.now()}`,
           role:'assistant',
-          text:`Em chưa xử lý được yêu cầu này: ${this.readError(e)}`,
-          warnings:['Không có thay đổi nào được ghi vào dữ liệu catalogue.']
+          text:`Em chưa lọc được Top 5: ${this.readError(e)}`,
+          warnings:['Catalogue không bị thay đổi. Anh có thể thử mô tả cụ thể hơn hoặc dùng ảnh rõ hơn.']
         });
       } finally {
         this.denis.busy = false;
