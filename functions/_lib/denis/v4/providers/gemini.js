@@ -71,14 +71,11 @@ export async function callGeminiJson(env, {
             parts
           }
         ],
-        generationConfig:{
-          temperature,
-          maxOutputTokens,
-          responseFormat:{
-            text:{
-              mimeType:"application/json",
-              schema
-            }
+        generationConfig: {
+  temperature: 0.1,
+  responseMimeType: "application/json",
+  responseSchema: visualSchema
+}
           }
         }
       })
