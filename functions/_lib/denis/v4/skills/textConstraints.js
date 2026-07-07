@@ -1,7 +1,8 @@
 const STOPWORDS = new Set([
   "anh","em","giup","tim","loc","cho","con","hang","linh","kien",
   "image","photo","hinh","anh","nay","phan","tich","giong","search",
-  "find","please","the","and","voi","cua","trong","tren","duoi"
+  "find","please","the","and","voi","cua","trong","tren","duoi",
+  "nhung","cac","co","mot","nhieu","duoc","thuoc","dang","day","do"
 ]);
 
 const COLORS = {
