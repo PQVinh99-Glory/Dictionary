@@ -6,6 +6,7 @@ import { extractTextConstraints } from "./skills/textConstraints.js";
 import { rankMetadata } from "./skills/metadataRanker.js";
 import { gateBeforeVision, gateAfterSignature, isResolverAmbiguous } from "./skills/ambiguityGate.js";
 import { toPublicCandidate } from "./skills/candidateBuilder.js";
+import { strongDeterministicMatches } from "./skills/strongFilter.js";
 import { visualAnalystGemini, visualAnalystGemmaFallback } from "./agents/visualAnalyst.js";
 import { resolveImageCandidates, resolveTextCandidates } from "./agents/evidenceResolver.js";
 import { criticJudge } from "./agents/criticJudge.js";
@@ -135,6 +136,65 @@ export async function runDenisV4(env, {
 
   let initialRanked = rankMetadata(initialRows,constraints,null);
 
+  // Strong deterministic business constraints should not call AI.
+  // Example: "6 lỗ", "bushing xám 4 lỗ".
+  let strongMatch = strongDeterministicMatches(initialRanked,constraints);
+
+  if (!strongMatch.matched && initialRows.length < 6) {
+    const scannedForStrongFilter = await scanCatalogue(
+      env,
+      token,
+      {maxRows:budget.maxScanRows}
+    );
+
+    const scannedRanked = rankMetadata(
+      scannedForStrongFilter,
+      constraints,
+      null
+    );
+
+    strongMatch = strongDeterministicMatches(
+      scannedRanked,
+      constraints
+    );
+
+    if (strongMatch.matched) {
+      initialRanked = scannedRanked;
+      trace(ctx,"strong_filter.scan_fallback",{
+        scanned:scannedForStrongFilter.length,
+        matched:strongMatch.rows.length
+      });
+    }
+  }
+
+  if (strongMatch.matched) {
+    const candidates = strongMatch.rows
+      .slice(0,5)
+      .map(x => toPublicCandidate(
+        x.row,
+        {reason:strongMatch.reason},
+        x.meta
+      ));
+
+    assertTop5ForUi({queryId:ctx.query_id,candidates});
+
+    return {
+      ok:true,
+      query_id:ctx.query_id,
+      image_hash:ctx.image_hash,
+      candidate_pool_hash:await hashCandidatePool(
+        strongMatch.rows.map(x=>x.row)
+      ),
+      mode:"EASY_STRONG_FILTER",
+      summary:strongMatch.reason,
+      observation:null,
+      evidence:["strong deterministic filter"],
+      warnings,
+      candidates,
+      trace:publicTrace(ctx)
+    };
+  }
+
   // Exact deterministic path.
   const exact = initialRanked.find(x =>
     x.meta.matched.includes("exact code") ||
@@ -248,31 +308,64 @@ export async function runDenisV4(env, {
     const poolRows = pool.map(x=>x.row);
     const poolHash = await hashCandidatePool(poolRows);
 
-    const resolved = await resolveTextCandidates(env,{
-      model:models.gemma,
-      timeoutMs:budget.openrouterTimeoutMs,
-      message,
-      candidates:poolRows
-    });
+    try {
+      const resolved = await resolveTextCandidates(env,{
+        model:models.gemma,
+        timeoutMs:budget.openrouterTimeoutMs,
+        message,
+        candidates:poolRows
+      });
 
-    validateRanking(resolved,poolRows);
+      validateRanking(resolved,poolRows);
 
-    const candidates = topFromRanking(resolved,poolRows,pool);
-    assertTop5ForUi({queryId:ctx.query_id,candidates});
+      const candidates = topFromRanking(resolved,poolRows,pool);
+      assertTop5ForUi({queryId:ctx.query_id,candidates});
 
-    return {
-      ok:true,
-      query_id:ctx.query_id,
-      image_hash:null,
-      candidate_pool_hash:poolHash,
-      mode:"MEDIUM_AGENT_B_METADATA",
-      summary:resolved.summary,
-      observation:null,
-      evidence:["Agent B ranked supplied metadata candidates"],
-      warnings:[...(resolved.warnings || [])],
-      candidates,
-      trace:publicTrace(ctx)
-    };
+      return {
+        ok:true,
+        query_id:ctx.query_id,
+        image_hash:null,
+        candidate_pool_hash:poolHash,
+        mode:"MEDIUM_AGENT_B_METADATA",
+        summary:resolved.summary,
+        observation:null,
+        evidence:["Agent B ranked supplied metadata candidates"],
+        warnings:[...(resolved.warnings || [])],
+        candidates,
+        trace:publicTrace(ctx)
+      };
+    } catch (e) {
+      trace(ctx,"agent_b.metadata_provider_error",{
+        provider:e.provider || "openrouter",
+        status:e.status || null,
+        error_type:e.error_type || null,
+        message:e.message
+      });
+
+      const candidates = pool.slice(0,5).map(x =>
+        toPublicCandidate(
+          x.row,
+          {reason:"metadata fallback after provider error"},
+          x.meta
+        )
+      );
+
+      assertTop5ForUi({queryId:ctx.query_id,candidates});
+
+      return {
+        ok:true,
+        query_id:ctx.query_id,
+        image_hash:null,
+        candidate_pool_hash:poolHash,
+        mode:"MEDIUM_METADATA_FALLBACK_PROVIDER_ERROR",
+        summary:"Agent B gặp lỗi provider; Denis vẫn trả Top 5 deterministic thay vì mất toàn bộ kết quả.",
+        observation:null,
+        evidence:["deterministic metadata fallback"],
+        warnings:[`Agent B provider lỗi: ${e.message}`],
+        candidates,
+        trace:publicTrace(ctx)
+      };
+    }
   }
 
   // -----------------------------------------------------------------
@@ -282,8 +375,9 @@ export async function runDenisV4(env, {
   // -----------------------------------------------------------------
 
   let signature = null;
+  const signatureErrors = [];
 
-  // Agent A primary: Gemini 3.1 Pro.
+  // Agent A primary: Gemini.
   if (env.GEMINI_API_KEY) {
     consume(ctx,budget,"gemini","Agent A — Visual Analyst");
 
@@ -298,8 +392,13 @@ export async function runDenisV4(env, {
       evidence.push("Agent A visual signature by Gemini");
       trace(ctx,"agent_a.visual_signature",signature);
     } catch (e) {
+      signatureErrors.push(`Gemini: ${e.message}`);
       warnings.push(`Gemini Visual Analyst lỗi: ${e.message}`);
-      trace(ctx,"agent_a.gemini_error",{message:e.message});
+      trace(ctx,"agent_a.gemini_error",{
+        provider:e.provider || "gemini",
+        status:e.status || null,
+        message:e.message
+      });
     }
   }
 
@@ -318,13 +417,25 @@ export async function runDenisV4(env, {
       evidence.push("Agent A visual signature fallback by Gemma");
       trace(ctx,"agent_a.fallback_signature",signature);
     } catch (e) {
+      signatureErrors.push(`OpenRouter/Gemma: ${e.message}`);
       warnings.push(`Gemma Visual Analyst fallback lỗi: ${e.message}`);
-      trace(ctx,"agent_a.fallback_error",{message:e.message});
+      trace(ctx,"agent_a.fallback_error",{
+        provider:e.provider || "openrouter",
+        status:e.status || null,
+        error_type:e.error_type || null,
+        message:e.message
+      });
     }
   }
 
   if (!signature) {
-    const e = new Error("Không tạo được visual signature. Denis từ chối dùng lại Top 5 cũ.");
+    const detail = signatureErrors.length
+      ? signatureErrors.join(" | ")
+      : "Không provider nào tạo được signature.";
+
+    const e = new Error(
+      `Không tạo được visual signature. ${detail}`
+    );
     e.status = 502;
     throw e;
   }
