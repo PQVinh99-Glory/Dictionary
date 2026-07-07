@@ -1,0 +1,20 @@
+ {
+  "source_compare": [
+    "Dictionary_Denis_V4_Complete_Upgrade.zip",
+    "Dictionary_Denis_V4_1_Provider_And_Filter_Fix.zip"
+  ],
+  "runtime_patch_files": [
+    ".env.cloudflare.v4.example",
+    "functions/_lib/denis/v4/orchestrator.js",
+    "functions/_lib/denis/v4/providers/gemini.js",
+    "functions/_lib/denis/v4/providers/models.js",
+    "functions/_lib/denis/v4/providers/openrouter.js",
+    "functions/_lib/denis/v4/skills/strongFilter.js",
+    "functions/_lib/denis/v4/skills/textConstraints.js",
+    "functions/api/denis/health-v4.js",
+    "functions/api/denis/probe-v4.js"
+  ],
+  "runtime_patch_file_count": 9,
+  "preserves_index_html": true,
+  "preserves_media_upload_r2": true
+}
