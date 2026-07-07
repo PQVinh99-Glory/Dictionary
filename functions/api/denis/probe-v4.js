@@ -49,7 +49,7 @@ export async function onRequestGet({request,env}) {
       });
     }
 
-    const model = env.DENIS_GEMINI_MODEL || "gemini-3.1-pro-preview";
+    const model = env.DENIS_GEMINI_MODEL || "gemini-3.5-flash";
     const output = await callGeminiJson(env,{
       model,
       timeoutMs:Number(env.DENIS_GEMINI_TIMEOUT_MS || 60000),
