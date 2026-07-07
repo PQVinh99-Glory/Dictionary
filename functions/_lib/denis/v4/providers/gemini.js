@@ -42,7 +42,7 @@ export async function callGeminiJson(env, {
   parts,
   schema,
   timeoutMs=60000,
-  temperature=0.05,
+  temperature=1.0,
   maxOutputTokens=4096
 }) {
   const apiKey = String(env.GEMINI_API_KEY || "");
@@ -74,8 +74,12 @@ export async function callGeminiJson(env, {
         generationConfig:{
           temperature,
           maxOutputTokens,
-          responseMimeType:"application/json",
-          responseJsonSchema:schema
+          responseFormat:{
+            text:{
+              mimeType:"application/json",
+              schema
+            }
+          }
         }
       })
     });
@@ -83,12 +87,27 @@ export async function callGeminiJson(env, {
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
-      const e = new Error(data?.error?.message || `Gemini HTTP ${res.status}`);
+      const detail = data?.error?.message
+        || data?.error?.status
+        || `Gemini HTTP ${res.status}`;
+      const e = new Error(detail);
       e.status = res.status;
+      e.provider = "gemini";
+      e.provider_payload = data?.error || null;
       throw e;
     }
 
-    return parseJson(parseText(data));
+    const text = parseText(data);
+
+    if (!text) {
+      const finishReason = data?.candidates?.[0]?.finishReason || "unknown";
+      const e = new Error(`Gemini trả response rỗng. finishReason=${finishReason}`);
+      e.status = 502;
+      e.provider = "gemini";
+      throw e;
+    }
+
+    return parseJson(text);
   } catch (e) {
     if (e?.name === "AbortError") {
       const err = new Error(`Gemini timeout sau ${timeoutMs} ms.`);
