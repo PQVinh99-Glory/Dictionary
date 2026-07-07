@@ -55,6 +55,7 @@ export async function callOpenRouterJson(env, {
         messages,
         temperature,
         max_tokens:maxTokens,
+        structured_outputs:true,
         response_format:{
           type:"json_schema",
           json_schema:{
@@ -69,12 +70,33 @@ export async function callOpenRouterJson(env, {
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
-      const e = new Error(data?.error?.message || data?.message || `OpenRouter HTTP ${res.status}`);
+      const errorType = data?.error?.type
+        || data?.error?.metadata?.error_type
+        || data?.error_type
+        || "unknown";
+      const message = data?.error?.message
+        || data?.message
+        || `OpenRouter HTTP ${res.status}`;
+
+      const e = new Error(`${message} [type=${errorType}]`);
       e.status = res.status;
+      e.provider = "openrouter";
+      e.error_type = errorType;
+      e.provider_payload = data?.error || data || null;
       throw e;
     }
 
-    return parseJson(extractText(data));
+    const text = extractText(data);
+
+    if (!text) {
+      const finishReason = data?.choices?.[0]?.finish_reason || "unknown";
+      const e = new Error(`OpenRouter trả response rỗng. finish_reason=${finishReason}`);
+      e.status = 502;
+      e.provider = "openrouter";
+      throw e;
+    }
+
+    return parseJson(text);
   } catch (e) {
     if (e?.name === "AbortError") {
       const err = new Error(`OpenRouter timeout sau ${timeoutMs} ms.`);
