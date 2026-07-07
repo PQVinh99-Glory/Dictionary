@@ -6,7 +6,7 @@ export async function onRequestGet({env}) {
     providers:{
       gemini:{
         configured:!!env.GEMINI_API_KEY,
-        model:env.DENIS_GEMINI_MODEL || "gemini-3.1-pro-preview"
+        model:env.DENIS_GEMINI_MODEL || "gemini-3.5-flash"
       },
       openrouter:{
         configured:!!env.OPENROUTER_API_KEY,
