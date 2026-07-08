@@ -264,7 +264,7 @@
     }
   
   /* ================================================================
-     DENIS — Catalogue Intelligence Assistant
+     DENIS — Trợ lý tra cứu linh kiện
      Giữ UI app hiện tại; chỉ thêm assistant layer.
   ================================================================= */
   .denis-launcher{
@@ -403,7 +403,7 @@
           </button>
         </div>
         <div class="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
-          <span class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center gap-1.5"><i data-lucide="database" class="w-3.5 h-3.5 text-emerald-600"></i> {{ parts.length }} mã đang hiển thị</span>
+          <span class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center gap-1.5"><i data-lucide="database" class="w-3.5 h-3.5 text-emerald-600"></i> {{ listStatusText }}</span>
           <span class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1.5"><i data-lucide="cloud" class="w-3.5 h-3.5"></i> R2 CDN</span>
           <span class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center gap-1.5"><i data-lucide="clock" class="w-3.5 h-3.5 text-blue-500"></i> {{ nowText }}</span>
         </div>
@@ -427,11 +427,11 @@
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black tracking-widest uppercase">Denis Top 5</span>
+              <span class="px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black tracking-widest uppercase">Thư ký Kim Top 5</span>
               <span class="text-xs font-black text-emerald-700">{{ denisSearch.results.length }} kết quả đang được lọc trên giao diện</span>
               <span v-if="denisSearch.mode" class="px-2 py-1 rounded-full bg-white border border-emerald-200 text-[9px] font-black text-emerald-700">{{ denisSearch.mode }}</span>
             </div>
-            <p class="mt-2 text-sm font-semibold text-slate-600 line-clamp-2">{{ denisSearch.summary || 'Denis đã lọc catalogue theo kết quả AI.' }}</p>
+            <p class="mt-2 text-sm font-semibold text-slate-600 line-clamp-2">{{ denisSearch.summary || 'Thư ký Kim đã lọc catalogue theo kết quả AI.' }}</p>
           </div>
           <div class="flex items-center gap-2 shrink-0">
             <button @click="clearDenisSearch" class="btn h-10 px-4 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50">
@@ -441,7 +441,7 @@
               <i data-lucide="activity" class="w-4 h-4"></i> Trace
             </button>
             <button @click="openDenis" class="btn h-10 px-4 bg-emerald-600 text-white hover:bg-emerald-700">
-              <i data-lucide="brain-circuit" class="w-4 h-4"></i> Mở Denis
+              <i data-lucide="brain-circuit" class="w-4 h-4"></i> Mở Kim
             </button>
           </div>
         </div>
@@ -451,7 +451,7 @@
       <div v-if="denisSearch.active && denisDebugOpen" class="glass rounded-[1.6rem] p-4 mb-5 border border-slate-200 bg-white/90">
         <div class="flex items-center justify-between gap-3">
           <div>
-            <div class="text-[10px] uppercase tracking-[.18em] font-black text-slate-400">Denis Runtime Trace</div>
+            <div class="text-[10px] uppercase tracking-[.18em] font-black text-slate-400">Kim Runtime Trace</div>
             <div class="mt-1 text-sm font-black text-slate-800">{{ denisSearch.mode || '---' }}</div>
           </div>
           <button @click="denisDebugOpen=false" class="w-9 h-9 rounded-xl border border-slate-200 bg-white grid place-items-center text-slate-500">
@@ -489,7 +489,7 @@
         <article v-for="item in displayedParts" :key="item.id" class="catalog-card rounded-[2rem] overflow-hidden group">
           <button @click="openDetail(item)" class="block w-full text-left h-full flex flex-col">
             <div class="checker aspect-[4/3] flex items-center justify-center overflow-hidden border-b border-slate-100 relative">
-              <img v-if="partThumbUrl(item)" :src="partThumbUrl(item)" loading="lazy" class="part-img max-w-[85%] max-h-[85%] object-contain transition duration-500 group-hover:scale-[1.08]" />
+              <img v-if="partThumbUrl(item)" :src="partThumbUrl(item)" loading="lazy" decoding="async" fetchpriority="low" width="320" height="320" class="part-img max-w-[85%] max-h-[85%] object-contain transition duration-500 group-hover:scale-[1.08]" />
               <div v-else class="text-slate-300"><i data-lucide="image-off" class="w-12 h-12"></i></div>
               <!-- Badge -->
               <div v-if="item.is_symmetric" class="absolute top-3 right-3 px-2.5 py-1 bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg backdrop-blur-sm">Đối xứng</div>
@@ -517,10 +517,28 @@
         </article>
       </div>
 
-      <div v-if="parts.length && hasMore" class="mt-10 flex justify-center pb-10">
-        <button @click="loadMore" class="btn h-14 px-8 bg-white border border-slate-200 shadow-md hover:shadow-lg hover:border-emerald-300 hover:text-emerald-700 rounded-2xl text-slate-600">
-          <i data-lucide="chevrons-down" class="w-5 h-5"></i>Tải thêm {{ CONFIG.PAGE_LIMIT }} mã
-        </button>
+      <div v-if="!denisSearch.active && (parts.length || page > 0)" class="mt-10 pb-10">
+        <div class="glass rounded-[1.5rem] p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border border-slate-200 bg-white/80">
+          <button
+            @click="goPage(-1)"
+            :disabled="page===0 || loadingImages"
+            class="btn h-12 px-5 bg-white border border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i> Trang trước
+          </button>
+
+          <div class="text-center min-w-0">
+            <div class="text-[10px] uppercase tracking-[.18em] font-black text-slate-400">Phân trang phía máy chủ</div>
+            <div class="font-black text-slate-700">Trang {{ page + 1 }} · {{ parts.length }} mã đang render</div>
+            <div class="text-xs font-semibold text-slate-400">Mỗi lần chỉ giữ tối đa {{ CONFIG.PAGE_LIMIT }} card trong DOM</div>
+          </div>
+
+          <button
+            @click="goPage(1)"
+            :disabled="!hasMore || loadingImages"
+            class="btn h-12 px-5 bg-white border border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            Trang sau <i data-lucide="chevron-right" class="w-5 h-5"></i>
+          </button>
+        </div>
       </div>
     </section>
   </main>
@@ -635,7 +653,7 @@
           
           <div v-if="detailAssets.length" class="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-soft">
             <button v-for="a in detailAssets" :key="a.id || a.image_path" @click="detail.activeAsset=a" class="checker rounded-xl overflow-hidden h-16 min-w-[4rem] border-2 transition-colors shrink-0" :class="detail.activeAsset===a ? 'border-emerald-500' : 'border-slate-200'">
-              <img :src="assetUrl(a)" class="w-full h-full object-contain" loading="lazy" />
+              <img :src="assetUrl(a)" class="w-full h-full object-contain" loading="lazy" decoding="async" fetchpriority="low" />
             </button>
           </div>
         </div>
@@ -856,22 +874,22 @@
   </div>
 
   <!-- ==============================================================
-       DENIS — Catalogue Intelligence Assistant
+       DENIS — Trợ lý tra cứu linh kiện
        Read-only intelligence layer. Không đổi metadata/RPC/R2.
   =============================================================== -->
   <button
     v-if="session.user && !denis.open"
     @click="openDenis"
     class="denis-launcher"
-    aria-label="Mở trợ lý Denis">
+    aria-label="Mở trợ lý Thư ký Kim">
     <span class="denis-orb"><i data-lucide="sparkles" class="w-5 h-5"></i></span>
-    <span>Denis</span>
+    <span>Thư ký Kim</span>
     <span class="denis-live-dot"></span>
   </button>
 
   <div v-if="denis.open" class="denis-backdrop" @click="closeDenis"></div>
 
-  <aside v-if="denis.open" class="denis-panel" aria-label="Trợ lý Denis">
+  <aside v-if="denis.open" class="denis-panel" aria-label="Trợ lý Thư ký Kim">
     <header class="denis-head">
       <div class="flex items-start justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">
@@ -880,13 +898,13 @@
           </div>
           <div class="min-w-0">
             <div class="flex items-center gap-2">
-              <h2 class="text-lg font-black text-slate-900">Denis</h2>
+              <h2 class="text-lg font-black text-slate-900">Thư ký Kim</h2>
               <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
             </div>
-            <p class="text-xs font-bold text-slate-500 truncate">Catalogue Intelligence Assistant</p>
+            <p class="text-xs font-bold text-slate-500 truncate">Trợ lý tra cứu linh kiện</p>
           </div>
         </div>
-        <button @click="closeDenis" class="denis-icon-btn shrink-0" aria-label="Đóng Denis">
+        <button @click="closeDenis" class="denis-icon-btn shrink-0" aria-label="Đóng Thư ký Kim">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
@@ -903,7 +921,7 @@
         <button class="denis-suggestion" @click="useDenisSuggestion('Tìm bushing màu xám 4 lỗ.')">Tìm bushing màu xám</button>
         <button class="denis-suggestion" @click="useDenisSuggestion('Lọc các mã có đặc điểm gần giống nhau.')">Tìm nhóm dễ nhầm</button>
         <button class="denis-suggestion" @click="useDenisSuggestion('Tìm linh kiện bên trái dễ nhầm với bên phải.')">Kiểm tra bên trái</button>
-        <button class="denis-suggestion" @click="useDenisSuggestion('Tìm theo ảnh và lọc Top 5.')">Cách Denis suy luận</button>
+        <button class="denis-suggestion" @click="useDenisSuggestion('Tìm theo ảnh và lọc Top 5.')">Cách Kim tìm ảnh</button>
       </div>
 
       <div
@@ -911,7 +929,7 @@
         :key="m.id || idx"
         :class="['denis-msg', m.role]">
         <div class="denis-bubble">
-          <div v-if="m.role==='assistant'" class="mb-1 text-[10px] uppercase tracking-[.18em] font-black text-emerald-600">Denis</div>
+          <div v-if="m.role==='assistant'" class="mb-1 text-[10px] uppercase tracking-[.18em] font-black text-emerald-600">Kim</div>
           {{ m.text }}
         </div>
 
@@ -929,7 +947,7 @@
             :key="c.id"
             class="denis-candidate"
             @click="openDenisCandidate(c)">
-            <img v-if="denisCandidateUrl(c)" :src="denisCandidateUrl(c)" loading="lazy" alt="" />
+            <img v-if="denisCandidateUrl(c)" :src="denisCandidateUrl(c)" loading="lazy" decoding="async" fetchpriority="low" alt="" />
             <div v-else class="w-[58px] h-[58px] rounded-xl bg-slate-100 grid place-items-center text-slate-300">
               <i data-lucide="image-off" class="w-5 h-5"></i>
             </div>
@@ -949,14 +967,14 @@
       <div v-if="denis.busy" class="denis-msg assistant">
         <div class="denis-bubble flex items-center gap-3">
           <span class="w-5 h-5 rounded-full border-2 border-emerald-100 border-t-emerald-600 animate-spin"></span>
-          <span class="font-bold text-slate-500">{{ denis.status || 'Denis đang phân tích...' }}</span>
+          <span class="font-bold text-slate-500">{{ denis.status || 'Thư ký Kim đang phân tích...' }}</span>
         </div>
       </div>
     </section>
 
     <footer class="denis-compose">
       <div v-if="denis.imagePreview" class="denis-preview">
-        <img :src="denis.imagePreview" alt="Ảnh query Denis" />
+        <img :src="denis.imagePreview" alt="Ảnh query Thư ký Kim" />
         <div class="min-w-0 flex-1">
           <div class="text-xs font-black text-teal-800">Ảnh truy vấn</div>
           <div class="text-[10px] font-bold text-teal-600 truncate">{{ denis.imageName }}</div>
@@ -971,7 +989,7 @@
           v-model="denis.input"
           @keydown.enter.exact.prevent="sendDenisMessage"
           class="denis-textarea"
-          placeholder="Up ảnh hoặc mô tả đặc điểm để Denis lọc Top 5..."
+          placeholder="Up ảnh hoặc mô tả đặc điểm để Thư ký Kim lọc Top 5..."
           :disabled="denis.busy"></textarea>
 
         <div class="denis-compose-actions">
@@ -989,7 +1007,7 @@
         </div>
       </div>
       <p class="mt-2 px-1 text-[9px] leading-relaxed font-bold text-slate-400">
-        Denis sẽ tự lọc giao diện theo Top 5; chat chỉ dùng để giải thích bằng chứng.
+        Thư ký Kim sẽ tự lọc giao diện theo Top 5; chat chỉ dùng để giải thích bằng chứng.
       </p>
     </footer>
   </aside>
@@ -1023,7 +1041,7 @@ const CONFIG = {
   ALLOWED_ORIGIN: 'https://pqvinh99-glory.github.io',
   SUPABASE_BUCKET_FALLBACK: 'product-images',
   LOCAL_TOKEN_KEY: 'catalogue_app_session_token_v3_r2',
-  PAGE_LIMIT: 60
+  PAGE_LIMIT: 36
 };
 
 const { createApp, nextTick } = Vue;
@@ -1033,6 +1051,7 @@ createApp({
     return {
       CONFIG,
       sb:null, loading:false, loadingImages:false, saving:false,
+      catalogueRequestSeq:0,
       notice:{type:'', text:''}, nowText:'',
       session:{ token: localStorage.getItem(CONFIG.LOCAL_TOKEN_KEY) || '', user:null },
       loginForm:{ username:'', password:'' },
@@ -1057,7 +1076,7 @@ createApp({
           {
             id:'denis-welcome',
             role:'assistant',
-            text:'Denis sẵn sàng sàng lọc catalogue. Anh hãy up ảnh hoặc mô tả đặc điểm nhận dạng; Denis chỉ gọi AI khi filter thường chưa đủ và sẽ lọc Top 5 trực tiếp trên giao diện.'
+            text:'Chào anh, em là Thư ký Kim. Anh có thể mô tả đặc điểm hoặc gửi ảnh con hàng. Em sẽ ưu tiên lọc nhanh bằng dữ liệu; chỉ khi nhiều ứng viên quá giống nhau em mới dùng AI để phân tích sâu.'
           }
         ]
       },
@@ -1082,6 +1101,12 @@ createApp({
   },
   computed:{
     canEdit() { return ['admin','editor'].includes(this.session.user?.role_name); },
+    listStatusText() {
+      if (this.denisSearch.active) {
+        return `${this.denisSearch.results.length} mã từ Thư ký Kim`;
+      }
+      return `Trang ${this.page + 1} · ${this.parts.length} mã đang render`;
+    },
     displayedParts() {
       return this.denisSearch.active ? this.denisSearch.results : this.parts;
     },
@@ -1241,22 +1266,56 @@ createApp({
     findEditorAsset(type, order=1) { return this.editor.assets.find(a => a.asset_type===type && Number(a.sort_order||1)===order) || null; },
 
     async loadParts(reset=false) {
-      if(reset) { this.page=0; this.parts=[]; }
-      this.loadingImages=true;
+      if (reset) this.page = 0;
+
+      const requestSeq = ++this.catalogueRequestSeq;
+      this.loadingImages = true;
+
       try {
+        // Lấy dư 1 row để biết chắc còn trang sau hay không.
+        // DOM vẫn chỉ render đúng CONFIG.PAGE_LIMIT rows.
         const rows = await this.rpcRows('app_search_catalogue', {
           p_session_token:this.session.token,
           p_search:this.filters.search || '',
           p_usage_side:this.filters.usage,
           p_view_mode:this.filters.viewMode,
-          p_limit:CONFIG.PAGE_LIMIT,
+          p_limit:CONFIG.PAGE_LIMIT + 1,
           p_offset:this.page * CONFIG.PAGE_LIMIT
         });
-        this.hasMore = rows.length === CONFIG.PAGE_LIMIT;
-        this.parts = reset ? rows : this.parts.concat(rows);
-      } catch(e) { this.toast('error', this.readError(e)); } finally { this.loadingImages=false; this.renderIcons(); }
+
+        // Search/filter cũ trả về trễ không được ghi đè request mới.
+        if (requestSeq !== this.catalogueRequestSeq) return;
+
+        this.hasMore = rows.length > CONFIG.PAGE_LIMIT;
+        this.parts = rows.slice(0, CONFIG.PAGE_LIMIT);
+      } catch(e) {
+        if (requestSeq === this.catalogueRequestSeq) {
+          this.toast('error', this.readError(e));
+        }
+      } finally {
+        if (requestSeq === this.catalogueRequestSeq) {
+          this.loadingImages = false;
+          this.renderIcons();
+        }
+      }
     },
-    async loadMore() { this.page += 1; await this.loadParts(false); },
+    async goPage(delta) {
+      if (this.loadingImages || this.denisSearch.active) return;
+
+      const nextPage = this.page + Number(delta || 0);
+      if (nextPage < 0) return;
+      if (delta > 0 && !this.hasMore) return;
+
+      this.page = nextPage;
+      await this.loadParts(false);
+
+      const appTop = document.querySelector('main');
+      appTop?.scrollIntoView?.({behavior:'smooth', block:'start'});
+    },
+    async loadMore() {
+      // Alias rollback-safe cho code cũ; không còn concat DOM.
+      await this.goPage(1);
+    },
 
     // --- Detail Viewer ---
     async openDetail(item) {
@@ -1699,7 +1758,7 @@ createApp({
         this.denis.imagePreview = dataUrl;
         this.denis.imageName = file.name || 'query-image';
       } catch (e) {
-        this.toast('error', `Không chuẩn bị được ảnh cho Denis: ${this.readError(e)}`);
+        this.toast('error', `Không chuẩn bị được ảnh cho Thư ký Kim: ${this.readError(e)}`);
       } finally {
         this.denis.status = '';
         if (event?.target) event.target.value = '';
@@ -1783,7 +1842,7 @@ createApp({
       this.denisSearch.active = true;
       this.denisSearch.results = candidates;
       this.denisSearch.ids = candidates.map(c => c.id).filter(Boolean);
-      this.denisSearch.summary = data.summary || 'Denis đã lọc Top 5.';
+      this.denisSearch.summary = data.summary || 'Thư ký Kim đã lọc Top 5.';
       this.denisSearch.observation = data.observation || null;
       this.denisSearch.updatedAt = Date.now();
       this.denisSearch.mode = data.mode || '';
@@ -1855,8 +1914,8 @@ createApp({
       this.denis.input = '';
       this.denis.busy = true;
       this.denis.status = imageDataUrl
-        ? 'Denis đang sàng lọc: filter → Visual Analyst → Resolver...'
-        : 'Denis đang lọc metadata và đánh giá độ mơ hồ...';
+        ? 'Thư ký Kim đang sàng lọc dữ liệu và ảnh...'
+        : 'Thư ký Kim đang lọc metadata và đánh giá độ mơ hồ...';
 
       this.clearDenisSearch();
       this.denisSearch.queryId = queryId;
@@ -1883,7 +1942,7 @@ createApp({
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.ok) {
-          throw new Error(data.message || `Denis V4 API lỗi HTTP ${res.status}`);
+          throw new Error(data.message || `Thư ký Kim API lỗi HTTP ${res.status}`);
         }
 
         // Response cũ tuyệt đối không được ghi đè query mới.
@@ -1894,7 +1953,7 @@ createApp({
 
         this.toast(
           'success',
-          `Denis V4 đã lọc Top ${Math.min(5, data.candidates?.length || 0)} · ${data.mode || ''}`
+          `Thư ký Kim đã lọc Top ${Math.min(5, data.candidates?.length || 0)} · ${data.mode || ''}`
         );
       } catch (e) {
         if (queryId !== this.denisSearch.queryId) return;
