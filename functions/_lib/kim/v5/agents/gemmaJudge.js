@@ -25,8 +25,15 @@ export async function judgeWithGemma(env, config, {
             candidate_id:String(c?.id ?? c?.record_id),
             code:c?.code ?? null,
             part_id:c?.part_id ?? null,
+            identifying_features:c?.identifying_features ?? null,
+            confusing_note:c?.confusing_note ?? null,
+            usage_side:c?.usage_side ?? null,
             vector_similarity:Number(c?.vector_similarity || 0),
-            final_score:Number(c?.final_score || 0)
+            metadata_score:Number(c?.metadata_score || 0),
+            structural_score:Number(c?.structural_score || 0),
+            final_score:Number(c?.final_score || 0),
+            matched:Array.isArray(c?.matched) ? c.matched : [],
+            conflicts:Array.isArray(c?.conflicts) ? c.conflicts : []
           })),
           gemini_result:geminiResult
         })

@@ -4,13 +4,27 @@ import { json } from "../../_lib/shared/http.js";
 export async function onRequestGet({env}) {
   const config = readKimConfig(env);
 
+  const serviceRoleConfigured =
+    !!env.SUPABASE_SERVICE_ROLE_KEY ||
+    !!env.SUPABASE_SECRET_KEY;
+
   return json({
     ok:true,
-    service:"thu-ky-kim-v5.5",
-    architecture:"browser-dinov2-vector-harness",
+    service:"thu-ky-kim-v5.8",
+    architecture:
+      "query-vector-bridge-auto-embed-queue-chunked-backfill",
 
     enabled:config.enabled,
     features:config.features,
+
+    query_vector_bridge:{
+      browser_encoder_available:true,
+      vector_search_enabled:
+        config.features.vectorSearch === true,
+      ready:
+        config.enabled === true &&
+        config.features.vectorSearch === true
+    },
 
     vector:{
       client_embedding_ready:
@@ -25,6 +39,7 @@ export async function onRequestGet({env}) {
       profile:config.vector.profile,
       dimension:config.vector.dimension,
       top_k:config.vector.topK,
+      resolver_top_k:config.vector.resolverK,
       min_similarity:config.vector.minSimilarity,
 
       browser_runtime:{
@@ -34,9 +49,17 @@ export async function onRequestGet({env}) {
       }
     },
 
-    foreground:{
-      endpoint_configured:!!config.endpoints.foreground,
-      upload_remove_bg_existing:true
+    auto_embed_queue:{
+      enabled:true,
+      persistent:true,
+      server_chunk_limit:20
+    },
+
+    vector_write:{
+      service_role_configured:
+        serviceRoleConfigured,
+      max_vectors_per_request:20,
+      chunked_client_required:true
     },
 
     providers:{
@@ -53,14 +76,9 @@ export async function onRequestGet({env}) {
       }
     },
 
-    vector_write:{
-      service_role_configured:
-        !!env.SUPABASE_SERVICE_ROLE_KEY
-    },
-
     next_action:
-      config.features.vectorSearch
-        ? "Run browser reindex, then test Recall@30."
-        : "Enable KIM_VECTOR_SEARCH_ENABLED after SQL and reindex are ready."
+      !config.features.vectorSearch
+        ? "Set KIM_VECTOR_SEARCH_ENABLED=true, redeploy, then test image query."
+        : "Test raw image Recall@30; enable Gemini then Gemma conditionally."
   });
 }

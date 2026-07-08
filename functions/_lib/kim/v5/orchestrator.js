@@ -18,6 +18,7 @@ import {
 import { analyzeStructuralEvidence } from "./retrieval/structuralEvidence.js";
 import { fuseCandidateScore } from "./retrieval/scoreFusion.js";
 import { finalizeCandidatePool } from "./retrieval/candidatePool.js";
+import { collapseBestVectorHitPerRecord } from "./retrieval/vectorHitCollapse.js";
 import {
   shouldCallGemini,
   shouldCallGemma
@@ -251,7 +252,14 @@ export async function runKimSearch(env, config, {
       config.vector.minSimilarity
   );
 
-  if (!usefulHits.length) {
+  // Một SKU có thể có front/back/detail.
+  // Chỉ giữ view có similarity tốt nhất trước khi hydrate metadata.
+  const collapsedHits = collapseBestVectorHitPerRecord(
+    usefulHits,
+    {limit:config.vector.topK}
+  );
+
+  if (!collapsedHits.length) {
     return {
       mode:"KIM_VECTOR_NO_MATCH",
       summary:"Không có ứng viên vector đạt ngưỡng.",
@@ -268,7 +276,7 @@ export async function runKimSearch(env, config, {
   const hydrated = await hydrateVectorHits(
     env,
     token,
-    usefulHits,
+    collapsedHits,
     {maxRows:config.limits.maxScanRows}
   );
 

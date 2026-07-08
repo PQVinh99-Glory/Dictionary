@@ -915,7 +915,15 @@ const CONFIG = {
   KIM_BROWSER_VECTOR_MODULE_URL: '/src/kim/vector/browserDinov2.js',
   KIM_VECTOR_AUTO_ON_SAVE_DESKTOP: true,
   KIM_VECTOR_AUTO_ON_SAVE_MOBILE: false,
+
+  // V5.8 Query Vector Bridge + durable queue
+  KIM_QUERY_VECTOR_BRIDGE_ENABLED: true,
+  KIM_VECTOR_HEALTH_TTL_MS: 30000,
+  KIM_VECTOR_UPSERT_MODULE_URL: '/src/kim/vector/chunkedUpsert.js',
+  KIM_VECTOR_UPSERT_CHUNK_SIZE: 20,
+
   KIM_VECTOR_QUEUE_KEY: 'kim_v56_vector_jobs',
+  KIM_VECTOR_QUEUE_FAILED_KEY: 'kim_v58_vector_jobs_failed',
   KIM_VECTOR_QUEUE_MAX_RETRIES: 4
 };
 
@@ -1707,6 +1715,117 @@ createApp({
       }
     },
 
+    async getKimVectorReadiness({force=false}={}) {
+      const now = Date.now();
+
+      if (
+        !force &&
+        this._kimVectorHealthCache &&
+        (
+          now - Number(this._kimVectorHealthCacheAt || 0)
+        ) < CONFIG.KIM_VECTOR_HEALTH_TTL_MS
+      ) {
+        return this._kimVectorHealthCache;
+      }
+
+      const res = await this.fetchWithTimeout(
+        '/api/kim/health',
+        {method:'GET'},
+        30000
+      );
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data?.ok === false) {
+        throw new Error(
+          data?.error ||
+          `Kim health HTTP ${res.status}`
+        );
+      }
+
+      this._kimVectorHealthCache = data;
+      this._kimVectorHealthCacheAt = now;
+
+      return data;
+    },
+
+    async buildKimQueryVector(imageDataUrl) {
+      if (!CONFIG.KIM_QUERY_VECTOR_BRIDGE_ENABLED) {
+        const error = new Error(
+          'Query Vector Bridge đang tắt.'
+        );
+        error.code = 'KIM_QUERY_VECTOR_BRIDGE_DISABLED';
+        throw error;
+      }
+
+      const health = await this.getKimVectorReadiness();
+
+      if (
+        health?.features?.vectorSearch !== true ||
+        health?.query_vector_bridge?.ready === false
+      ) {
+        const error = new Error(
+          'KIM_VECTOR_SEARCH_ENABLED=false.'
+        );
+        error.code = 'KIM_VECTOR_SEARCH_DISABLED';
+        throw error;
+      }
+
+      const result = await this.embedKimImage(imageDataUrl);
+
+      if (
+        !Array.isArray(result?.embedding) ||
+        result.embedding.length !== 384
+      ) {
+        const error = new Error(
+          `Query embedding sai dimension: ` +
+          `${result?.embedding?.length || 0}.`
+        );
+        error.code = 'KIM_QUERY_VECTOR_INVALID';
+        throw error;
+      }
+
+      if (
+        String(result?.profile?.model || '') !==
+          'onnx-community/dinov2-small' ||
+        Number(result?.profile?.dimension || 0) !== 384
+      ) {
+        const error = new Error(
+          'Query embedding profile không đúng DINOv2 384D.'
+        );
+        error.code = 'KIM_QUERY_VECTOR_PROFILE_INVALID';
+        throw error;
+      }
+
+      return result;
+    },
+
+    kimPublicImageSearchError(error) {
+      const code = String(error?.code || '');
+
+      if (code === 'KIM_VECTOR_SEARCH_DISABLED') {
+        return (
+          'Xin lỗi anh, tìm kiếm bằng hình ảnh chưa được bật trên hệ thống.'
+        );
+      }
+
+      if (
+        code === 'KIM_QUERY_VECTOR_BRIDGE_DISABLED' ||
+        code === 'KIM_QUERY_VECTOR_INVALID' ||
+        code === 'KIM_QUERY_VECTOR_PROFILE_INVALID'
+      ) {
+        return (
+          'Xin lỗi anh, em chưa tạo được vector phù hợp cho ảnh này. ' +
+          'Anh thử lại với ảnh rõ vật thể hơn giúp em nhé.'
+        );
+      }
+
+      return (
+        'Xin lỗi anh, em chưa thể xử lý tìm kiếm hình ảnh lúc này. ' +
+        'Anh thử lại giúp em nhé.'
+      );
+    },
+
     async embedKimImage(image) {
       const mod = await this.loadKimBrowserVectorModule();
 
@@ -1741,26 +1860,46 @@ createApp({
     },
 
     async upsertKimVectors(vectors) {
-      if (!Array.isArray(vectors) || !vectors.length) return null;
-
-      const res = await this.fetchWithTimeout(
-        '/api/kim/vector-upsert',
-        {
-          method:'POST',
-          headers:{'content-type':'application/json'},
-          body:JSON.stringify({
-            session_token:this.session.token,
-            vectors
-          })
-        },
-        180000
-      );
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data?.ok === false) {
-        throw new Error(data?.error || `Vector upsert HTTP ${res.status}`);
+      if (!Array.isArray(vectors) || !vectors.length) {
+        return {
+          ok:true,
+          accepted:0,
+          written:0,
+          failed:0,
+          chunks:0,
+          results:[]
+        };
       }
-      return data;
+
+      if (!this._kimChunkedUpsertModulePromise) {
+        this._kimChunkedUpsertModulePromise = import(
+          CONFIG.KIM_VECTOR_UPSERT_MODULE_URL
+        );
+      }
+
+      let mod;
+      try {
+        mod = await this._kimChunkedUpsertModulePromise;
+      } catch (error) {
+        this._kimChunkedUpsertModulePromise = null;
+        throw error;
+      }
+
+      return mod.upsertVectorsChunked({
+        endpoint:'/api/kim/vector-upsert',
+        sessionToken:this.session.token,
+        vectors,
+        chunkSize:CONFIG.KIM_VECTOR_UPSERT_CHUNK_SIZE,
+        timeoutMs:180000,
+        strict:true,
+        onChunk:info => {
+          if (info?.phase === 'start' && info?.chunk_count > 1) {
+            console.info(
+              `Kim vector chunk ${info.chunk_number}/${info.chunk_count}`
+            );
+          }
+        }
+      });
     },
 
     readKimVectorQueue() {
@@ -1778,6 +1917,33 @@ createApp({
       localStorage.setItem(
         CONFIG.KIM_VECTOR_QUEUE_KEY,
         JSON.stringify(Array.isArray(rows) ? rows : [])
+      );
+    },
+
+    readKimVectorFailedQueue() {
+      try {
+        const rows = JSON.parse(
+          localStorage.getItem(
+            CONFIG.KIM_VECTOR_QUEUE_FAILED_KEY
+          ) || '[]'
+        );
+        return Array.isArray(rows) ? rows : [];
+      } catch {
+        return [];
+      }
+    },
+
+    moveKimVectorJobToFailed(job) {
+      const rows = this.readKimVectorFailedQueue();
+
+      rows.push({
+        ...job,
+        failed_at:new Date().toISOString()
+      });
+
+      localStorage.setItem(
+        CONFIG.KIM_VECTOR_QUEUE_FAILED_KEY,
+        JSON.stringify(rows.slice(-100))
       );
     },
 
@@ -1848,7 +2014,14 @@ createApp({
 
             if (job.retries >= CONFIG.KIM_VECTOR_QUEUE_MAX_RETRIES) {
               console.warn('Kim vector job exhausted', job);
+              this.moveKimVectorJobToFailed(job);
               rows.shift();
+
+              this.toast(
+                'error',
+                `Vector AI chưa xử lý được ${job.code || job.record_id}. ` +
+                'Job đã chuyển sang danh sách lỗi.'
+              );
             } else {
               rows[0] = job;
             }
@@ -1935,7 +2108,13 @@ createApp({
         }
       }
 
-      if (!selected.length) return;
+      if (!selected.length) {
+        const error = new Error(
+          'SKU không có asset image_path để tạo vector.'
+        );
+        error.code = 'KIM_VECTOR_NO_ASSET';
+        throw error;
+      }
 
       const vectors = [];
 
@@ -2060,7 +2239,10 @@ createApp({
         if (imageDataUrl && CONFIG.KIM_BROWSER_VECTOR_ENABLED) {
           this.denis.status = 'Đang khởi tạo nhận dạng hình ảnh...';
 
-          const vectorResult = await this.embedKimImage(imageDataUrl);
+          const vectorResult = await this.buildKimQueryVector(
+            imageDataUrl
+          );
+
           queryEmbedding = vectorResult.embedding;
           embeddingProfile = vectorResult.profile;
 
@@ -2082,6 +2264,12 @@ createApp({
               image_data_url:imageDataUrl || null,
               query_embedding:queryEmbedding,
               embedding_profile:embeddingProfile,
+              hints:{
+                query_vector_source:
+                  queryEmbedding
+                    ? 'browser_dinov2_v58'
+                    : null
+              },
               filters:{
                 usage_side:this.filters.usage,
                 view_mode:this.filters.viewMode
@@ -2123,7 +2311,9 @@ createApp({
         this.denis.messages.push({
           id:`a-${queryId}`,
           role:'assistant',
-          text:'Xin lỗi anh, em chưa thể xử lý yêu cầu này lúc này. Anh thử lại giúp em nhé.'
+          text:imageDataUrl
+            ? this.kimPublicImageSearchError(e)
+            : 'Xin lỗi anh, em chưa thể xử lý yêu cầu này lúc này. Anh thử lại giúp em nhé.'
         });
       } finally {
         if (queryId === this.denisSearch.queryId) {

@@ -23,7 +23,11 @@ export async function resolveWithGemini(env, config, {
         confusing_note:c?.confusing_note ?? null,
         usage_side:c?.usage_side ?? null,
         vector_similarity:Number(c?.vector_similarity || 0),
-        final_score:Number(c?.final_score || 0)
+        metadata_score:Number(c?.metadata_score || 0),
+        structural_score:Number(c?.structural_score || 0),
+        final_score:Number(c?.final_score || 0),
+        matched:Array.isArray(c?.matched) ? c.matched : [],
+        conflicts:Array.isArray(c?.conflicts) ? c.conflicts : []
       }))
     })}
   ];

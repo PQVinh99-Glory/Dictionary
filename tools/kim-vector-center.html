@@ -145,6 +145,10 @@ import {
   onDinov2Progress
 } from "/src/kim/vector/browserDinov2.js";
 
+import {
+  upsertVectorsChunked
+} from "/src/kim/vector/chunkedUpsert.js";
+
 const TOKEN_KEY = "catalogue_app_session_token_v3_r2";
 const OFFSET_KEY = "kim_v56_vector_center_offset";
 const BATCH_LIMIT = 20;
@@ -342,22 +346,57 @@ async function run(){
         );
       }
 
+      let batchWritten = 0;
+      let batchFailed = 0;
+
       if(vectors.length){
-        const upsert = await postJson("/api/kim/vector-upsert",{
-          session_token:token(),
-          vectors
+        const upsert = await upsertVectorsChunked({
+          endpoint:"/api/kim/vector-upsert",
+          sessionToken:token(),
+          vectors,
+          chunkSize:20,
+          timeoutMs:180000,
+          strict:true,
+
+          onChunk:info => {
+            if(info?.phase === "start"){
+              $("jobStatus").textContent =
+                `Đang ghi vector chunk ` +
+                `${info.chunk_number}/${info.chunk_count}...`;
+            }
+
+            if(info?.phase === "done"){
+              log(
+                `UPSERT CHUNK ${info.chunk_number}/${info.chunk_count} ` +
+                `+${info.written}, lỗi ${info.failed}`
+              );
+            }
+          }
         });
 
-        state.written += Number(upsert?.written || 0);
-        state.failed += Number(upsert?.failed || 0);
+        batchWritten = Number(upsert?.written || 0);
+        batchFailed = Number(upsert?.failed || 0);
 
-        log(`UPSERT +${upsert?.written || 0}, lỗi ${upsert?.failed || 0}`);
+        state.written += batchWritten;
+        state.failed += batchFailed;
+
+        log(
+          `UPSERT BATCH hoàn tất +${batchWritten}, ` +
+          `lỗi ${batchFailed}, chunks ${upsert?.chunks || 0}`
+        );
+
         sync();
       }
 
-      if(vectors.length > 0 && state.written <= 0){
+      // Integrity gate theo batch hiện tại, không dùng cumulative state.written.
+      if(
+        vectors.length > 0 &&
+        batchWritten !== vectors.length
+      ){
         throw new Error(
-          "Chưa ghi thành công vector nào. Cursor bị khóa."
+          `Batch write không toàn vẹn: ` +
+          `embed=${vectors.length}, written=${batchWritten}. ` +
+          `Cursor bị khóa.`
         );
       }
 

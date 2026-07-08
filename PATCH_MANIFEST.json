@@ -1,10 +1,25 @@
 {
-  "version": "V5.7",
-  "name": "Backfill Integrity + Hybrid Agent Pipeline",
+  "version": "V5.8",
+  "name": "Query Vector Bridge + Auto Embed Queue + Chunked Backfill",
   "files": [
-    "functions/api/kim/reindex-batch.js",
+    "index.html",
+    "src/kim/vector/chunkedUpsert.js",
     "functions/api/kim/vector-upsert.js",
+    "functions/api/kim/health.js",
+    "functions/_lib/kim/v5/retrieval/vectorHitCollapse.js",
+    "functions/_lib/kim/v5/orchestrator.js",
+    "functions/_lib/kim/v5/agents/geminiResolver.js",
+    "functions/_lib/kim/v5/agents/gemmaJudge.js",
     "tools/kim-vector-center.html",
-    "docs/V5_7_HYBRID_AGENT_PIPELINE.md"
-  ]
+    "docs/V5_8_ARCHITECTURE.md",
+    "docs/V5_8_DEPLOY_ORDER.md",
+    "docs/V5_8_TEST_MATRIX.md",
+    "README_V5_8.md"
+  ],
+  "invariants": {
+    "server_max_vectors_per_request": 20,
+    "silent_truncation": false,
+    "query_embedding_dimension": 384,
+    "query_model": "onnx-community/dinov2-small"
+  }
 }
