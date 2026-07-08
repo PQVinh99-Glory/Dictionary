@@ -1,28 +1,53 @@
-// Provider-agnostic contract.
-// Wire this to the existing Gemini provider only after vector retrieval.
+import { callGeminiJson, geminiImagePart } from "../providers/gemini.js";
+import { GEMINI_RESOLVER_SYSTEM } from "../prompts/geminiResolver.js";
+import { RANKING_SCHEMA } from "../schemas/ranking.js";
+import { r2ImageDataUrl, preferredImagePath } from "../connectors/r2.js";
 
-export function buildGeminiResolverInput({
-  queryImage,
-  canonicalImage,
+export async function resolveWithGemini(env, config, {
+  query,
+  prep,
   candidates,
-  queryEvidence
+  budget
 }) {
-  return {
-    role:"visual_compatibility_resolver",
-    rules:[
-      "Only rank supplied candidate IDs.",
-      "Vector score is retrieval evidence, not truth.",
-      "Missing metadata is UNKNOWN.",
-      "Visible contradiction is CONFLICT.",
-      "Do not mirror left/right.",
-      "Account for lighting, angle, partial occlusion and perspective.",
-      "Prefer hole placement and silhouette over generic color."
-    ],
-    query:{
-      image:queryImage,
-      canonical_image:canonicalImage,
-      evidence:queryEvidence
-    },
-    candidates:(candidates || []).slice(0,10)
-  };
+  budget.consume("gemini");
+
+  const parts = [
+    {text:JSON.stringify({
+      task:"rank_supplied_candidates_only",
+      query_text:query.message || "",
+      candidates:(candidates || []).map(c => ({
+        candidate_id:String(c?.id ?? c?.record_id),
+        code:c?.code ?? null,
+        part_id:c?.part_id ?? null,
+        identifying_features:c?.identifying_features ?? null,
+        confusing_note:c?.confusing_note ?? null,
+        usage_side:c?.usage_side ?? null,
+        vector_similarity:Number(c?.vector_similarity || 0),
+        final_score:Number(c?.final_score || 0)
+      }))
+    })}
+  ];
+
+  if (prep?.canonicalImage) {
+    parts.push({text:"QUERY_IMAGE"});
+    parts.push(geminiImagePart(prep.canonicalImage));
+  }
+
+  for (const c of (candidates || []).slice(0, config.vector.resolverK)) {
+    const path = c?.vector_object_key || preferredImagePath(c);
+    const dataUrl = await r2ImageDataUrl(env, path).catch(() => null);
+    if (!dataUrl) continue;
+
+    parts.push({text:`CANDIDATE_IMAGE:${String(c?.id ?? c?.record_id)}`});
+    parts.push(geminiImagePart(dataUrl));
+  }
+
+  return callGeminiJson(env, {
+    model:config.ai.geminiModel,
+    systemInstruction:GEMINI_RESOLVER_SYSTEM,
+    parts,
+    schema:RANKING_SCHEMA,
+    timeoutMs:config.ai.geminiTimeoutMs,
+    temperature:1.0
+  });
 }
