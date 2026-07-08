@@ -147,13 +147,24 @@ export function scoreMetadata(row, message) {
   return Math.max(0, Math.min(1, score));
 }
 
+export function metadataEvidenceAvailable(message) {
+  const c = parseTextConstraints(message);
+  return Boolean(
+    c.hole_count != null ||
+    c.shape || c.side || c.color ||
+    (Array.isArray(c.terms) && c.terms.length > 0)
+  );
+}
+
 export function rankMetadata(rows, message) {
+  const available = metadataEvidenceAvailable(message);
   return (rows || [])
     .map(row => ({
       ...row,
-      metadata_score:scoreMetadata(row, message)
+      metadata_score:available ? scoreMetadata(row, message) : null,
+      metadata_available:available
     }))
-    .sort((a,b) => b.metadata_score - a.metadata_score);
+    .sort((a,b) => Number(b.metadata_score || 0) - Number(a.metadata_score || 0));
 }
 
 export function strictConstraintMatches(rows, message) {

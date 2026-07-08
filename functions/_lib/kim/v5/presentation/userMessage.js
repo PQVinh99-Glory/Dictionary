@@ -1,13 +1,10 @@
 function clean(v){ return String(v ?? "").trim(); }
 function codeOf(c){ return clean(c?.code || c?.part_id || c?.id || c?.record_id); }
-function idOf(c){ return clean(c?.part_id || ""); }
 
-function listCandidates(rows, limit=5){
-  return (rows || []).slice(0,limit).map((c,i)=>{
-    const code = codeOf(c) || "Không rõ mã";
-    const id = idOf(c);
-    return `${i+1}. ${code}${id && id !== code ? ` — ID: ${id}` : ""}`;
-  });
+function listCodes(rows,limit=5){
+  return (rows || []).slice(0,limit).map((c,i)=>
+    `${i+1}. ${codeOf(c) || "Không rõ mã"}`
+  );
 }
 
 export const KIM_PUBLIC_MESSAGES = Object.freeze({
@@ -18,9 +15,9 @@ export const KIM_PUBLIC_MESSAGES = Object.freeze({
 });
 
 export function buildKimUserMessage(result){
-  const rows = Array.isArray(result?.candidates) ? result.candidates : [];
-  const mode = clean(result?.mode).toUpperCase();
-  const decision = clean(result?.decision).toLowerCase();
+  const rows=Array.isArray(result?.candidates) ? result.candidates : [];
+  const mode=clean(result?.mode).toUpperCase();
+  const decision=clean(result?.decision).toLowerCase();
 
   if(mode === "KIM_UNSUPPORTED") return KIM_PUBLIC_MESSAGES.unsupported;
 
@@ -30,11 +27,11 @@ export function buildKimUserMessage(result){
   }
 
   if(rows.length){
-    return `Em tìm thấy ${rows.length} mã phù hợp:\n${listCandidates(rows).join("\n")}`;
+    return `Em tìm thấy ${rows.length} mã phù hợp:\n${listCodes(rows).join("\n")}`;
   }
 
   if(decision === "ambiguous"){
-    return "Em tìm thấy vài mã khá giống nhau nhưng chưa đủ chắc chắn để kết luận. Anh giúp em bổ sung thêm ảnh hoặc đặc điểm nhận dạng nhé.";
+    return "Em tìm thấy vài mã khá giống nhau nhưng chưa đủ chắc chắn. Anh bổ sung thêm ảnh rõ hơn giúp em nhé.";
   }
 
   return KIM_PUBLIC_MESSAGES.noMatch;

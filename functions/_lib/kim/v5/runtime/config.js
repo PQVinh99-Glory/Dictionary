@@ -14,10 +14,10 @@ export function readKimConfig(env) {
     vector:{
       model:String(env.KIM_VECTOR_MODEL || "onnx-community/dinov2-small"),
       modelVersion:String(env.KIM_VECTOR_MODEL_VERSION || "ef1fb10"),
-      preprocessVersion:String(env.KIM_PREPROCESS_VERSION || "hf_dinov2_224_v1"),
+      preprocessVersion:String(env.KIM_PREPROCESS_VERSION || "kim_canon_v2"),
       profile:String(env.KIM_EMBEDDING_PROFILE || "cls_l2_v1"),
       dimension:boundedInt(env.KIM_VECTOR_DIMENSION, 384, 8, 4096),
-      topK:boundedInt(env.KIM_VECTOR_TOP_K, 30, 5, 100),
+      topK:boundedInt(env.KIM_VECTOR_TOP_K, 60, 5, 100),
       resolverK:boundedInt(env.KIM_RESOLVER_TOP_K, 10, 2, 20),
       minSimilarity:Number(env.KIM_VECTOR_MIN || 0.55)
     },
@@ -32,7 +32,8 @@ export function readKimConfig(env) {
     },
 
     gates:{
-      ambiguityGap:Number(env.KIM_AMBIGUITY_GAP || 0.035),
+      ambiguityGap:Number(env.KIM_AMBIGUITY_GAP || 0.06),
+      geminiVectorFloor:Number(env.KIM_GEMINI_VECTOR_FLOOR || 0.86),
       judgeGap:Number(env.KIM_JUDGE_GAP || 0.05)
     },
 

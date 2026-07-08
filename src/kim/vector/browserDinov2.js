@@ -1,6 +1,8 @@
+import { canonicalizeImageVariants } from "./imageCanonicalizer.js";
+
 const WORKER_URL = new URL("./dinov2.worker.js", import.meta.url);
 
-export const KIM_DINOV2_PROFILE = Object.freeze({"model": "onnx-community/dinov2-small", "model_version": "ef1fb10", "preprocess_version": "hf_dinov2_224_v1", "profile": "cls_l2_v1", "dimension": 384});
+export const KIM_DINOV2_PROFILE = Object.freeze({"model": "onnx-community/dinov2-small", "model_version": "ef1fb10", "preprocess_version": "kim_canon_v2", "profile": "cls_l2_v1", "dimension": 384});
 
 let worker = null;
 let sequence = 0;
@@ -109,4 +111,31 @@ export function disposeDinov2() {
   const error = new Error("DINOv2 worker đã dispose.");
   for (const entry of pending.values()) entry.reject(error);
   pending.clear();
+}
+
+
+export async function embedImageDinov2Variants(image,{includeGray=true}={}){
+  const canonical = await canonicalizeImageVariants(image,{includeGray});
+  const probes=[];
+
+  for(const variant of canonical.variants){
+    const result = await embedImageDinov2(variant.image_data_url);
+    probes.push({
+      probe_id:variant.probe_id,
+      view_variant:variant.view_variant,
+      embedding:result.embedding,
+      profile:{
+        ...result.profile,
+        preprocess_version:'kim_canon_v2'
+      },
+      runtime:result.runtime || null,
+      diagnostics:variant.diagnostics || null
+    });
+  }
+
+  return {
+    probes,
+    diagnostics:canonical.diagnostics,
+    preprocess_version:'kim_canon_v2'
+  };
 }

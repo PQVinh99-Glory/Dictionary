@@ -35,6 +35,10 @@ export async function hydrateVectorHits(env, token, hits, {maxRows=1500}={}) {
       id:row?.id ?? hit.record_id,
       record_id:String(hit.record_id),
       vector_similarity:Number(hit.similarity || 0),
+      raw_vector_similarity:Number(hit.raw_vector_similarity ?? hit.similarity ?? 0),
+      probe_consensus:Number(hit.probe_consensus ?? 0),
+      probe_rrf:Number(hit.probe_rrf ?? 0),
+      probe_count:Number(hit.probe_count ?? 1),
       vector_object_key:hit.object_key || "",
       vector_asset_type:hit.asset_type || ""
     };

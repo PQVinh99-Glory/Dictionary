@@ -6,6 +6,7 @@ import {
 import { canonicalizeImage } from "./preprocess/canonicalize.js";
 import { encodeQueryImage } from "./vector/encoder.js";
 import { searchVectorIndex } from "./vector/search.js";
+import { searchMultiProbeVectorIndex } from "./retrieval/multiProbeSearch.js";
 import {
   strongTextResult,
   rankMetadata,
@@ -114,7 +115,9 @@ function mapResolverRows(rankings, candidatePool) {
     ...(byId.get(String(r?.candidate_id)) || {}),
     ...r,
     id:String(r?.candidate_id),
-    final_score:Number(r?.score || 0)
+    final_score:Number(r?.score || 0),
+    match_score:Number(r?.score || 0),
+    score_source:"agent_rerank"
   }));
 }
 
@@ -232,20 +235,49 @@ export async function runKimSearch(env, config, {
 
   trace(ctx,"encode");
 
-  const encoded = await encodeQueryImage(env, config, {
-    canonicalImage:prep.canonicalImage,
-    suppliedEmbedding:query.query_embedding,
-    suppliedProfile:query.embedding_profile
-  });
+  const suppliedProbes = Array.isArray(query.query_embeddings)
+    ? query.query_embeddings
+    : [];
 
-  trace(ctx,"vector_search",{source:encoded.source});
+  let hits=[];
+  let encodedSource="single";
 
-  const hits = await searchVectorIndex(
-    env,
-    config,
-    encoded.vector,
-    config.vector.topK
-  );
+  if(suppliedProbes.length){
+    const encodedProbes=[];
+    for(const probe of suppliedProbes){
+      const encoded = await encodeQueryImage(env, config, {
+        canonicalImage:prep.canonicalImage,
+        suppliedEmbedding:probe.embedding,
+        suppliedProfile:probe.embedding_profile
+      });
+      encodedProbes.push({
+        probe_id:probe.probe_id,
+        vector:encoded.vector
+      });
+    }
+    hits = await searchMultiProbeVectorIndex(
+      env,
+      config,
+      encodedProbes,
+      {topK:config.vector.topK}
+    );
+    encodedSource="multi_probe";
+  }else{
+    const encoded = await encodeQueryImage(env, config, {
+      canonicalImage:prep.canonicalImage,
+      suppliedEmbedding:query.query_embedding,
+      suppliedProfile:query.embedding_profile
+    });
+    hits = await searchVectorIndex(
+      env,
+      config,
+      encoded.vector,
+      config.vector.topK
+    );
+    encodedSource=encoded.source;
+  }
+
+  trace(ctx,"vector_search",{source:encodedSource});
 
   const usefulHits = hits.filter(
     h => Number(h?.similarity || 0) >=
@@ -296,10 +328,17 @@ export async function runKimSearch(env, config, {
         row?.id ?? row?.record_id
       );
 
+      const structuralRow = structural.byId?.[key] || {};
       return fuseCandidateScore({
         ...row,
-        structural_score:
-          structural.byId?.[key]?.score || 0
+        structural_score:structuralRow.score,
+        structural_available:structuralRow.available === true,
+        conflicts:[
+          ...(Array.isArray(row?.conflicts) ? row.conflicts : []),
+          ...(structuralRow.available === true && structuralRow.score === 0
+            ? ["structural_conflict"]
+            : [])
+        ]
       });
     })
     .sort((a,b) =>
@@ -332,7 +371,9 @@ export async function runKimSearch(env, config, {
       structuralConflicts:structural.conflicts,
       angleRisk:structural.angleRisk,
       lightingRisk:structural.lightingRisk,
-      ambiguityGap:config.gates.ambiguityGap
+      ambiguityGap:config.gates.ambiguityGap,
+      isImageQuery:Boolean(query.image_data_url || query.query_embedding || query.query_embeddings?.length),
+      vectorFloor:config.gates.geminiVectorFloor
     });
 
   if (!callGemini) {

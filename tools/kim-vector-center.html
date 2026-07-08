@@ -142,6 +142,7 @@
 import {
   initDinov2,
   embedImageDinov2,
+  embedImageDinov2Variants,
   onDinov2Progress
 } from "/src/kim/vector/browserDinov2.js";
 
@@ -315,19 +316,22 @@ async function run(){
           `Đang vector hóa ${item.code || item.record_id} (${item.asset_type})`;
 
         try{
-          const result = await embedImageDinov2(
-            new URL(mediaUrl(item.object_key), location.origin).href
+          const result = await embedImageDinov2Variants(
+            new URL(mediaUrl(item.object_key), location.origin).href,
+            {includeGray:true}
           );
 
-          vectors.push({
-            record_id:item.record_id,
-            asset_type:item.asset_type,
-            object_key:item.object_key,
-            view_variant:"canonical",
-            embedding:result.embedding,
-            embedding_profile:result.profile,
-            foreground_status:"browser_dinov2_v56_backfill"
-          });
+          for (const probe of (result.probes || [])) {
+            vectors.push({
+              record_id:item.record_id,
+              asset_type:item.asset_type,
+              object_key:item.object_key,
+              view_variant:probe.view_variant,
+              embedding:probe.embedding,
+              embedding_profile:probe.profile,
+              foreground_status:"browser_dinov2_v59_canonical"
+            });
+          }
 
           state.processed += 1;
           log(`EMBED OK ${item.code || item.record_id}/${item.asset_type}`);
@@ -447,13 +451,15 @@ $("testModel").onclick = async ()=>{
       );
     }
 
-    const result = await embedImageDinov2(
-      new URL(mediaUrl(first.object_key), location.origin).href
+    const result = await embedImageDinov2Variants(
+      new URL(mediaUrl(first.object_key), location.origin).href,
+      {includeGray:true}
     );
 
+    const firstProbe = result?.probes?.[0];
     if(
-      !Array.isArray(result?.embedding) ||
-      result.embedding.length !== 384
+      !Array.isArray(firstProbe?.embedding) ||
+      firstProbe.embedding.length !== 384
     ){
       throw new Error(
         `Embedding test sai dimension: ${result?.embedding?.length || 0}`
@@ -462,7 +468,7 @@ $("testModel").onclick = async ()=>{
 
     $("runtime").innerHTML =
       `Test thật thành công: <b class="good">384D</b> · ` +
-      `${result?.runtime?.device || "?"}/${result?.runtime?.dtype || "?"}`;
+      `${firstProbe?.runtime?.device || "?"}/${firstProbe?.runtime?.dtype || "?"}`;
 
     log(
       `MODEL TEST OK 384D trên ${first.code || first.record_id}/${first.asset_type}`

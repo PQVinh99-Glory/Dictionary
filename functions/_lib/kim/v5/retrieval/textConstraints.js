@@ -2,7 +2,8 @@ const STOPWORDS = new Set([
   "tim","giup","anh","em","cho","minh","toi","ma","nao","con","hang",
   "linh","kien","co","cua","nay","nhung","cac","mot","nhieu","duoc",
   "thuoc","dang","day","do","voi","va","theo","can","muon","xin",
-  "hay","loai","cai","nhin","hinh","dang","dac","diem"
+  "hay","loai","cai","nhin","hinh","dang","dac","diem",
+  "giong","tuong","tu","uu","tien","vi","tri","nhan","nhan-dang","anh"
 ]);
 
 function norm(value) {

@@ -1,25 +1,44 @@
 {
-  "version": "V5.8",
-  "name": "Query Vector Bridge + Auto Embed Queue + Chunked Backfill",
+  "version": "V5.9",
+  "name": "Accuracy Calibration + Canonical Multi-Probe + Security Hardening",
   "files": [
     "index.html",
-    "src/kim/vector/chunkedUpsert.js",
-    "functions/api/kim/vector-upsert.js",
+    ".env.example",
+    "src/kim/vector/imageCanonicalizer.js",
+    "src/kim/vector/browserDinov2.js",
+    "functions/api/kim/_middleware.js",
     "functions/api/kim/health.js",
-    "functions/_lib/kim/v5/retrieval/vectorHitCollapse.js",
+    "functions/api/kim/health-admin.js",
+    "functions/_lib/kim/v5/schemas/query.js",
+    "functions/_lib/kim/v5/retrieval/multiProbeSearch.js",
+    "functions/_lib/kim/v5/retrieval/metadataFilter.js",
+    "functions/_lib/kim/v5/retrieval/textConstraints.js",
+    "functions/_lib/kim/v5/retrieval/structuralEvidence.js",
+    "functions/_lib/kim/v5/retrieval/scoreFusion.js",
+    "functions/_lib/kim/v5/vector/search.js",
+    "functions/_lib/kim/v5/connectors/supabaseService.js",
+    "functions/_lib/kim/v5/connectors/catalogue.js",
     "functions/_lib/kim/v5/orchestrator.js",
+    "functions/_lib/kim/v5/harness/ambiguityGate.js",
+    "functions/_lib/kim/v5/runtime/config.js",
     "functions/_lib/kim/v5/agents/geminiResolver.js",
     "functions/_lib/kim/v5/agents/gemmaJudge.js",
+    "functions/_lib/kim/v5/schemas/candidate.js",
+    "functions/_lib/kim/v5/presentation/userMessage.js",
     "tools/kim-vector-center.html",
-    "docs/V5_8_ARCHITECTURE.md",
-    "docs/V5_8_DEPLOY_ORDER.md",
-    "docs/V5_8_TEST_MATRIX.md",
-    "README_V5_8.md"
+    "sql/002_match_vectors_rpc.sql",
+    "docs/V5_9_SECURITY_AUDIT.md",
+    "docs/V5_9_ACCURACY_ARCHITECTURE.md",
+    "docs/V5_9_COST_AND_SCALE.md",
+    "docs/V5_9_DEPLOY_ORDER.md"
   ],
-  "invariants": {
-    "server_max_vectors_per_request": 20,
-    "silent_truncation": false,
-    "query_embedding_dimension": 384,
-    "query_model": "onnx-community/dinov2-small"
+  "migration": {
+    "preprocess_version": "kim_canon_v2",
+    "reindex_required": true,
+    "vector_top_k": 60,
+    "probes": [
+      "canon_rgb_v2",
+      "canon_gray_v2"
+    ]
   }
 }

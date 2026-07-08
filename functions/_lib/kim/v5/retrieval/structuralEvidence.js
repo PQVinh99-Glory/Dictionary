@@ -21,9 +21,10 @@ export function analyzeStructuralEvidence({query,candidates}) {
     ].filter(Boolean).join(" ");
 
     const candidateHoles = holeCount(text);
-    let score = 0.5;
+    const available = requestedHoles != null && candidateHoles != null;
+    let score = null;
 
-    if (requestedHoles != null && candidateHoles != null) {
+    if (available) {
       if (requestedHoles === candidateHoles) score = 1;
       else {
         score = 0;
@@ -33,6 +34,7 @@ export function analyzeStructuralEvidence({query,candidates}) {
 
     byId[String(row?.id ?? row?.record_id)] = {
       score,
+      available,
       requested_holes:requestedHoles,
       candidate_holes:candidateHoles
     };
@@ -41,8 +43,8 @@ export function analyzeStructuralEvidence({query,candidates}) {
   return {
     byId,
     conflicts,
-    angleRisk:query?.hints?.angle_risk || 0,
-    lightingRisk:query?.hints?.lighting_risk || 0,
+    angleRisk:Number(query?.hints?.angle_risk || 0),
+    lightingRisk:Number(query?.hints?.lighting_risk || 0),
     orientationConflict:false,
     holeConflict:conflicts > 0
   };

@@ -237,8 +237,6 @@
   .denis-send:disabled{opacity:.5;cursor:not-allowed}
   .denis-preview{margin:0 8px 8px;display:flex;align-items:center;gap:10px;padding:8px;border-radius:13px;background:#f0fdfa;border:1px solid #99f6e4}
   .denis-preview img{width:46px;height:46px;object-fit:cover;border-radius:10px}
-  .denis-suggestion{padding:8px 10px;border-radius:12px;background:#fff;border:1px solid #e2e8f0;color:#475569;font-size:11px;font-weight:800;text-align:left}
-  .denis-suggestion:hover{border-color:#6ee7b7;color:#047857}
   @media(max-width:640px){
     .denis-launcher{right:12px;bottom:max(12px,env(safe-area-inset-bottom));padding-right:12px}
     .denis-panel{inset:0;width:100%;border-radius:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
@@ -792,11 +790,6 @@
     </header>
 
     <section ref="denisThread" class="denis-thread scrollbar-soft">
-      <div v-if="denis.messages.length===1" class="mb-4 grid grid-cols-2 gap-2">
-        <button class="denis-suggestion" @click="useDenisSuggestion('Tìm mã có 4 lỗ.')">Tìm mã có 4 lỗ</button>
-        <button class="denis-suggestion" @click="useDenisSuggestion('Tìm linh kiện bên trái.')">Tìm bên trái</button>
-        <button class="denis-suggestion col-span-2" @click="triggerDenisImage">Tìm bằng hình ảnh</button>
-      </div>
 
       <div
         v-for="(m, idx) in denis.messages"
@@ -1675,16 +1668,21 @@ createApp({
     },
 
     kimCandidatePercent(candidate) {
+      const match = Number(candidate?.match_score);
       const vector = Number(candidate?.vector_similarity);
       const final = Number(candidate?.compatibility_score ?? candidate?.final_score);
 
       const score =
-        Number.isFinite(final) && final > 0
-          ? final
+        Number.isFinite(match) && match > 0
+          ? match
           : (
-              Number.isFinite(vector) && vector > 0
-                ? vector
-                : null
+              Number.isFinite(final) && final > 0
+                ? final
+                : (
+                    Number.isFinite(vector) && vector > 0
+                      ? vector
+                      : null
+                  )
             );
 
       if (score == null) return null;
@@ -1751,53 +1749,52 @@ createApp({
 
     async buildKimQueryVector(imageDataUrl) {
       if (!CONFIG.KIM_QUERY_VECTOR_BRIDGE_ENABLED) {
-        const error = new Error(
-          'Query Vector Bridge đang tắt.'
-        );
+        const error = new Error('Query Vector Bridge đang tắt.');
         error.code = 'KIM_QUERY_VECTOR_BRIDGE_DISABLED';
         throw error;
       }
 
       const health = await this.getKimVectorReadiness();
+      const enabled =
+        health?.vector_search_enabled === true ||
+        health?.features?.vectorSearch === true;
 
-      if (
-        health?.features?.vectorSearch !== true ||
-        health?.query_vector_bridge?.ready === false
-      ) {
-        const error = new Error(
-          'KIM_VECTOR_SEARCH_ENABLED=false.'
-        );
+      if (!enabled) {
+        const error = new Error('KIM_VECTOR_SEARCH_ENABLED=false.');
         error.code = 'KIM_VECTOR_SEARCH_DISABLED';
         throw error;
       }
 
-      const result = await this.embedKimImage(imageDataUrl);
+      const mod = await this.loadKimBrowserVectorModule();
+      const result = await mod.embedImageDinov2Variants(
+        imageDataUrl,
+        {includeGray:true}
+      );
 
-      if (
-        !Array.isArray(result?.embedding) ||
-        result.embedding.length !== 384
-      ) {
-        const error = new Error(
-          `Query embedding sai dimension: ` +
-          `${result?.embedding?.length || 0}.`
-        );
+      const probes = Array.isArray(result?.probes)
+        ? result.probes
+        : [];
+
+      if (!probes.length) {
+        const error = new Error('Không tạo được query probes.');
         error.code = 'KIM_QUERY_VECTOR_INVALID';
         throw error;
       }
 
-      if (
-        String(result?.profile?.model || '') !==
-          'onnx-community/dinov2-small' ||
-        Number(result?.profile?.dimension || 0) !== 384
-      ) {
-        const error = new Error(
-          'Query embedding profile không đúng DINOv2 384D.'
-        );
-        error.code = 'KIM_QUERY_VECTOR_PROFILE_INVALID';
-        throw error;
+      for (const probe of probes) {
+        if (!Array.isArray(probe?.embedding) || probe.embedding.length !== 384) {
+          const error = new Error('Query embedding sai dimension.');
+          error.code = 'KIM_QUERY_VECTOR_INVALID';
+          throw error;
+        }
       }
 
-      return result;
+      return {
+        embedding:probes[0].embedding,
+        profile:probes[0].profile,
+        probes,
+        diagnostics:result?.diagnostics || null
+      };
     },
 
     kimPublicImageSearchError(error) {
@@ -2119,20 +2116,24 @@ createApp({
       const vectors = [];
 
       for (const item of selected.slice(0,4)) {
-        const result = await this.embedKimImage(
+        const mod = await this.loadKimBrowserVectorModule();
+        const result = await mod.embedImageDinov2Variants(
           new URL(
             this.mediaUrlForVectorPath(item.object_key),
             location.origin
-          ).href
+          ).href,
+          {includeGray:true}
         );
 
-        vectors.push({
-          ...item,
-          view_variant:'canonical',
-          embedding:result.embedding,
-          embedding_profile:result.profile,
-          foreground_status:'browser_dinov2_v55'
-        });
+        for (const probe of (result.probes || [])) {
+          vectors.push({
+            ...item,
+            view_variant:probe.view_variant,
+            embedding:probe.embedding,
+            embedding_profile:probe.profile,
+            foreground_status:'browser_dinov2_v59_canonical'
+          });
+        }
       }
 
       return this.upsertKimVectors(vectors);
@@ -2234,6 +2235,7 @@ createApp({
 
       try {
         let queryEmbedding = null;
+        let queryEmbeddings = [];
         let embeddingProfile = null;
 
         if (imageDataUrl && CONFIG.KIM_BROWSER_VECTOR_ENABLED) {
@@ -2244,6 +2246,11 @@ createApp({
           );
 
           queryEmbedding = vectorResult.embedding;
+          queryEmbeddings = (vectorResult.probes || []).map(probe => ({
+            probe_id:probe.probe_id,
+            embedding:probe.embedding,
+            embedding_profile:probe.profile
+          }));
           embeddingProfile = vectorResult.profile;
 
           this.denis.status = 'Em đang so khớp hình ảnh...';
@@ -2263,6 +2270,7 @@ createApp({
               message:userText,
               image_data_url:imageDataUrl || null,
               query_embedding:queryEmbedding,
+              query_embeddings:queryEmbeddings,
               embedding_profile:embeddingProfile,
               hints:{
                 query_vector_source:
