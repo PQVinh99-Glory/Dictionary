@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Thư ký Kim — Trung tâm Vector</title>
+  <style>
+    :root{
+      font-family:Inter,ui-sans-serif,system-ui,sans-serif;
+      color:#0f172a;
+      background:
+        radial-gradient(circle at top left,#d1fae5 0,transparent 34%),
+        linear-gradient(180deg,#f8fafc,#ecfdf5);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;padding:20px;min-height:100vh}
+    .wrap{max-width:1040px;margin:auto}
+    .top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px}
+    .card{
+      background:rgba(255,255,255,.94);
+      border:1px solid #dbe7e2;
+      border-radius:24px;
+      padding:20px;
+      box-shadow:0 18px 50px rgba(15,23,42,.08)
+    }
+    h1{margin:0;font-size:26px}
+    h2{margin:0 0 12px;font-size:18px}
+    p{color:#64748b}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .kpi{padding:14px;border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc}
+    .kpi span{display:block;color:#64748b;font-size:12px;font-weight:800}
+    .kpi b{display:block;font-size:24px;color:#047857;margin-top:4px}
+    .layout{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;margin-top:16px}
+    button,a.btn{
+      border:0;border-radius:14px;padding:12px 16px;
+      font-weight:850;cursor:pointer;text-decoration:none;
+      display:inline-flex;align-items:center;justify-content:center
+    }
+    .primary{background:#059669;color:#fff}
+    .secondary{background:#e2e8f0;color:#334155}
+    .danger{background:#fee2e2;color:#b91c1c}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .bar{height:14px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin:14px 0}
+    .bar>div{height:100%;background:#10b981;width:0;transition:width .2s}
+    pre{
+      white-space:pre-wrap;background:#0f172a;color:#d1fae5;
+      padding:14px;border-radius:16px;max-height:330px;overflow:auto
+    }
+    .status{
+      padding:12px 14px;border-radius:14px;background:#f8fafc;
+      border:1px solid #e2e8f0;font-weight:750;color:#475569
+    }
+    .good{color:#047857}
+    .bad{color:#b91c1c}
+    .warn{color:#b45309}
+    code{background:#f1f5f9;padding:2px 6px;border-radius:7px}
+    @media(max-width:800px){
+      .grid{grid-template-columns:repeat(2,1fr)}
+      .layout{grid-template-columns:1fr}
+      body{padding:10px}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Thư ký Kim — Trung tâm Vector</h1>
+      <p>Quản lý model, coverage và tạo vector cho toàn bộ ảnh catalogue.</p>
+    </div>
+    <a class="btn secondary" href="/">Về Catalogue</a>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div class="kpi"><span>Vector đang hoạt động</span><b id="ready">—</b></div>
+      <div class="kpi"><span>SKU đã có vector</span><b id="records">0</b></div>
+      <div class="kpi"><span>Tổng vector ảnh</span><b id="vectors">0</b></div>
+      <div class="kpi"><span>Offset reindex</span><b id="offset">0</b></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="card">
+      <h2>1. Model DINOv2</h2>
+      <div id="runtime" class="status">Chưa khởi tạo model.</div>
+      <div class="bar"><div id="modelBar"></div></div>
+      <div class="row">
+        <button id="loadModel" class="primary">Nạp model DINOv2</button>
+        <button id="testModel" class="secondary" disabled>Test model</button>
+      </div>
+      <p>
+        Ưu tiên <code>WebGPU/fp16</code>, fallback
+        <code>WASM/q8</code>. Model chạy trong Web Worker.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>2. Coverage Supabase</h2>
+      <div id="coverage" class="status">Chưa đọc trạng thái vector.</div>
+      <div class="row" style="margin-top:12px">
+        <button id="refreshStatus" class="secondary">Làm mới trạng thái</button>
+      </div>
+      <p>
+        Profile phải khớp tuyệt đối giữa ảnh cũ và ảnh query.
+      </p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>3. Tạo vector cho ảnh đã có sẵn</h2>
+    <p>
+      Chạy tuần tự theo batch. Có thể tạm dừng, đóng tab và tiếp tục sau;
+      offset được lưu trong trình duyệt.
+    </p>
+
+    <div class="bar"><div id="jobBar"></div></div>
+    <div id="jobStatus" class="status">Sẵn sàng.</div>
+
+    <div class="row" style="margin-top:12px">
+      <button id="start" class="primary">Bắt đầu / Tiếp tục</button>
+      <button id="pause" class="secondary" disabled>Tạm dừng</button>
+      <button id="reset" class="danger">Reset offset</button>
+    </div>
+
+    <div class="grid" style="margin-top:14px">
+      <div class="kpi"><span>Đã embed</span><b id="processed">0</b></div>
+      <div class="kpi"><span>Đã ghi</span><b id="written">0</b></div>
+      <div class="kpi"><span>Lỗi</span><b id="failed">0</b></div>
+      <div class="kpi"><span>Batch</span><b id="batchNo">0</b></div>
+    </div>
+
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<script type="module">
+import {
+  initDinov2,
+  embedImageDinov2,
+  onDinov2Progress
+} from "/src/kim/vector/browserDinov2.js";
+
+const TOKEN_KEY = "catalogue_app_session_token_v3_r2";
+const OFFSET_KEY = "kim_v56_vector_center_offset";
+const BATCH_LIMIT = 20;
+
+const state = {
+  running:false,
+  pause:false,
+  modelReady:false,
+  offset:Number(localStorage.getItem(OFFSET_KEY) || 0),
+  processed:0,
+  written:0,
+  failed:0,
+  batchNo:0
+};
+
+const $ = id => document.getElementById(id);
+const logEl = $("log");
+
+function token(){
+  const value = localStorage.getItem(TOKEN_KEY) || "";
+  if(!value) throw new Error("Hãy đăng nhập Catalogue trước.");
+  return value;
+}
+
+function log(message){
+  const line = `[${new Date().toLocaleTimeString()}] ${message}`;
+  logEl.textContent += line + "\n";
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function sync(){
+  $("processed").textContent = state.processed;
+  $("written").textContent = state.written;
+  $("failed").textContent = state.failed;
+  $("batchNo").textContent = state.batchNo;
+  $("offset").textContent = state.offset;
+  $("start").disabled = state.running;
+  $("pause").disabled = !state.running;
+  $("testModel").disabled = !state.modelReady;
+}
+
+async function readJson(url, options={}){
+  const res = await fetch(url,options);
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok || data?.ok === false){
+    throw new Error(data?.error || data?.user_message || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+async function postJson(url, body){
+  return readJson(url,{
+    method:"POST",
+    headers:{"content-type":"application/json"},
+    body:JSON.stringify(body)
+  });
+}
+
+function mediaUrl(key){
+  return "/api/media/" + String(key || "")
+    .replace(/^\/+/,"")
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+}
+
+async function loadModel(){
+  $("runtime").textContent = "Đang khởi tạo DINOv2...";
+  const result = await initDinov2();
+  state.modelReady = true;
+  const rt = result?.runtime || {};
+  $("runtime").innerHTML =
+    `Sẵn sàng: <b class="good">${rt.device || "?"}/${rt.dtype || "?"}</b>`;
+  $("ready").textContent = "Có";
+  $("ready").className = "good";
+  sync();
+  return result;
+}
+
+async function refreshStatus(){
+  const data = await readJson(
+    `/api/kim/reindex-status?session_token=${encodeURIComponent(token())}`
+  );
+
+  const s = data?.status || {};
+  $("records").textContent = Number(s.distinct_records || 0);
+  $("vectors").textContent = Number(s.active_vectors || 0);
+
+  $("coverage").innerHTML = `
+    Profile: <b>${data?.profile?.model || "?"}</b><br>
+    SKU có vector: <b>${Number(s.distinct_records || 0)}</b><br>
+    Tổng vector ảnh: <b>${Number(s.active_vectors || 0)}</b><br>
+    Cập nhật gần nhất: <b>${s.latest_updated_at || "chưa có"}</b>
+  `;
+}
+
+onDinov2Progress(progress=>{
+  if(progress?.status === "progress" && Number.isFinite(progress?.progress)){
+    const pct = Math.max(0,Math.min(100,Number(progress.progress)));
+    $("modelBar").style.width = `${pct}%`;
+    $("runtime").textContent = `Đang tải model ${Math.round(pct)}%...`;
+  }
+});
+
+async function run(){
+  state.running = true;
+  state.pause = false;
+  sync();
+
+  try{
+    if(!state.modelReady) await loadModel();
+
+    while(!state.pause){
+      const batch = await postJson("/api/kim/reindex-batch",{
+        session_token:token(),
+        offset:state.offset,
+        limit:BATCH_LIMIT
+      });
+
+      state.batchNo += 1;
+      sync();
+
+      const items = Array.isArray(batch?.items) ? batch.items : [];
+
+      if(!items.length && !batch?.has_more){
+        $("jobStatus").textContent = "Hoàn tất toàn bộ catalogue.";
+        log("Hoàn tất reindex.");
+        break;
+      }
+
+      const vectors = [];
+      let itemIndex = 0;
+
+      for(const item of items){
+        if(state.pause) break;
+        itemIndex += 1;
+
+        $("jobBar").style.width =
+          `${Math.round((itemIndex / Math.max(1,items.length))*100)}%`;
+
+        $("jobStatus").textContent =
+          `Đang vector hóa ${item.code || item.record_id} (${item.asset_type})`;
+
+        try{
+          const result = await embedImageDinov2(
+            new URL(mediaUrl(item.object_key), location.origin).href
+          );
+
+          vectors.push({
+            record_id:item.record_id,
+            asset_type:item.asset_type,
+            object_key:item.object_key,
+            view_variant:"canonical",
+            embedding:result.embedding,
+            embedding_profile:result.profile,
+            foreground_status:"browser_dinov2_v56_backfill"
+          });
+
+          state.processed += 1;
+          log(`EMBED OK ${item.code || item.record_id}/${item.asset_type}`);
+        }catch(error){
+          state.processed += 1;
+          state.failed += 1;
+          log(`EMBED ERR ${item.code || item.record_id}: ${error?.message || error}`);
+        }
+
+        sync();
+      }
+
+      if(vectors.length){
+        const upsert = await postJson("/api/kim/vector-upsert",{
+          session_token:token(),
+          vectors
+        });
+
+        state.written += Number(upsert?.written || 0);
+        state.failed += Number(upsert?.failed || 0);
+
+        log(`UPSERT +${upsert?.written || 0}, lỗi ${upsert?.failed || 0}`);
+        sync();
+      }
+
+      state.offset = Number(batch?.next_offset || state.offset);
+      localStorage.setItem(OFFSET_KEY,String(state.offset));
+      sync();
+
+      await refreshStatus().catch(()=>{});
+
+      if(!batch?.has_more){
+        $("jobStatus").textContent = "Hoàn tất toàn bộ catalogue.";
+        log("Hoàn tất.");
+        break;
+      }
+    }
+  }catch(error){
+    $("jobStatus").textContent = "Đã dừng do lỗi.";
+    log(`FATAL: ${error?.message || error}`);
+  }finally{
+    state.running = false;
+    sync();
+  }
+}
+
+$("loadModel").onclick = ()=>loadModel().catch(e=>{
+  $("runtime").innerHTML = `<span class="bad">${e?.message || e}</span>`;
+  log(`MODEL ERR: ${e?.message || e}`);
+});
+
+$("testModel").onclick = async ()=>{
+  try{
+    $("runtime").textContent = "Model đã sẵn sàng. Test embedding sẽ chạy khi có ảnh.";
+    log("Model runtime OK.");
+  }catch(error){
+    log(`TEST ERR: ${error?.message || error}`);
+  }
+};
+
+$("refreshStatus").onclick = ()=>refreshStatus().catch(e=>{
+  $("coverage").innerHTML = `<span class="bad">${e?.message || e}</span>`;
+});
+
+$("start").onclick = run;
+$("pause").onclick = ()=>{
+  state.pause = true;
+  $("jobStatus").textContent = "Đang tạm dừng sau tác vụ hiện tại...";
+};
+
+$("reset").onclick = ()=>{
+  if(state.running) return;
+  state.offset = 0;
+  state.processed = 0;
+  state.written = 0;
+  state.failed = 0;
+  state.batchNo = 0;
+  localStorage.removeItem(OFFSET_KEY);
+  logEl.textContent = "";
+  $("jobStatus").textContent = "Đã reset offset.";
+  $("jobBar").style.width = "0%";
+  sync();
+};
+
+sync();
+refreshStatus().catch(e=>log(`STATUS: ${e?.message || e}`));
+</script>
+</body>
+</html>
