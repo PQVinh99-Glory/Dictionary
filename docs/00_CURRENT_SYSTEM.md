@@ -1,3 +1,4 @@
+[Uploading 00_CURRENT_SYSTEM.md…]()
 # 00 — Current System
 
 ## Stable contracts
