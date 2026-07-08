@@ -151,8 +151,7 @@
       cursor:grab;
       overscroll-behavior:contain;
     }
-    .viewer-stage,
-    .sim-scene {
+    .viewer-stage {
       contain:layout paint style;
       transform:translateZ(0);
       -webkit-transform:translateZ(0);
@@ -169,77 +168,6 @@
       will-change:transform;
       -webkit-user-drag:none;
       user-select:none;
-    }
-    .sim-scene {
-      perspective:1500px;
-      perspective-origin:center center;
-    }
-    .sim-card {
-      width:min(92%, 920px);
-      height:min(76%, 560px);
-      min-height:260px;
-      max-height:560px;
-      transform-style:preserve-3d;
-      transition:none;
-      will-change:transform;
-      pointer-events:none;
-      position:relative;
-      isolation:isolate;
-    }
-    .sim-face {
-      position:absolute;
-      inset:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:transparent !important;
-      border:0 !important;
-      box-shadow:none !important;
-      backface-visibility:hidden;
-      -webkit-backface-visibility:hidden;
-      transform:translateZ(var(--thickness, 12px));
-      overflow:visible !important;
-    }
-    .sim-back {
-      transform:rotateY(180deg) translateZ(var(--thickness, 12px));
-    }
-    .sim-img {
-      max-width:96%;
-      max-height:96%;
-      object-fit:contain;
-      user-select:none;
-      -webkit-user-drag:none;
-      pointer-events:none;
-      filter:drop-shadow(0 20px 25px rgba(15,23,42,.25));
-    }
-    .sim-thickness-layer {
-      position:absolute;
-      inset:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      transform-style:preserve-3d;
-      pointer-events:none;
-      overflow:visible !important;
-    }
-    .sim-edge-img {
-      max-width:96%;
-      max-height:96%;
-      object-fit:contain;
-      filter:brightness(0) saturate(0) opacity(.25) blur(.4px);
-      user-select:none;
-      -webkit-user-drag:none;
-    }
-    .sim-guide {
-      position:absolute;
-      right:1.2rem;
-      top:1.2rem;
-      display:flex;
-      gap:.4rem;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-      max-width:min(92%, 520px);
-      pointer-events:none;
     }
     .detail-side { max-height:86dvh; }
     
@@ -258,13 +186,10 @@
       .viewer-stage { height:45dvh; min-height:250px; border-radius:0 0 1.5rem 1.5rem !important; padding:.5rem !important; flex:0 0 45dvh; box-shadow:0 10px 25px rgba(15,23,42,.12) !important; z-index:10; }
       .detail-side { border-radius:1.5rem 1.5rem 0 0 !important; width:100%; max-height:none !important; flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; background:rgba(255,255,255,0.95); z-index:5; padding-top:2rem !important; margin-top:-1rem !important; }
       .detail-overlay { overflow:hidden !important; }
-      .sim-thickness-layer { display:none !important; }
-      .sim-img { filter:drop-shadow(0 10px 15px rgba(15,23,42,.2)) !important; }
-      .sim-card { width:96vw !important; height:100% !important; min-height:220px !important; max-height:none !important; }
     }
   
   /* ================================================================
-     DENIS — Trợ lý tra cứu linh kiện
+     THƯ KÝ KIM — Trợ lý tra cứu linh kiện
      Giữ UI app hiện tại; chỉ thêm assistant layer.
   ================================================================= */
   .denis-launcher{
@@ -288,7 +213,6 @@
     box-shadow:0 30px 90px rgba(15,23,42,.25);
   }
   .denis-head{padding:16px 18px;border-bottom:1px solid rgba(226,232,240,.9);background:linear-gradient(135deg,rgba(236,253,245,.98),rgba(240,253,250,.98))}
-  .denis-model-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;background:#fff;border:1px solid #d1fae5;color:#047857;font-size:10px;font-weight:900;letter-spacing:.04em}
   .denis-thread{flex:1;overflow:auto;padding:16px;background:
     radial-gradient(circle at 15% 10%,rgba(16,185,129,.06),transparent 24%),
     linear-gradient(180deg,#f8fafc,#fff)}
@@ -297,9 +221,6 @@
   .denis-bubble{padding:12px 14px;border-radius:18px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
   .denis-msg.user .denis-bubble{background:#0f172a;color:#fff;border-bottom-right-radius:6px}
   .denis-msg.assistant .denis-bubble{background:#fff;color:#334155;border:1px solid #e2e8f0;border-bottom-left-radius:6px;box-shadow:0 6px 18px rgba(15,23,42,.05)}
-  .denis-evidence{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
-  .denis-chip{padding:5px 8px;border-radius:999px;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-size:10px;font-weight:900}
-  .denis-warning{padding:5px 8px;border-radius:999px;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-size:10px;font-weight:900}
   .denis-candidates{display:grid;gap:8px;margin-top:10px}
   .denis-candidate{width:100%;display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border-radius:15px;background:#fff;border:1px solid #e2e8f0;text-align:left;transition:.18s ease}
   .denis-candidate:hover{border-color:#6ee7b7;transform:translateY(-1px);box-shadow:0 8px 24px rgba(15,23,42,.07)}
@@ -424,63 +345,21 @@
 
 
       <div v-if="denisSearch.active" class="glass rounded-[2rem] p-4 sm:p-5 mb-6 border border-emerald-200 bg-emerald-50/70">
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black tracking-widest uppercase">Thư ký Kim Top 5</span>
-              <span class="text-xs font-black text-emerald-700">{{ denisSearch.results.length }} kết quả đang được lọc trên giao diện</span>
-              <span v-if="denisSearch.mode" class="px-2 py-1 rounded-full bg-white border border-emerald-200 text-[9px] font-black text-emerald-700">{{ denisSearch.mode }}</span>
+              <span class="px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black tracking-widest uppercase">Thư ký Kim</span>
+              <span class="text-sm font-black text-emerald-800">{{ denisSearch.results.length }} mã phù hợp</span>
             </div>
-            <p class="mt-2 text-sm font-semibold text-slate-600 line-clamp-2">{{ denisSearch.summary || 'Thư ký Kim đã lọc catalogue theo kết quả AI.' }}</p>
           </div>
           <div class="flex items-center gap-2 shrink-0">
             <button @click="clearDenisSearch" class="btn h-10 px-4 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50">
-              <i data-lucide="list-restart" class="w-4 h-4"></i> Xóa lọc AI
-            </button>
-            <button @click="denisDebugOpen=!denisDebugOpen" class="btn h-10 px-4 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50">
-              <i data-lucide="activity" class="w-4 h-4"></i> Trace
+              <i data-lucide="list-restart" class="w-4 h-4"></i> Xóa kết quả
             </button>
             <button @click="openDenis" class="btn h-10 px-4 bg-emerald-600 text-white hover:bg-emerald-700">
-              <i data-lucide="brain-circuit" class="w-4 h-4"></i> Mở Kim
+              <i data-lucide="messages-square" class="w-4 h-4"></i> Mở Kim
             </button>
           </div>
-        </div>
-      </div>
-
-
-      <div v-if="denisSearch.active && denisDebugOpen" class="glass rounded-[1.6rem] p-4 mb-5 border border-slate-200 bg-white/90">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <div class="text-[10px] uppercase tracking-[.18em] font-black text-slate-400">Kim Runtime Trace</div>
-            <div class="mt-1 text-sm font-black text-slate-800">{{ denisSearch.mode || '---' }}</div>
-          </div>
-          <button @click="denisDebugOpen=false" class="w-9 h-9 rounded-xl border border-slate-200 bg-white grid place-items-center text-slate-500">
-            <i data-lucide="x" class="w-4 h-4"></i>
-          </button>
-        </div>
-        <div class="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
-          <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
-            <div class="font-black text-slate-400">AI CALLS</div>
-            <div class="mt-1 font-black text-slate-800">{{ denisSearch.trace?.ai_calls?.total ?? 0 }}</div>
-          </div>
-          <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
-            <div class="font-black text-slate-400">GEMINI</div>
-            <div class="mt-1 font-black text-slate-800">{{ denisSearch.trace?.ai_calls?.gemini ?? 0 }}</div>
-          </div>
-          <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
-            <div class="font-black text-slate-400">OPENROUTER</div>
-            <div class="mt-1 font-black text-slate-800">{{ denisSearch.trace?.ai_calls?.openrouter ?? 0 }}</div>
-          </div>
-          <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
-            <div class="font-black text-slate-400">TIME</div>
-            <div class="mt-1 font-black text-slate-800">{{ denisSearch.trace?.duration_ms ?? 0 }} ms</div>
-          </div>
-        </div>
-        <div v-if="denisSearch.trace?.agents_run?.length" class="mt-3 flex flex-wrap gap-2">
-          <span v-for="(a,i) in denisSearch.trace.agents_run" :key="'agent-'+i" class="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-black text-emerald-700">{{ a }}</span>
-        </div>
-        <div v-if="denisSearch.observation" class="mt-3 rounded-xl bg-slate-950 text-slate-100 p-3 text-[10px] leading-relaxed overflow-auto max-h-44">
-          <pre class="whitespace-pre-wrap">{{ JSON.stringify(denisSearch.observation, null, 2) }}</pre>
         </div>
       </div>
 
@@ -554,38 +433,8 @@
         @pointerup="onViewerPointerUp"
         @pointercancel="onViewerPointerUp"
         @lostpointercapture="onViewerPointerUp">
-        
-        <div v-if="detail.tab==='sim'" class="sim-scene w-full h-full flex items-center justify-center">
-          <div class="sim-card" :style="simTransform" draggable="false">
-            <div
-              v-for="n in simEdgeLayers"
-              :key="'edge-' + n"
-              class="sim-thickness-layer"
-              :style="simLayerStyle(n)">
-              <img :src="simFrontUrl" class="sim-edge-img" draggable="false" alt="" />
-            </div>
 
-            <div class="sim-face">
-              <img :src="simFrontUrl" class="sim-img" draggable="false" alt="front" />
-            </div>
-
-            <div class="sim-face sim-back">
-              <img v-if="simBackUrl" :src="simBackUrl" class="sim-img" :style="simBackImgStyle" draggable="false" alt="back" />
-              <div v-else class="px-5 py-4 rounded-3xl bg-white/95 border border-amber-200 text-amber-700 text-sm font-black shadow-lg text-center backdrop-blur-md">
-                <i data-lucide="alert-triangle" class="w-8 h-8 mx-auto mb-2 text-amber-500"></i>
-                Mã này chưa có ảnh mặt sau<br>
-                <span class="text-xs font-bold text-slate-500 mt-1 block">Hệ thống chặn dùng ảnh mặt trước<br>để tránh sai lệch Trái/Phải.</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="sim-guide">
-            <span class="px-3.5 py-1.5 rounded-xl bg-white/90 border border-slate-200 shadow-sm text-xs font-black text-slate-600 backdrop-blur-md"><i data-lucide="mouse-pointer-2" class="w-3.5 h-3.5 inline-block mr-1"></i>Kéo để xoay</span>
-            <span class="px-3.5 py-1.5 rounded-xl bg-emerald-600/95 text-white shadow-md text-xs font-black backdrop-blur-md">Thuật toán mô phỏng</span>
-          </div>
-        </div>
-        
-        <img v-else-if="activeAssetUrl" :src="activeAssetUrl" class="viewer-object part-img max-w-[90%] max-h-[90%] object-contain" :style="viewerTransform" draggable="false" />
+        <img v-if="activeAssetUrl" :src="activeAssetUrl" class="viewer-object part-img max-w-[90%] max-h-[90%] object-contain" :style="viewerTransform" draggable="false" />
         
         <div v-else class="text-slate-400 text-center font-black flex flex-col items-center">
           <i data-lucide="image-off" class="w-16 h-16 mb-3"></i>
@@ -874,7 +723,7 @@
   </div>
 
   <!-- ==============================================================
-       DENIS — Trợ lý tra cứu linh kiện
+       THƯ KÝ KIM — Trợ lý tra cứu linh kiện
        Read-only intelligence layer. Không đổi metadata/RPC/R2.
   =============================================================== -->
   <button
@@ -909,19 +758,13 @@
         </button>
       </div>
 
-      <div class="mt-3 flex gap-1.5 flex-wrap">
-        <span class="denis-model-pill"><i data-lucide="filter" class="w-3 h-3"></i> Filter</span>
-        <span class="denis-model-pill"><i data-lucide="scan-eye" class="w-3 h-3"></i> Analyst</span>
-        <span class="denis-model-pill"><i data-lucide="git-compare-arrows" class="w-3 h-3"></i> Resolver</span>
-      </div>
     </header>
 
     <section ref="denisThread" class="denis-thread scrollbar-soft">
       <div v-if="denis.messages.length===1" class="mb-4 grid grid-cols-2 gap-2">
-        <button class="denis-suggestion" @click="useDenisSuggestion('Tìm bushing màu xám 4 lỗ.')">Tìm bushing màu xám</button>
-        <button class="denis-suggestion" @click="useDenisSuggestion('Lọc các mã có đặc điểm gần giống nhau.')">Tìm nhóm dễ nhầm</button>
-        <button class="denis-suggestion" @click="useDenisSuggestion('Tìm linh kiện bên trái dễ nhầm với bên phải.')">Kiểm tra bên trái</button>
-        <button class="denis-suggestion" @click="useDenisSuggestion('Tìm theo ảnh và lọc Top 5.')">Cách Kim tìm ảnh</button>
+        <button class="denis-suggestion" @click="useDenisSuggestion('Tìm mã có 4 lỗ.')">Tìm mã có 4 lỗ</button>
+        <button class="denis-suggestion" @click="useDenisSuggestion('Tìm linh kiện bên trái.')">Tìm bên trái</button>
+        <button class="denis-suggestion col-span-2" @click="triggerDenisImage">Tìm bằng hình ảnh</button>
       </div>
 
       <div
@@ -931,14 +774,6 @@
         <div class="denis-bubble">
           <div v-if="m.role==='assistant'" class="mb-1 text-[10px] uppercase tracking-[.18em] font-black text-emerald-600">Kim</div>
           {{ m.text }}
-        </div>
-
-        <div v-if="m.evidence?.length" class="denis-evidence">
-          <span v-for="(e, i) in m.evidence.slice(0,6)" :key="'e'+i" class="denis-chip">{{ e }}</span>
-        </div>
-
-        <div v-if="m.warnings?.length" class="denis-evidence">
-          <span v-for="(w, i) in m.warnings.slice(0,4)" :key="'w'+i" class="denis-warning">{{ w }}</span>
         </div>
 
         <div v-if="m.candidates?.length" class="denis-candidates">
@@ -957,7 +792,7 @@
               <div v-if="c.match_reason" class="mt-1 text-[10px] text-emerald-700 font-bold line-clamp-2">{{ c.match_reason }}</div>
             </div>
             <div class="text-right">
-              <div v-if="c.score!==undefined && c.score!==null" class="text-xs font-black text-emerald-700">{{ Math.round(Number(c.score)*100) }}%</div>
+              <div v-if="(c.final_score ?? c.score)!==undefined && (c.final_score ?? c.score)!==null" class="text-xs font-black text-emerald-700">{{ Math.round(Number(c.final_score ?? c.score)*100) }}%</div>
               <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 ml-auto mt-1"></i>
             </div>
           </button>
@@ -974,7 +809,7 @@
 
     <footer class="denis-compose">
       <div v-if="denis.imagePreview" class="denis-preview">
-        <img :src="denis.imagePreview" alt="Ảnh query Thư ký Kim" />
+        <img :src="denis.imagePreview" alt="Ảnh truy vấn" />
         <div class="min-w-0 flex-1">
           <div class="text-xs font-black text-teal-800">Ảnh truy vấn</div>
           <div class="text-[10px] font-bold text-teal-600 truncate">{{ denis.imageName }}</div>
@@ -989,7 +824,7 @@
           v-model="denis.input"
           @keydown.enter.exact.prevent="sendDenisMessage"
           class="denis-textarea"
-          placeholder="Up ảnh hoặc mô tả đặc điểm để Thư ký Kim lọc Top 5..."
+          placeholder="Nhập mã, đặc điểm hoặc gửi ảnh..."
           :disabled="denis.busy"></textarea>
 
         <div class="denis-compose-actions">
@@ -1007,7 +842,7 @@
         </div>
       </div>
       <p class="mt-2 px-1 text-[9px] leading-relaxed font-bold text-slate-400">
-        Thư ký Kim sẽ tự lọc giao diện theo Top 5; chat chỉ dùng để giải thích bằng chứng.
+        Em chỉ hỗ trợ nội dung liên quan đến catalogue.
       </p>
     </footer>
   </aside>
@@ -1076,7 +911,7 @@ createApp({
           {
             id:'denis-welcome',
             role:'assistant',
-            text:'Chào anh, em là Thư ký Kim. Anh có thể mô tả đặc điểm hoặc gửi ảnh con hàng. Em sẽ ưu tiên lọc nhanh bằng dữ liệu; chỉ khi nhiều ứng viên quá giống nhau em mới dùng AI để phân tích sâu.'
+            text:'Chào anh, em là Thư ký Kim. Em có thể giúp gì cho anh?'
           }
         ]
       },
@@ -1093,9 +928,6 @@ createApp({
         imageHash:'',
         candidatePoolHash:''
       },
-      denisDebugOpen:false,
-
-      isLowPower3D:false,
       pointerCache:null
     };
   },
@@ -1130,39 +962,8 @@ createApp({
     hasBackView() {
       return !!(this.trueBackUrl || this.detail.item?.is_symmetric);
     },
-    detailTabLabel() { return {front:'Mặt chính', back:'Mặt sau', detail:'Ảnh chi tiết', sim:'3D mô phỏng'}[this.detail.tab] || 'Ảnh'; },
+    detailTabLabel() { return {front:'Mặt chính', back:'Mặt sau', detail:'Ảnh chi tiết'}[this.detail.tab] || 'Ảnh'; },
     viewerTransform() { return `transform: translate3d(${this.detail.panX}px, ${this.detail.panY}px, 0) scale(${this.detail.zoom});`; },
-    
-    // --- 3D LOGIC ---
-    simFrontUrl() {
-      return this.assetTypeUrl('front') || this.assetTypeUrl('back') || this.activeAssetUrl || '';
-    },
-    simBackUrl() {
-      const front = this.assetTypeUrl('front') || this.assetTypeUrl('back');
-      const back = this.trueBackUrl;
-      return this.detail.item?.is_symmetric ? (this.assetTypeUrl('back') || front) : back;
-    },
-    simBackImgStyle() {
-      // SỬA LỖI LẬP MẶT 3D:
-      // Nếu mã KHÔNG ĐỐI XỨNG và CÓ MẶT SAU THẬT -> Mặt sau đã bị lật 180 độ bởi thẻ div cha (hiệu ứng gương).
-      // Do đó cần scaleX(-1) để lật ngược hình ảnh lại một lần nữa -> Khôi phục đúng chiều.
-      if (this.detail.item && !this.detail.item.is_symmetric && this.trueBackUrl) {
-        return 'transform: scaleX(-1);';
-      }
-      return '';
-    },
-    simEdgeLayers() {
-      if (this.isLowPower3D) return [];
-      return [-3,-2,-1,0,1,2,3];
-    },
-    simTransform() {
-      const thickness = this.isLowPower3D ? '6px' : '12px';
-      const z = Math.round(this.detail.zoom * 100) / 100;
-      const rx = Math.round(this.detail.rotX * 10) / 10;
-      const ry = Math.round(this.detail.rotY * 10) / 10;
-      return `--thickness:${thickness}; transform: translate3d(0px, 0px, 0) scale(${z}) rotateX(${rx}deg) rotateY(${ry}deg);`;
-    },
-    // --- END 3D LOGIC ---
 
     editorPreview() {
       return this.editor.previews['front_1'] || this.assetPathUrl(this.findEditorAsset('front',1)?.image_path, this.findEditorAsset('front',1)?.storage_provider) || '';
@@ -1179,8 +980,6 @@ createApp({
   },
   async mounted() {
     this.sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-    this.isLowPower3D = this.detectLowPower3D();
-    window.addEventListener('resize', () => { this.isLowPower3D = this.detectLowPower3D(); }, {passive:true});
     this.updateTime(); setInterval(this.updateTime, 30000);
     await this.checkSession();
     this.renderIcons();
@@ -1196,12 +995,6 @@ createApp({
       if(text && !text.includes('Đang')) setTimeout(()=>{ if(this.notice.text===text) this.notice={type:'',text:''}; }, 5500); 
     },
     readError(err) { return err?.message || String(err) || 'Có lỗi xảy ra'; },
-    detectLowPower3D() {
-      const ua = navigator.userAgent || '';
-      const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      const isMobile = window.matchMedia?.('(max-width: 760px)').matches;
-      return !!(isIOS || isMobile);
-    },
     async rpcRow(fn,args) { const {data,error} = await this.sb.rpc(fn,args); if(error) throw error; return Array.isArray(data) ? data[0] : data; },
     async rpcRows(fn,args) { const {data,error} = await this.sb.rpc(fn,args); if(error) throw error; return data || []; },
 
@@ -1329,16 +1122,6 @@ createApp({
     closeDetail() { this.resetViewer(); this.detail.open=false; this.detail.assets=[]; this.detail.item=null; },
     setDetailTab(t) { this.detail.tab=t; if(t==='detail') this.detail.activeAsset=this.detailAssets[0] || null; this.resetViewer(); },
     tabBtnClass(t) { return ['btn h-10 px-3 text-xs sm:text-sm border transition-colors', this.detail.tab===t ? 'bg-emerald-600 text-white border-emerald-700 shadow-inner' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'].join(' '); },
-    flipSim() {
-      if (this.detail.tab !== 'sim') this.detail.tab = 'sim';
-      this.detail.rotY = this.detail.rotY + 180;
-    },
-    simLayerStyle(n) {
-      const z = Number(n) * 1.1;
-      const x = Number(n) * 0.28;
-      const opacity = 0.04 + Math.max(0, 3 - Math.abs(Number(n))) * 0.018;
-      return `transform: translateZ(${z}px) translateX(${x}px); opacity:${opacity};`;
-    },
     clamp(n,min,max) { return Math.max(min, Math.min(max, n)); },
     ensurePointerCache() {
       if (!this.pointerCache) this.pointerCache = new Map();
@@ -1398,15 +1181,8 @@ createApp({
         const dx = e.clientX - this.detail.startX;
         const dy = e.clientY - this.detail.startY;
 
-        if (this.detail.tab === 'sim') {
-          const nextY = Math.round((this.detail.startRotY + dx * 0.35) * 10) / 10;
-          const nextX = Math.round(this.clamp(this.detail.startRotX - dy * 0.25, -60, 60) * 10) / 10;
-          if (Math.abs(nextY - this.detail.rotY) > 0.1) this.detail.rotY = nextY;
-          if (Math.abs(nextX - this.detail.rotX) > 0.1) this.detail.rotX = nextX;
-        } else {
-          this.detail.panX = this.detail.startPanX + dx;
-          this.detail.panY = this.detail.startPanY + dy;
-        }
+        this.detail.panX = this.detail.startPanX + dx;
+        this.detail.panY = this.detail.startPanY + dy;
       }
     },
     onViewerPointerUp(e) {
@@ -1837,33 +1613,33 @@ createApp({
     },
 
     applyDenisSearchResults(data) {
-      const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+      const candidates = Array.isArray(data?.candidates)
+        ? data.candidates.slice(0, 5)
+        : [];
 
-      this.denisSearch.active = true;
+      // Chỉ lọc giao diện khi thật sự có kết quả.
+      this.denisSearch.active = candidates.length > 0;
       this.denisSearch.results = candidates;
       this.denisSearch.ids = candidates.map(c => c.id).filter(Boolean);
-      this.denisSearch.summary = data.summary || 'Thư ký Kim đã lọc Top 5.';
-      this.denisSearch.observation = data.observation || null;
+      this.denisSearch.summary = String(data?.user_message || '').trim();
+      this.denisSearch.observation = null;
       this.denisSearch.updatedAt = Date.now();
-      this.denisSearch.mode = data.mode || '';
-      this.denisSearch.trace = data.trace || null;
-      this.denisSearch.imageHash = data.image_hash || '';
-      this.denisSearch.candidatePoolHash = data.candidate_pool_hash || '';
+      this.denisSearch.mode = '';
+      this.denisSearch.trace = null;
+      this.denisSearch.imageHash = data?.image_hash || '';
+      this.denisSearch.candidatePoolHash = '';
 
-      const aiCalls = data.trace?.ai_calls?.total ?? 0;
-      const msg = [
-        data.summary || 'Em đã lọc Top 5 trực tiếp trên giao diện.',
-        `\nMode: ${data.mode || '---'} · AI calls: ${aiCalls}`,
-        candidates.length ? `\nTop ${candidates.length}: ${candidates.map(c => c.code).filter(Boolean).join(', ')}` : '',
-        Array.isArray(data.warnings) && data.warnings.length ? `\nLưu ý: ${data.warnings.join('; ')}` : ''
-      ].join('');
+      const text = String(
+        data?.user_message ||
+        (candidates.length
+          ? `Em tìm thấy ${candidates.length} mã phù hợp.`
+          : 'Xin lỗi anh, em không tìm thấy kết quả phù hợp với yêu cầu này trong catalogue.')
+      );
 
       this.denis.messages.push({
         id:`a-${Date.now()}`,
         role:'assistant',
-        text:msg,
-        evidence:Array.isArray(data.evidence) ? data.evidence : [],
-        warnings:Array.isArray(data.warnings) ? data.warnings : [],
+        text,
         candidates
       });
     },
@@ -1880,7 +1656,6 @@ createApp({
       this.denisSearch.trace = null;
       this.denisSearch.imageHash = '';
       this.denisSearch.candidatePoolHash = '';
-      this.denisDebugOpen = false;
       this.$nextTick(() => this.renderIcons());
     },
 
@@ -1898,7 +1673,8 @@ createApp({
       const queryId = globalThis.crypto?.randomUUID?.()
         || `${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-      const userText = message || 'Tìm linh kiện giống ảnh này. Ưu tiên hình dạng, số lỗ, vị trí lỗ và đặc điểm nhận dạng.';
+      const userText = message ||
+        'Tìm linh kiện giống ảnh này. Ưu tiên hình dạng, số lỗ, vị trí lỗ và đặc điểm nhận dạng.';
 
       // Xóa candidate cards cũ để không gây hiểu nhầm với query mới.
       this.denis.messages = this.denis.messages.map(m =>
@@ -1914,8 +1690,8 @@ createApp({
       this.denis.input = '';
       this.denis.busy = true;
       this.denis.status = imageDataUrl
-        ? 'Thư ký Kim đang sàng lọc dữ liệu và ảnh...'
-        : 'Thư ký Kim đang lọc metadata và đánh giá độ mơ hồ...';
+        ? 'Em đang kiểm tra hình ảnh...'
+        : 'Em đang tìm trong catalogue...';
 
       this.clearDenisSearch();
       this.denisSearch.queryId = queryId;
@@ -1923,7 +1699,7 @@ createApp({
 
       try {
         const res = await this.fetchWithTimeout(
-          '/api/denis/search-v4',
+          '/api/kim/search',
           {
             method:'POST',
             headers:{
@@ -1932,8 +1708,13 @@ createApp({
             },
             body:JSON.stringify({
               query_id:queryId,
+              session_token:this.session.token,
               message:userText,
-              image_data_url:imageDataUrl || null
+              image_data_url:imageDataUrl || null,
+              filters:{
+                usage_side:this.filters.usage,
+                view_mode:this.filters.viewMode
+              }
             })
           },
           180000
@@ -1941,28 +1722,37 @@ createApp({
 
         const data = await res.json().catch(() => ({}));
 
-        if (!res.ok || !data.ok) {
-          throw new Error(data.message || `Thư ký Kim API lỗi HTTP ${res.status}`);
-        }
-
         // Response cũ tuyệt đối không được ghi đè query mới.
-        if (data.query_id !== this.denisSearch.queryId) return;
+        if (data?.query_id && data.query_id !== this.denisSearch.queryId) return;
+
+        if (!res.ok || data?.ok === false) {
+          this.denis.messages.push({
+            id:`a-${queryId}`,
+            role:'assistant',
+            text:String(
+              data?.user_message ||
+              'Xin lỗi anh, em chưa thể xử lý yêu cầu này lúc này. Anh thử lại giúp em nhé.'
+            )
+          });
+          return;
+        }
 
         this.applyDenisSearchResults(data);
         this.clearDenisImage();
 
-        this.toast(
-          'success',
-          `Thư ký Kim đã lọc Top ${Math.min(5, data.candidates?.length || 0)} · ${data.mode || ''}`
-        );
+        if (Array.isArray(data?.candidates) && data.candidates.length) {
+          this.toast('success', `Đã tìm thấy ${Math.min(5, data.candidates.length)} mã phù hợp.`);
+        }
       } catch (e) {
         if (queryId !== this.denisSearch.queryId) return;
+
+        // Không lộ provider, timeout, Gemini, Gemma hay stack kỹ thuật ra giao diện.
+        console.error('Kim UI request failed', e);
 
         this.denis.messages.push({
           id:`a-${queryId}`,
           role:'assistant',
-          text:`Em chưa lọc được kết quả: ${this.readError(e)}`,
-          warnings:['Không có thay đổi nào được ghi vào catalogue.']
+          text:'Xin lỗi anh, em chưa thể xử lý yêu cầu này lúc này. Anh thử lại giúp em nhé.'
         });
       } finally {
         if (queryId === this.denisSearch.queryId) {

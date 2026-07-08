@@ -1,68 +1,37 @@
-[README.md](https://github.com/user-attachments/files/29782133/README.md)
-# Thư ký Kim V5 — Hybrid Vector + Vision Harness
+# Thư ký Kim V5.3 — Full Index Integrated
 
-## Mục tiêu
+## Replace on GitHub
 
-Nâng toàn bộ Denis thành **Thư ký Kim** và thay tư duy search ảnh:
-
-```text
-Ảnh query
-  -> tiền xử lý / foreground
-  -> canonical crop
-  -> visual embedding
-  -> vector search Top-K
-  -> deterministic fusion
-  -> Gemini rerank ca khó
-  -> Gemma critic khi mơ hồ
-  -> Top 5
-  -> lọc trực tiếp catalogue UI
-```
-
-## Tư tưởng cốt lõi
-
-- Không dùng LLM để làm việc mà thuật toán chuyên dụng làm tốt hơn.
-- Không dùng Gemini để xóa nền.
-- Vector retrieval là lớp tìm kiếm chính cho ảnh.
-- Metadata vẫn giữ vai trò rất mạnh với query text.
-- Gemini chỉ xử lý candidate khó sau retrieval.
-- Gemma chỉ phản biện khi kết quả mơ hồ.
-- Không đổi metadata hiện tại.
-- Không đổi R2 upload/media hiện tại.
-- Vector nằm ở bảng sidecar riêng.
-- Không trộn embedding khác model/preprocess version.
-
-## Agent mặc định
+Replace only:
 
 ```text
-Agent A — Gemini Visual Compatibility Resolver
-Agent B — Gemma Critic/Judge (conditional)
+/index.html
 ```
 
-Đây là cấu hình 2-agent. Không cần 3 agent mặc định.
+with the `index.html` in this package.
 
-## Model vector đề xuất
+## Main changes
 
-Primary:
+- Calls `POST /api/kim/search`
+- Uses `user_message` + `candidates`
+- Hides provider/debug internals
+- Short welcome
+- Removes Filter / Analyst / Resolver pills
+- Removes Mode / AI calls / Trace from production UI
+- Removes simulated 3D viewer
+- Keeps real front/back/detail images
+- Keeps server-side pagination at 36 cards/page
+- Keeps lazy images + async decode
+- Preserves Supabase/R2/upload/session logic
+
+## Recommended commit
 
 ```text
-DINOv2 ViT-S
-384 dimensions
+feat: integrate Thu ky Kim V5.3 clean UI
 ```
 
-Lý do:
-- vector nhỏ;
-- tập trung visual features;
-- phù hợp image similarity hơn việc để LLM tự tìm từ toàn thư viện;
-- không cần vector DB quá lớn.
+## Important
 
-## Gói này gồm
-
-- Kiến trúc chi tiết
-- Migration plan
-- SQL sidecar vector schema
-- HNSW RPC search
-- Harness contracts
-- Prompt contracts
-- Mobile/iOS strategy
-- Codex implementation prompt
-- Source scaffold cho Kim V5
+Internal legacy variable names like `denisSearch` remain temporarily.
+This is intentional to reduce regression risk.
+User-facing UI no longer uses Denis.
