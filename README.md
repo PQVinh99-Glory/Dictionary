@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/29782133/README.md)
 # Thư ký Kim V5 — Hybrid Vector + Vision Harness
 
 ## Mục tiêu
