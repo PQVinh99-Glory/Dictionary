@@ -8,33 +8,57 @@ import { toPublicKimResult } from "../../_lib/kim/v5/presentation/publicResult.j
 import { KIM_PUBLIC_MESSAGES } from "../../_lib/kim/v5/presentation/userMessage.js";
 import { json, readJson } from "../../_lib/shared/http.js";
 
-function debugEnabled(env){
-  return /^(1|true|yes|on)$/i.test(String(env.KIM_DEBUG_EXPOSE_INTERNAL || ""));
+function debugEnabled(env) {
+  return /^(1|true|yes|on)$/i.test(
+    String(env.KIM_DEBUG_EXPOSE_INTERNAL || "")
+  );
 }
 
-export async function onRequestPost({request,env}){
+function publicErrorMessage(error) {
+  if (
+    error?.code === "KIM_VECTOR_DISABLED" ||
+    error?.code === "KIM_VECTOR_ENCODER_NOT_CONFIGURED" ||
+    error?.code === "KIM_VECTOR_ENCODER_FAILED" ||
+    error?.code === "KIM_VECTOR_ENCODER_TIMEOUT"
+  ) {
+    return "Xin lỗi anh, tìm kiếm bằng hình ảnh hiện chưa sẵn sàng. Anh thử mô tả đặc điểm giúp em nhé.";
+  }
+
+  return KIM_PUBLIC_MESSAGES.temporaryError;
+}
+
+export async function onRequestPost({request,env}) {
   let queryId = crypto.randomUUID();
 
-  try{
+  try {
     const config = readKimConfig(env);
-    if(!config.enabled){
-      return json({ok:false,user_message:KIM_PUBLIC_MESSAGES.temporaryError},503);
+
+    if (!config.enabled) {
+      return json({
+        ok:false,
+        user_message:KIM_PUBLIC_MESSAGES.temporaryError
+      },503);
     }
 
     const body = await readJson(request);
+
     const token = String(
       body?.session_token ||
       request.headers.get("x-session-token") ||
       ""
     );
 
-    await validateSession(env,token);
+    await validateSession(env, token);
 
-    const query = validateKimQuery(body,config);
+    const query = validateKimQuery(body, config);
     queryId = query.query_id;
 
     const intent = classifyCatalogueIntent(query);
-    if(intent.kind === "unsupported" || intent.kind === "unknown"){
+
+    if (
+      intent.kind === "unsupported" ||
+      intent.kind === "unknown"
+    ) {
       return json({
         ok:true,
         query_id:queryId,
@@ -52,19 +76,26 @@ export async function onRequestPost({request,env}){
       config
     });
 
-    const result = await runKimSearch(env,config,{token,query,ctx});
-    const publicResult = toPublicKimResult(result,{
-      debug:debugEnabled(env)
-    });
+    const result = await runKimSearch(
+      env,
+      config,
+      {token,query,ctx}
+    );
+
+    const publicResult = toPublicKimResult(
+      result,
+      {debug:debugEnabled(env)}
+    );
 
     return json({
       ...publicResult,
       query_id:ctx.query_id,
       image_hash:ctx.image_hash || null
     });
-  }catch(error){
+  } catch (error) {
     console.error("Kim search failed",{
       query_id:queryId,
+      code:error?.code || null,
       name:error?.name || "Error",
       message:error?.message || String(error),
       status:error?.status || 500,
@@ -75,8 +106,8 @@ export async function onRequestPost({request,env}){
     return json({
       ok:false,
       query_id:queryId,
-      user_message:KIM_PUBLIC_MESSAGES.temporaryError,
+      user_message:publicErrorMessage(error),
       candidates:[]
-    }, Number(error?.status)===401 ? 401 : 200);
+    }, Number(error?.status) === 401 ? 401 : 200);
   }
 }
