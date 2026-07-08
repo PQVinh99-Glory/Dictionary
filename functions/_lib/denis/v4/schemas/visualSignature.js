@@ -1,0 +1,30 @@
+export const VISUAL_SIGNATURE_SCHEMA = {
+  type:"object",
+  additionalProperties:false,
+  properties:{
+    object_family:{type:"string"},
+    dominant_colors:{type:"array",items:{type:"string"},maxItems:5},
+    hole_count:{type:"integer",minimum:-1,maximum:100},
+    hole_layout:{type:"array",items:{type:"string"},maxItems:10},
+    slot_count:{type:"integer",minimum:-1,maximum:100},
+    notch_count:{type:"integer",minimum:-1,maximum:100},
+    has_flange:{type:"string",enum:["yes","no","unknown"]},
+    has_rim:{type:"string",enum:["yes","no","unknown"]},
+    has_hook_or_clip:{type:"string",enum:["yes","no","unknown"]},
+    material_appearance:{type:"array",items:{type:"string"},maxItems:6},
+    silhouette:{type:"array",items:{type:"string"},maxItems:10},
+    mounting_features:{type:"array",items:{type:"string"},maxItems:12},
+    distinctive_features:{type:"array",items:{type:"string"},maxItems:14},
+    symmetry:{type:"string",enum:["symmetric","asymmetric","unknown"]},
+    orientation_cues:{type:"array",items:{type:"string"},maxItems:10},
+    confidence:{type:"number",minimum:0,maximum:1},
+    uncertainties:{type:"array",items:{type:"string"},maxItems:10}
+  },
+  required:[
+    "object_family","dominant_colors","hole_count","hole_layout",
+    "slot_count","notch_count","has_flange","has_rim",
+    "has_hook_or_clip","material_appearance","silhouette",
+    "mounting_features","distinctive_features","symmetry",
+    "orientation_cues","confidence","uncertainties"
+  ]
+};
