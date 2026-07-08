@@ -1,0 +1,24 @@
+export const JUDGE_SCHEMA = {
+  type:"object",
+  additionalProperties:false,
+  properties:{
+    decision:{type:"string",enum:["accept","ambiguous","abstain"]},
+    summary:{type:"string"},
+    warnings:{type:"array",items:{type:"string"}},
+    top5:{
+      type:"array",
+      maxItems:5,
+      items:{
+        type:"object",
+        additionalProperties:false,
+        properties:{
+          candidate_id:{type:"string"},
+          score:{type:"number",minimum:0,maximum:1},
+          reason:{type:"string"}
+        },
+        required:["candidate_id","score","reason"]
+      }
+    }
+  },
+  required:["decision","summary","warnings","top5"]
+};
