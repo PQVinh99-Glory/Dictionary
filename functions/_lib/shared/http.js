@@ -12,6 +12,7 @@ export function json(data,status=200,extraHeaders={}){
 
 export async function readJson(request,{maxBytes=4_500_000}={}){
   const length = Number(request.headers.get("content-length") || 0);
+
   if(length > maxBytes){
     const e = new Error(`Request quá lớn. Giới hạn ${maxBytes} bytes.`);
     e.status = 413;
@@ -34,4 +35,25 @@ export async function readJson(request,{maxBytes=4_500_000}={}){
     e.status = 400;
     throw e;
   }
+}
+
+export function errorResponse(error, fallbackStatus=500){
+  const status = Number(
+    error?.status ||
+    error?.statusCode ||
+    fallbackStatus ||
+    500
+  );
+
+  const safeStatus =
+    Number.isFinite(status) && status >= 400 && status <= 599
+      ? status
+      : 500;
+
+  return json({
+    ok:false,
+    error:
+      error?.message ||
+      String(error || "Unexpected error")
+  }, safeStatus);
 }
