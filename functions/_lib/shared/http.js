@@ -52,8 +52,6 @@ export function errorResponse(error, fallbackStatus=500){
 
   return json({
     ok:false,
-    error:
-      error?.message ||
-      String(error || "Unexpected error")
+    error:error?.message || String(error || "Unexpected error")
   }, safeStatus);
 }

@@ -12,9 +12,9 @@ export function readKimConfig(env) {
     },
 
     vector:{
-      model:String(env.KIM_VECTOR_MODEL || "dinov2_vits14"),
-      modelVersion:String(env.KIM_VECTOR_MODEL_VERSION || "1"),
-      preprocessVersion:String(env.KIM_PREPROCESS_VERSION || "kim_fg_v1"),
+      model:String(env.KIM_VECTOR_MODEL || "onnx-community/dinov2-small"),
+      modelVersion:String(env.KIM_VECTOR_MODEL_VERSION || "ef1fb10"),
+      preprocessVersion:String(env.KIM_PREPROCESS_VERSION || "hf_dinov2_224_v1"),
       profile:String(env.KIM_EMBEDDING_PROFILE || "cls_l2_v1"),
       dimension:boundedInt(env.KIM_VECTOR_DIMENSION, 384, 8, 4096),
       topK:boundedInt(env.KIM_VECTOR_TOP_K, 30, 5, 100),

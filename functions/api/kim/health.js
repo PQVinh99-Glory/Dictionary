@@ -4,20 +4,21 @@ import { json } from "../../_lib/shared/http.js";
 export async function onRequestGet({env}) {
   const config = readKimConfig(env);
 
-  const vectorReady =
-    config.features.vectorSearch &&
-    !!config.endpoints.embedding;
-
   return json({
     ok:true,
-    service:"thu-ky-kim-v5",
-    architecture:"hybrid-vector-vision",
+    service:"thu-ky-kim-v5.5",
+    architecture:"browser-dinov2-vector-harness",
 
     enabled:config.enabled,
     features:config.features,
 
     vector:{
-      ready:vectorReady,
+      client_embedding_ready:
+        config.features.vectorSearch === true,
+
+      server_embedding_endpoint_configured:
+        !!config.endpoints.embedding,
+
       model:config.vector.model,
       model_version:config.vector.modelVersion,
       preprocess_version:config.vector.preprocessVersion,
@@ -26,16 +27,16 @@ export async function onRequestGet({env}) {
       top_k:config.vector.topK,
       min_similarity:config.vector.minSimilarity,
 
-      feature_flag_enabled:
-        config.features.vectorSearch,
-
-      embedding_endpoint_configured:
-        !!config.endpoints.embedding
+      browser_runtime:{
+        library:"@huggingface/transformers@3.8.1",
+        preferred:"webgpu/fp16",
+        fallback:"wasm/q8"
+      }
     },
 
     foreground:{
-      endpoint_configured:
-        !!config.endpoints.foreground
+      endpoint_configured:!!config.endpoints.foreground,
+      upload_remove_bg_existing:true
     },
 
     providers:{
@@ -52,12 +53,14 @@ export async function onRequestGet({env}) {
       }
     },
 
-    next_action:vectorReady
-      ? "Test vector index rows and Recall@30."
-      : (
-          !config.features.vectorSearch
-            ? "Enable KIM_VECTOR_SEARCH_ENABLED after vector index is ready."
-            : "Configure KIM_EMBEDDING_ENDPOINT or send query_embedding from client."
-        )
+    vector_write:{
+      service_role_configured:
+        !!env.SUPABASE_SERVICE_ROLE_KEY
+    },
+
+    next_action:
+      config.features.vectorSearch
+        ? "Run browser reindex, then test Recall@30."
+        : "Enable KIM_VECTOR_SEARCH_ENABLED after SQL and reindex are ready."
   });
 }

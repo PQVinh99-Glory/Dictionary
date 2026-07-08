@@ -792,7 +792,8 @@
               <div v-if="c.match_reason" class="mt-1 text-[10px] text-emerald-700 font-bold line-clamp-2">{{ c.match_reason }}</div>
             </div>
             <div class="text-right">
-              <div v-if="(c.final_score ?? c.score)!==undefined && (c.final_score ?? c.score)!==null" class="text-xs font-black text-emerald-700">{{ Math.round(Number(c.final_score ?? c.score)*100) }}%</div>
+              <div v-if="kimCandidatePercent(c)!==null" class="text-xs font-black text-emerald-700">{{ kimCandidatePercent(c) }}%</div>
+                <div v-else class="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-1">Khớp đặc điểm</div>
               <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 ml-auto mt-1"></i>
             </div>
           </button>
@@ -876,7 +877,13 @@ const CONFIG = {
   ALLOWED_ORIGIN: 'https://pqvinh99-glory.github.io',
   SUPABASE_BUCKET_FALLBACK: 'product-images',
   LOCAL_TOKEN_KEY: 'catalogue_app_session_token_v3_r2',
-  PAGE_LIMIT: 36
+  PAGE_LIMIT: 36,
+
+  // Thư ký Kim V5.5 — Browser DINOv2
+  KIM_BROWSER_VECTOR_ENABLED: true,
+  KIM_BROWSER_VECTOR_MODULE_URL: '/src/kim/vector/browserDinov2.js',
+  KIM_VECTOR_AUTO_ON_SAVE_DESKTOP: true,
+  KIM_VECTOR_AUTO_ON_SAVE_MOBILE: false
 };
 
 const { createApp, nextTick } = Vue;
@@ -907,6 +914,8 @@ createApp({
         imageDataUrl:'',
         imagePreview:'',
         imageName:'',
+        imageFile:null,
+        vectorStatus:'',
         messages:[
           {
             id:'denis-welcome',
@@ -1456,6 +1465,18 @@ createApp({
         if(!rep?.ok) throw new Error(rep?.message || 'Không liên kết được hình ảnh.');
 
         this.toast('success','Lưu dữ liệu thành công!');
+
+        // Không chặn thao tác lưu: vector hóa chạy nền trên desktop.
+        this.vectorizeSavedPart(saved.id, assets)
+          .then(result => {
+            if (result?.written) {
+              this.toast('success', `Đã cập nhật ${result.written} vector hình ảnh.`);
+            }
+          })
+          .catch(error => {
+            console.warn('Kim auto vector on save failed', error);
+          });
+
         this.closeEditor(); this.closeDetail(); await this.loadParts(true);
       } catch(e) { this.toast('error', this.readError(e)); } finally { this.saving=false; }
     },
@@ -1533,6 +1554,7 @@ createApp({
         this.denis.imageDataUrl = dataUrl;
         this.denis.imagePreview = dataUrl;
         this.denis.imageName = file.name || 'query-image';
+        this.denis.imageFile = file;
       } catch (e) {
         this.toast('error', `Không chuẩn bị được ảnh cho Thư ký Kim: ${this.readError(e)}`);
       } finally {
@@ -1593,6 +1615,7 @@ createApp({
       this.denis.imageDataUrl = '';
       this.denis.imagePreview = '';
       this.denis.imageName = '';
+      this.denis.imageFile = null;
       this.$nextTick(() => this.renderIcons());
     },
 
@@ -1601,6 +1624,169 @@ createApp({
         const el = this.$refs.denisThread;
         if (el) el.scrollTop = el.scrollHeight;
       });
+    },
+
+    kimCandidatePercent(candidate) {
+      const vector = Number(candidate?.vector_similarity);
+      const final = Number(candidate?.compatibility_score ?? candidate?.final_score);
+
+      const score =
+        Number.isFinite(final) && final > 0
+          ? final
+          : (
+              Number.isFinite(vector) && vector > 0
+                ? vector
+                : null
+            );
+
+      if (score == null) return null;
+      return Math.max(0, Math.min(100, Math.round(score * 100)));
+    },
+
+    isKimMobileDevice() {
+      return /iPad|iPhone|iPod|Android/i.test(navigator.userAgent || '')
+        || (navigator.maxTouchPoints || 0) > 1;
+    },
+
+    async loadKimBrowserVectorModule() {
+      if (!CONFIG.KIM_BROWSER_VECTOR_ENABLED) {
+        throw new Error('Browser vector đang tắt.');
+      }
+
+      if (!this._kimVectorModulePromise) {
+        this._kimVectorModulePromise = import(
+          CONFIG.KIM_BROWSER_VECTOR_MODULE_URL
+        );
+      }
+
+      try {
+        return await this._kimVectorModulePromise;
+      } catch (error) {
+        this._kimVectorModulePromise = null;
+        throw error;
+      }
+    },
+
+    async embedKimImage(image) {
+      const mod = await this.loadKimBrowserVectorModule();
+
+      let unsubscribe = () => {};
+      try {
+        unsubscribe = mod.onDinov2Progress?.(progress => {
+          if (
+            progress?.status === 'progress' &&
+            Number.isFinite(progress?.progress)
+          ) {
+            const pct = Math.max(
+              0,
+              Math.min(100, Math.round(Number(progress.progress)))
+            );
+            this.denis.status = `Đang tải mô hình nhận dạng ${pct}%...`;
+          }
+        }) || (() => {});
+
+        return await mod.embedImageDinov2(image);
+      } finally {
+        try { unsubscribe(); } catch {}
+      }
+    },
+
+    mediaUrlForVectorPath(path) {
+      if (!path) return '';
+      return `${CONFIG.R2_MEDIA_BASE_URL}/${String(path)
+        .replace(/^\/+/,'')
+        .split('/')
+        .map(encodeURIComponent)
+        .join('/')}`;
+    },
+
+    async upsertKimVectors(vectors) {
+      if (!Array.isArray(vectors) || !vectors.length) return null;
+
+      const res = await this.fetchWithTimeout(
+        '/api/kim/vector-upsert',
+        {
+          method:'POST',
+          headers:{'content-type':'application/json'},
+          body:JSON.stringify({
+            session_token:this.session.token,
+            vectors
+          })
+        },
+        180000
+      );
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.ok === false) {
+        throw new Error(data?.error || `Vector upsert HTTP ${res.status}`);
+      }
+      return data;
+    },
+
+    async vectorizeSavedPart(recordId, assets) {
+      const isMobile = this.isKimMobileDevice();
+
+      if (
+        (isMobile && !CONFIG.KIM_VECTOR_AUTO_ON_SAVE_MOBILE) ||
+        (!isMobile && !CONFIG.KIM_VECTOR_AUTO_ON_SAVE_DESKTOP)
+      ) return;
+
+      const seen = new Set();
+      const selected = [];
+
+      const priority = ['front','back','detail','compare'];
+
+      for (const type of priority) {
+        for (const asset of (assets || [])) {
+          if (asset?.asset_type !== type) continue;
+
+          const key = String(asset?.image_path || '').replace(/^\/+/,'');
+          if (!key || seen.has(key)) continue;
+
+          seen.add(key);
+          selected.push({
+            record_id:String(recordId),
+            asset_type:type,
+            object_key:key
+          });
+        }
+      }
+
+      if (!selected.length) {
+        const fallback = (assets || []).find(
+          a => ['thumb','front'].includes(a?.asset_type) && a?.image_path
+        );
+        if (fallback) {
+          selected.push({
+            record_id:String(recordId),
+            asset_type:String(fallback.asset_type || 'thumb'),
+            object_key:String(fallback.image_path).replace(/^\/+/,'')
+          });
+        }
+      }
+
+      if (!selected.length) return;
+
+      const vectors = [];
+
+      for (const item of selected.slice(0,4)) {
+        const result = await this.embedKimImage(
+          new URL(
+            this.mediaUrlForVectorPath(item.object_key),
+            location.origin
+          ).href
+        );
+
+        vectors.push({
+          ...item,
+          view_variant:'canonical',
+          embedding:result.embedding,
+          embedding_profile:result.profile,
+          foreground_status:'browser_dinov2_v55'
+        });
+      }
+
+      return this.upsertKimVectors(vectors);
     },
 
     denisCandidateUrl(candidate) {
@@ -1698,6 +1884,19 @@ createApp({
       this.scrollDenisToBottom();
 
       try {
+        let queryEmbedding = null;
+        let embeddingProfile = null;
+
+        if (imageDataUrl && CONFIG.KIM_BROWSER_VECTOR_ENABLED) {
+          this.denis.status = 'Đang khởi tạo nhận dạng hình ảnh...';
+
+          const vectorResult = await this.embedKimImage(imageDataUrl);
+          queryEmbedding = vectorResult.embedding;
+          embeddingProfile = vectorResult.profile;
+
+          this.denis.status = 'Em đang so khớp hình ảnh...';
+        }
+
         const res = await this.fetchWithTimeout(
           '/api/kim/search',
           {
@@ -1711,6 +1910,8 @@ createApp({
               session_token:this.session.token,
               message:userText,
               image_data_url:imageDataUrl || null,
+              query_embedding:queryEmbedding,
+              embedding_profile:embeddingProfile,
               filters:{
                 usage_side:this.filters.usage,
                 view_mode:this.filters.viewMode
