@@ -1,0 +1,30 @@
+export const RANKING_SCHEMA = {
+  type:"object",
+  additionalProperties:false,
+  properties:{
+    ambiguous:{type:"boolean"},
+    summary:{type:"string"},
+    warnings:{type:"array",items:{type:"string"}},
+    rankings:{
+      type:"array",
+      maxItems:10,
+      items:{
+        type:"object",
+        additionalProperties:false,
+        properties:{
+          candidate_id:{type:"string"},
+          score:{type:"number",minimum:0,maximum:1},
+          matched:{type:"array",items:{type:"string"}},
+          conflicts:{type:"array",items:{type:"string"}},
+          unknown:{type:"array",items:{type:"string"}},
+          reason:{type:"string"}
+        },
+        required:[
+          "candidate_id","score","matched",
+          "conflicts","unknown","reason"
+        ]
+      }
+    }
+  },
+  required:["ambiguous","summary","warnings","rankings"]
+};
