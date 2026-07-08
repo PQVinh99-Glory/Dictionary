@@ -1,4 +1,3 @@
-[04_HARNESS.md](https://github.com/user-attachments/files/29786399/04_HARNESS.md)
 # 04 — Thư ký Kim Harness
 
 ## One public entry point
