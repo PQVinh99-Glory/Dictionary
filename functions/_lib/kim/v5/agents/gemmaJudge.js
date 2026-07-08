@@ -1,22 +1,36 @@
-export function buildGemmaJudgeInput({
-  candidatePoolHash,
-  queryEvidence,
+import { callOpenRouterJson } from "../providers/openrouter.js";
+import { GEMMA_JUDGE_SYSTEM } from "../prompts/gemmaJudge.js";
+import { JUDGE_SCHEMA } from "../schemas/judge.js";
+
+export async function judgeWithGemma(env, config, {
+  query,
+  candidates,
   geminiResult,
-  candidates
+  budget
 }) {
-  return {
-    role:"critic_judge",
-    rules:[
-      "Do not rerun retrieval.",
-      "Do not add IDs.",
-      "Review only supplied candidates.",
-      "Check unsupported confidence.",
-      "Check orientation and hole-count conflicts.",
-      "Decision must be accept, ambiguous or abstain."
-    ],
-    candidate_pool_hash:candidatePoolHash,
-    query_evidence:queryEvidence,
-    resolver_output:geminiResult,
-    candidates
-  };
+  budget.consume("openrouter");
+
+  return callOpenRouterJson(env, {
+    model:config.ai.gemmaModel,
+    timeoutMs:config.ai.openRouterTimeoutMs,
+    schema:JUDGE_SCHEMA,
+    schemaName:"kim_gemma_judge",
+    messages:[
+      {role:"system",content:GEMMA_JUDGE_SYSTEM},
+      {
+        role:"user",
+        content:JSON.stringify({
+          query_text:query.message || "",
+          candidates:(candidates || []).map(c => ({
+            candidate_id:String(c?.id ?? c?.record_id),
+            code:c?.code ?? null,
+            part_id:c?.part_id ?? null,
+            vector_similarity:Number(c?.vector_similarity || 0),
+            final_score:Number(c?.final_score || 0)
+          })),
+          gemini_result:geminiResult
+        })
+      }
+    ]
+  });
 }
