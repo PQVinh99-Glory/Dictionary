@@ -5,11 +5,11 @@ export function shouldCallGemini({
   angleRisk=0,
   lightingRisk=0,
   ambiguityGap=0.035
-}) {
+}){
   const rows = [...(candidates || [])]
-    .sort((a,b) => Number(b.final_score || 0) - Number(a.final_score || 0));
+    .sort((a,b)=>Number(b.final_score || 0)-Number(a.final_score || 0));
 
-  if (rows.length < 2) return false;
+  if(rows.length < 2) return false;
 
   const gap =
     Number(rows[0].final_score || 0) -
@@ -29,12 +29,12 @@ export function shouldCallGemma({
   judgeGap=0.05,
   orientationConflict=false,
   holeConflict=false
-}) {
+}){
   const rows = [...(geminiResult?.rankings || [])]
-    .sort((a,b) => Number(b.score || 0) - Number(a.score || 0));
+    .sort((a,b)=>Number(b.score || 0)-Number(a.score || 0));
 
   const gap = rows.length >= 2
-    ? Number(rows[0].score || 0) - Number(rows[1].score || 0)
+    ? Number(rows[0].score || 0)-Number(rows[1].score || 0)
     : 1;
 
   return (
