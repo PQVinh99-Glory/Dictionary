@@ -1,11 +1,20 @@
-# V5.6 Exact Patch
+# V5.7 Exact Patch
 
-Apply after V5.5.
+Apply after V5.6.
 
-Add/replace exact paths from this package.
+Replace/add exact paths:
 
-Main visible change:
-- header button `Vector AI`
-- editor button `Tạo vector`
-- persistent retry queue
-- `/tools/kim-vector-center.html`
+```text
+functions/api/kim/reindex-batch.js
+functions/api/kim/vector-upsert.js
+tools/kim-vector-center.html
+docs/V5_7_HYBRID_AGENT_PIPELINE.md
+```
+
+After deploy:
+1. Reset cursor
+2. Load DINOv2
+3. Test model
+4. Start 1 batch
+5. Confirm Supabase `catalogue_image_vectors` > 0
+6. Only then test image search

@@ -118,10 +118,27 @@ export async function onRequestPost({request,env}) {
       }
     }
 
+    const written = results.filter(x => x.ok).length;
+    const failed = results.filter(x => !x.ok).length;
+    const firstError = results.find(x => !x.ok)?.error || null;
+
+    if (written === 0 && failed > 0) {
+      return json({
+        ok:false,
+        error:
+          firstError ||
+          "Không ghi được vector nào vào Supabase.",
+        written,
+        failed,
+        results
+      }, 502);
+    }
+
     return json({
       ok:true,
-      written:results.filter(x => x.ok).length,
-      failed:results.filter(x => !x.ok).length,
+      written,
+      failed,
+      first_error:firstError,
       results
     });
   } catch (error) {

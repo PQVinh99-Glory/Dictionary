@@ -1,12 +1,10 @@
 {
-  "version": "V5.6",
-  "name": "Vector Lifecycle & Backfill Center",
+  "version": "V5.7",
+  "name": "Backfill Integrity + Hybrid Agent Pipeline",
   "files": [
-    "index.html",
+    "functions/api/kim/reindex-batch.js",
+    "functions/api/kim/vector-upsert.js",
     "tools/kim-vector-center.html",
-    "functions/api/kim/vector-lifecycle.js",
-    "docs/V5_6_VECTOR_LIFECYCLE.md",
-    "docs/V5_6_DEPLOY.md",
-    "README_V5_6.md"
+    "docs/V5_7_HYBRID_AGENT_PIPELINE.md"
   ]
 }

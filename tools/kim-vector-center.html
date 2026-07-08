@@ -74,10 +74,10 @@
 
   <div class="card">
     <div class="grid">
-      <div class="kpi"><span>Vector đang hoạt động</span><b id="ready">—</b></div>
+      <div class="kpi"><span>Encoder DINOv2</span><b id="ready">—</b></div>
       <div class="kpi"><span>SKU đã có vector</span><b id="records">0</b></div>
       <div class="kpi"><span>Tổng vector ảnh</span><b id="vectors">0</b></div>
-      <div class="kpi"><span>Offset reindex</span><b id="offset">0</b></div>
+      <div class="kpi"><span>Cursor catalogue</span><b id="offset">0</b></div>
     </div>
   </div>
 
@@ -117,6 +117,9 @@
 
     <div class="bar"><div id="jobBar"></div></div>
     <div id="jobStatus" class="status">Sẵn sàng.</div>
+    <div id="batchDiag" class="status" style="margin-top:10px">
+      Chưa chạy batch.
+    </div>
 
     <div class="row" style="margin-top:12px">
       <button id="start" class="primary">Bắt đầu / Tiếp tục</button>
@@ -266,6 +269,28 @@ async function run(){
 
       const items = Array.isArray(batch?.items) ? batch.items : [];
 
+      $("batchDiag").innerHTML = `
+        Dòng catalogue: <b>${Number(batch?.row_count || 0)}</b> ·
+        SKU có asset: <b>${Number(batch?.rows_with_assets || 0)}</b> ·
+        Ảnh thật: <b>${Number(batch?.asset_count || 0)}</b> ·
+        SKU thiếu ảnh: <b>${Number(batch?.rows_without_assets?.length || 0)}</b> ·
+        Lỗi asset RPC: <b>${Number(batch?.asset_errors?.length || 0)}</b>
+      `;
+
+      if(
+        Number(batch?.row_count || 0) > 0 &&
+        items.length === 0
+      ){
+        const firstAssetError =
+          batch?.asset_errors?.[0]?.error || "";
+
+        throw new Error(
+          firstAssetError
+            ? `Không lấy được asset thật: ${firstAssetError}`
+            : "Batch có SKU nhưng 0 ảnh thật. Cursor bị khóa để tránh false progress."
+        );
+      }
+
       if(!items.length && !batch?.has_more){
         $("jobStatus").textContent = "Hoàn tất toàn bộ catalogue.";
         log("Hoàn tất reindex.");
@@ -311,6 +336,12 @@ async function run(){
         sync();
       }
 
+      if(items.length > 0 && vectors.length === 0){
+        throw new Error(
+          "Có ảnh thật nhưng không tạo được embedding nào. Cursor bị khóa."
+        );
+      }
+
       if(vectors.length){
         const upsert = await postJson("/api/kim/vector-upsert",{
           session_token:token(),
@@ -322,6 +353,12 @@ async function run(){
 
         log(`UPSERT +${upsert?.written || 0}, lỗi ${upsert?.failed || 0}`);
         sync();
+      }
+
+      if(vectors.length > 0 && state.written <= 0){
+        throw new Error(
+          "Chưa ghi thành công vector nào. Cursor bị khóa."
+        );
       }
 
       state.offset = Number(batch?.next_offset || state.offset);
@@ -352,10 +389,49 @@ $("loadModel").onclick = ()=>loadModel().catch(e=>{
 
 $("testModel").onclick = async ()=>{
   try{
-    $("runtime").textContent = "Model đã sẵn sàng. Test embedding sẽ chạy khi có ảnh.";
-    log("Model runtime OK.");
+    if(!state.modelReady) await loadModel();
+
+    $("runtime").textContent =
+      "Đang test embedding trên ảnh catalogue thật...";
+
+    const batch = await postJson("/api/kim/reindex-batch",{
+      session_token:token(),
+      offset:0,
+      limit:5
+    });
+
+    const first = (batch?.items || [])[0];
+
+    if(!first){
+      throw new Error(
+        "Batch không trả ảnh nào. Kiểm tra app_get_part_assets."
+      );
+    }
+
+    const result = await embedImageDinov2(
+      new URL(mediaUrl(first.object_key), location.origin).href
+    );
+
+    if(
+      !Array.isArray(result?.embedding) ||
+      result.embedding.length !== 384
+    ){
+      throw new Error(
+        `Embedding test sai dimension: ${result?.embedding?.length || 0}`
+      );
+    }
+
+    $("runtime").innerHTML =
+      `Test thật thành công: <b class="good">384D</b> · ` +
+      `${result?.runtime?.device || "?"}/${result?.runtime?.dtype || "?"}`;
+
+    log(
+      `MODEL TEST OK 384D trên ${first.code || first.record_id}/${first.asset_type}`
+    );
   }catch(error){
-    log(`TEST ERR: ${error?.message || error}`);
+    $("runtime").innerHTML =
+      `<span class="bad">Test thật thất bại: ${error?.message || error}</span>`;
+    log(`MODEL TEST ERR: ${error?.message || error}`);
   }
 };
 
