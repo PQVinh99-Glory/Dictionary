@@ -2478,12 +2478,36 @@ createApp({
               this.applyDenisSearchResults(fallbackData);
             }
           } else {
-            // Chat thành công — hiển thị câu trả lời
-            this.denis.messages.push({
-              id:`a-${queryId}`,
-              role:'assistant',
-              text: chatData.answer || 'Em chưa tìm được câu trả lời phù hợp.'
-            });
+            // Chat thành công — hiển thị câu trả lời + candidates (nếu có)
+            if (Array.isArray(chatData.candidates) && chatData.candidates.length > 0) {
+              this.applyDenisSearchResults({
+                ok: true,
+                user_message: chatData.answer || `Em tìm thấy ${chatData.candidates.length} mã phù hợp.`,
+                candidates: chatData.candidates
+              });
+            } else if (Array.isArray(chatData.top5) && chatData.top5.length > 0) {
+              const mapped = chatData.top5.map(t => ({
+                id: t.record_id || t.id || '',
+                code: t.code || '',
+                part_id: t.part_id || null,
+                usage_side: t.usage_side || null,
+                match_reason: t.match_reason || t.reason || '',
+                final_score: t.similarity_score || t.score || 0,
+                thumb_path: t.thumb_path || null,
+                front_path: t.front_path || null
+              }));
+              this.applyDenisSearchResults({
+                ok: true,
+                user_message: chatData.answer || `Em tìm thấy ${mapped.length} mã phù hợp.`,
+                candidates: mapped
+              });
+            } else {
+              this.denis.messages.push({
+                id:`a-${queryId}`,
+                role:'assistant',
+                text: chatData.answer || 'Em chưa tìm được câu trả lời phù hợp.'
+              });
+            }
           }
           return;
         }
