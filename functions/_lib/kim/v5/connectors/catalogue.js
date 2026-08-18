@@ -28,19 +28,24 @@ export async function hydrateVectorHits(env, token, hits, {maxRows=1500}={}) {
   const all = await scanCatalogue(env, token, {maxRows});
   const byId = new Map(all.map(row => [String(row?.id ?? ""), row]));
 
-  return (hits || []).map(hit => {
-    const row = byId.get(String(hit.record_id)) || {};
-    return {
-      ...row,
-      id:row?.id ?? hit.record_id,
-      record_id:String(hit.record_id),
-      vector_similarity:Number(hit.similarity || 0),
-      raw_vector_similarity:Number(hit.raw_vector_similarity ?? hit.similarity ?? 0),
-      probe_consensus:Number(hit.probe_consensus ?? 0),
-      probe_rrf:Number(hit.probe_rrf ?? 0),
-      probe_count:Number(hit.probe_count ?? 1),
-      vector_object_key:hit.object_key || "",
-      vector_asset_type:hit.asset_type || ""
-    };
-  });
+  // LỌC BỎ ORPHAN VECTORS: các vector có record_id không còn tồn tại trong
+  // catalogue (bản ghi đã bị xóa nhưng vector chưa được dọn).
+  // Nếu không lọc, chúng tạo candidate rỗng → UI hiển thị "ID: --- · Chưa xác định".
+  return (hits || [])
+    .filter(hit => byId.has(String(hit.record_id)))
+    .map(hit => {
+      const row = byId.get(String(hit.record_id));
+      return {
+        ...row,
+        id:row?.id ?? hit.record_id,
+        record_id:String(hit.record_id),
+        vector_similarity:Number(hit.similarity || 0),
+        raw_vector_similarity:Number(hit.raw_vector_similarity ?? hit.similarity ?? 0),
+        probe_consensus:Number(hit.probe_consensus ?? 0),
+        probe_rrf:Number(hit.probe_rrf ?? 0),
+        probe_count:Number(hit.probe_count ?? 1),
+        vector_object_key:hit.object_key || "",
+        vector_asset_type:hit.asset_type || ""
+      };
+    });
 }
