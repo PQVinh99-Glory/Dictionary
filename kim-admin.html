@@ -7,115 +7,30 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 <style>
-  body {
-    background: #f4f6f9;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  }
-  .card {
-    background: #ffffff;
-    border-radius: 16px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-  }
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1.2rem;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.875rem;
-    border: none;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-  .btn-primary {
-    background: #0f172a;
-    color: #fff;
-  }
-  .btn-primary:hover { background: #1e293b; }
-  .btn-primary i { font-size: 1rem; }
-  .btn-success {
-    background: #059669;
-    color: #fff;
-  }
-  .btn-success:hover { background: #047857; }
-  .btn-outline {
-    background: transparent;
-    color: #475569;
-    border: 1px solid #cbd5e1;
-  }
-  .btn-outline:hover { background: #f1f5f9; }
-  .btn-danger {
-    background: #fee2e2;
-    color: #dc2626;
-  }
-  .btn-danger:hover { background: #fecaca; }
-  .badge {
-    display: inline-block;
-    padding: 0.15rem 0.7rem;
-    border-radius: 999px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
-  .badge-active {
-    background: #dcfce7;
-    color: #166534;
-  }
-  .badge-inactive {
-    background: #fee2e2;
-    color: #991b1b;
-  }
-  .input,
-  .textarea,
-  .select {
-    border: 1px solid #cbd5e1;
-    border-radius: 10px;
-    padding: 0.6rem 0.9rem;
-    font-size: 0.875rem;
-    width: 100%;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  .input:focus,
-  .textarea:focus {
-    border-color: #059669;
-    box-shadow: 0 0 0 3px rgba(5,150,105,0.12);
-  }
-  .label {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #475569;
-    letter-spacing: 0.02em;
-    margin-bottom: 0.25rem;
-  }
-  .toast {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    padding: 0.8rem 1.5rem;
-    border-radius: 12px;
-    background: #0f172a;
-    color: #fff;
-    font-weight: 600;
-    font-size: 0.875rem;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-    z-index: 999;
-    animation: slideUp 0.3s ease;
-  }
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .provider-card {
-    transition: all 0.15s ease;
-  }
-  .provider-card:hover {
-    border-color: #a7f3d0;
-    box-shadow: 0 8px 20px rgba(5,150,105,0.06);
-  }
+  body { background: #f4f6f9; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+  .card { background:#fff; border-radius:16px; border:1px solid #e2e8f0; box-shadow:0 4px 12px rgba(0,0,0,0.04); }
+  .btn { display:inline-flex; align-items:center; gap:0.5rem; padding:0.5rem 1.2rem; border-radius:10px; font-weight:600; font-size:0.875rem; border:none; cursor:pointer; transition:all 0.15s ease; }
+  .btn-primary { background:#0f172a; color:#fff; }
+  .btn-primary:hover { background:#1e293b; }
+  .btn-success { background:#059669; color:#fff; }
+  .btn-success:hover { background:#047857; }
+  .btn-outline { background:transparent; color:#475569; border:1px solid #cbd5e1; }
+  .btn-outline:hover { background:#f1f5f9; }
+  .btn-danger { background:#fee2e2; color:#dc2626; }
+  .btn-danger:hover { background:#fecaca; }
+  .badge { display:inline-block; padding:0.15rem 0.7rem; border-radius:999px; font-size:0.7rem; font-weight:600; }
+  .badge-active { background:#dcfce7; color:#166534; }
+  .badge-inactive { background:#fee2e2; color:#991b1b; }
+  .input,.textarea,.select { border:1px solid #cbd5e1; border-radius:10px; padding:0.6rem 0.9rem; font-size:0.875rem; width:100%; outline:none; transition:border-color 0.15s; background:#fff; }
+  .input:focus,.textarea:focus,.select:focus { border-color:#059669; box-shadow:0 0 0 3px rgba(5,150,105,0.12); }
+  .label { display:block; font-size:0.75rem; font-weight:600; color:#475569; margin-bottom:0.25rem; }
+  .toast { position:fixed; bottom:2rem; right:2rem; padding:0.8rem 1.5rem; border-radius:12px; color:#fff; font-weight:600; font-size:0.875rem; box-shadow:0 8px 24px rgba(0,0,0,0.15); z-index:999; animation:slideUp 0.3s ease; }
+  @@keyframes slideUp { from { opacity:0; transform:translateY(16px);} to { opacity:1; transform:translateY(0);} }
+  .provider-card { transition:all 0.15s ease; }
+  .provider-card:hover { border-color:#a7f3d0; box-shadow:0 8px 20px rgba(5,150,105,0.06); }
+  .model-row { display:flex; gap:0.5rem; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; }
+  .role-chip { font-size:0.7rem; padding:0.15rem 0.5rem; border-radius:999px; border:1px solid #cbd5e1; cursor:pointer; user-select:none; }
+  .role-chip.on { background:#059669; color:#fff; border-color:#059669; }
 </style>
 </head>
 <body class="min-h-screen p-6 flex items-start justify-center">
@@ -127,7 +42,7 @@
         <i class="fas fa-sliders-h text-emerald-600"></i>
         Quản lý Providers
       </h1>
-      <p class="text-sm text-slate-500 mt-1">Cấu hình các API provider cho Thư ký Kim. Thay đổi có hiệu lực ngay.</p>
+      <p class="text-sm text-slate-500 mt-1">Cấu hình các API provider cho Thư ký Kim. Thêm nhiều provider để tự động fallback khi gặp lỗi. Thay đổi có hiệu lực trong vòng 5 phút.</p>
     </div>
     <button onclick="showAddForm()" class="btn btn-primary">
       <i class="fas fa-plus"></i> Thêm Provider
@@ -152,43 +67,60 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
       <div>
-        <label class="label">Tên provider</label>
-        <input id="fName" class="input" placeholder="ví dụ: xkiro, openai-backup" />
+        <label class="label">Provider ID <span class="text-red-500">*</span></label>
+        <input id="fProviderId" class="input" placeholder="ví dụ: openai-main, anthropic-backup" />
       </div>
       <div>
-        <label class="label">Priority (số nhỏ ưu tiên cao)</label>
-        <input id="fPriority" type="number" class="input" value="0" />
+        <label class="label">Display name</label>
+        <input id="fDisplayName" class="input" placeholder="ví dụ: OpenAI Chính, Anthropic Dự phòng" />
       </div>
     </div>
 
-    <div class="mb-4">
-      <label class="label">Base URL</label>
-      <input id="fBaseUrl" class="input" placeholder="https://api.xkiro.com/v1" />
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label class="label">Base URL <span class="text-red-500">*</span></label>
+        <input id="fBaseUrl" class="input" placeholder="https://api.openai.com/v1" />
+      </div>
+      <div>
+        <label class="label">API Protocol <span class="text-red-500">*</span></label>
+        <select id="fProtocol" class="select">
+          <option value="openai-completions">openai-completions (chat/completions)</option>
+          <option value="openai-responses">openai-responses (responses)</option>
+          <option value="anthropic-messages">anthropic-messages (messages)</option>
+        </select>
+      </div>
     </div>
 
-    <div class="mb-4">
-      <label class="label">API Key <span class="text-xs font-normal text-slate-400">(sẽ được mã hóa trước khi lưu)</span></label>
-      <input id="fApiKey" type="password" class="input" placeholder="sk-..." />
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div class="md:col-span-1">
+        <label class="label">API Key <span class="text-red-500">*</span> <span class="text-xs font-normal text-slate-400">(mã hóa AES-256-GCM)</span></label>
+        <input id="fApiKey" type="password" class="input" placeholder="sk-..." />
+      </div>
+      <div>
+        <label class="label">Priority <span class="text-xs font-normal text-slate-400">(số nhỏ ưu tiên cao)</span></label>
+        <input id="fPriority" type="number" class="input" value="0" />
+      </div>
+      <div class="flex items-end pb-1">
+        <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+          <input type="checkbox" id="fActive" checked class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
+          Active
+        </label>
+      </div>
     </div>
 
+    <!-- Models builder -->
     <div class="mb-4">
-      <label class="label">Models <span class="text-xs font-normal text-slate-400">(JSON array)</span></label>
-      <textarea id="fModels" rows="6" class="textarea" placeholder='[
-  {"id":"deepseek/deepseek-v4-pro","roles":["orchestrator"]},
-  {"id":"xiaomi/mimo-v2.5-pro","roles":["vision"]}
-]'></textarea>
-    </div>
-
-    <div class="flex items-center gap-4 mb-4">
-      <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
-        <input type="checkbox" id="fActive" checked class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
-        Active
-      </label>
+      <div class="flex items-center justify-between mb-2">
+        <label class="label mb-0">Models <span class="text-red-500">*</span> <span class="text-xs font-normal text-slate-400">(gán role cho từng model)</span></label>
+        <button onclick="addModelRow()" class="btn btn-outline text-xs px-3 py-1"><i class="fas fa-plus"></i> Add Model</button>
+      </div>
+      <div id="modelsContainer" class="border border-slate-200 rounded-xl p-3 bg-slate-50"></div>
+      <p class="text-xs text-slate-400 mt-1">Roles: vision (phân tích ảnh) · orchestrator (reasoning/rerank/chat) · synthesizer (tổng hợp) · fallback (dự phòng) · lightweight (tác vụ nhẹ)</p>
     </div>
 
     <div class="flex gap-3">
       <button onclick="saveProvider()" class="btn btn-success">
-        <i class="fas fa-save"></i> Lưu
+        <i class="fas fa-save"></i> Create Provider
       </button>
       <button onclick="hideForm()" class="btn btn-outline">
         <i class="fas fa-times"></i> Hủy
@@ -200,16 +132,11 @@
 <script>
 const API_BASE = '/api/kim/admin/providers';
 const SESSION_TOKEN_KEY = 'catalogue_app_session_token_v3_r2';
+const ROLES = ['vision','orchestrator','synthesizer','fallback','lightweight'];
 
 function getHeaders() {
   const token = localStorage.getItem(SESSION_TOKEN_KEY);
-  if (token) {
-    return { 'x-session-token': token };
-  }
-  const adminToken = document.getElementById('adminToken')?.value?.trim();
-  if (adminToken) {
-    return { 'x-admin-token': adminToken };
-  }
+  if (token) return { 'x-session-token': token };
   return {};
 }
 
@@ -222,10 +149,43 @@ function toast(msg, ok = true) {
   setTimeout(() => el.remove(), 3000);
 }
 
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s ?? '');
+  return d.innerHTML;
+}
+
+// ── Models builder ─────────────────────────────────────────────
+function addModelRow(model) {
+  const container = document.getElementById('modelsContainer');
+  const row = document.createElement('div');
+  row.className = 'model-row';
+  row.innerHTML = `
+    <input class="input model-id flex-1 min-w-[180px]" placeholder="model id, ví dụ: deepseek/deepseek-v4-pro" value="${esc(model?.id || '')}" />
+    <div class="flex gap-1 flex-wrap">
+      ${ROLES.map(r => `<span class="role-chip ${model?.roles?.includes(r) ? 'on' : ''}" data-role="${r}" onclick="this.classList.toggle('on')">${r}</span>`).join('')}
+    </div>
+    <button class="btn btn-danger text-xs px-2 py-1" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
+  `;
+  container.appendChild(row);
+}
+
+function collectModels() {
+  const rows = document.querySelectorAll('#modelsContainer .model-row');
+  const models = [];
+  for (const row of rows) {
+    const id = row.querySelector('.model-id').value.trim();
+    if (!id) continue;
+    const roles = [...row.querySelectorAll('.role-chip.on')].map(c => c.dataset.role);
+    models.push({ id, roles: roles.length ? roles : ['fallback'] });
+  }
+  return models;
+}
+
+// ── Load & render ──────────────────────────────────────────────
 async function loadProviders() {
   try {
-    const headers = getHeaders();
-    const res = await fetch(API_BASE, { headers });
+    const res = await fetch(API_BASE, { headers: getHeaders() });
     const data = await res.json();
     if (!data.ok) throw new Error(data.message || 'Load failed');
     renderProviders(data.providers || []);
@@ -233,9 +193,8 @@ async function loadProviders() {
     document.getElementById('providerList').innerHTML = `
       <div class="text-center py-12 text-red-500">
         <i class="fas fa-exclamation-circle text-3xl block mb-2"></i>
-        ${e.message}
-      </div>
-    `;
+        ${esc(e.message)}
+      </div>`;
   }
 }
 
@@ -246,11 +205,8 @@ function renderProviders(providers) {
       <div class="text-center py-16 text-slate-400">
         <i class="fas fa-database text-4xl block mb-3 opacity-30"></i>
         <p class="text-sm">Chưa có provider nào.</p>
-        <button onclick="showAddForm()" class="btn btn-primary mt-4">
-          <i class="fas fa-plus"></i> Thêm provider đầu tiên
-        </button>
-      </div>
-    `;
+        <button onclick="showAddForm()" class="btn btn-primary mt-4"><i class="fas fa-plus"></i> Thêm provider đầu tiên</button>
+      </div>`;
     return;
   }
 
@@ -258,50 +214,45 @@ function renderProviders(providers) {
     <div class="card provider-card p-5 flex flex-wrap items-start justify-between gap-4">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-3 flex-wrap">
-          <span class="font-bold text-slate-800 text-lg">${esc(p.name)}</span>
+          <span class="font-bold text-slate-800 text-lg">${esc(p.display_name || p.name)}</span>
           <span class="badge ${p.is_active ? 'badge-active' : 'badge-inactive'}">${p.is_active ? 'Active' : 'Inactive'}</span>
           <span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">priority ${p.priority}</span>
+          <span class="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">${esc(p.api_protocol || 'openai-completions')}</span>
         </div>
+        <div class="text-xs text-slate-400 mt-1">id: <span class="font-mono">${esc(p.provider_id)}</span></div>
         <div class="text-sm text-slate-500 mt-1 font-mono">${esc(p.base_url)}</div>
         <div class="text-xs text-slate-400 mt-2 flex flex-wrap items-center gap-1">
           <span class="bg-slate-100 px-2 py-0.5 rounded">${(p.models || []).length} models</span>
-          <span class="bg-slate-100 px-2 py-0.5 rounded">Key: ${p.api_key_masked || '***'}</span>
+          <span class="bg-slate-100 px-2 py-0.5 rounded">Key: ${esc(p.api_key_status || '***')}</span>
         </div>
         <div class="flex flex-wrap gap-1 mt-2">
           ${(p.models || []).map(m => `
             <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-100">
-              ${esc(m.id)} <span class="text-emerald-400">|</span> ${(m.roles||[]).join(', ')}
-            </span>
-          `).join('')}
+              ${esc(m.id)} <span class="text-emerald-400">|</span> ${esc((m.roles||[]).join(', '))}
+            </span>`).join('')}
         </div>
       </div>
       <div class="flex gap-2 shrink-0">
-        <button onclick="editProvider('${p.id}')" class="btn btn-outline text-sm px-3 py-1.5">
-          <i class="fas fa-pen"></i>
-        </button>
-        <button onclick="deleteProvider('${p.id}','${esc(p.name)}')" class="btn btn-danger text-sm px-3 py-1.5">
-          <i class="fas fa-trash"></i>
-        </button>
+        <button onclick="editProvider('${p.id}')" class="btn btn-outline text-sm px-3 py-1.5"><i class="fas fa-pen"></i></button>
+        <button onclick="deleteProvider('${p.id}','${esc(p.display_name || p.name)}')" class="btn btn-danger text-sm px-3 py-1.5"><i class="fas fa-trash"></i></button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
+// ── Form actions ───────────────────────────────────────────────
 function showAddForm() {
   document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle text-emerald-600"></i> Thêm Provider mới';
   document.getElementById('editId').value = '';
-  document.getElementById('fName').value = '';
-  document.getElementById('fBaseUrl').value = 'https://api.xkiro.com/v1';
+  document.getElementById('fProviderId').value = '';
+  document.getElementById('fDisplayName').value = '';
+  document.getElementById('fBaseUrl').value = '';
+  document.getElementById('fProtocol').value = 'openai-completions';
   document.getElementById('fApiKey').value = '';
-  document.getElementById('fModels').value = '[\n  {"id":"deepseek/deepseek-v4-pro","roles":["orchestrator"]},\n  {"id":"xiaomi/mimo-v2.5-pro","roles":["vision"]}\n]';
+  document.getElementById('fApiKey').placeholder = 'sk-...';
   document.getElementById('fPriority').value = '0';
   document.getElementById('fActive').checked = true;
+  document.getElementById('modelsContainer').innerHTML = '';
+  addModelRow({ id: '', roles: ['orchestrator'] });
   document.getElementById('providerForm').classList.remove('hidden');
   document.getElementById('providerForm').scrollIntoView({ behavior: 'smooth' });
 }
@@ -312,20 +263,25 @@ function hideForm() {
 
 async function editProvider(id) {
   try {
-    const headers = getHeaders();
-    const res = await fetch(`${API_BASE}?id=${id}`, { headers });
+    const res = await fetch(API_BASE, { headers: getHeaders() });
     const data = await res.json();
     if (!data.ok) throw new Error(data.message);
-    const p = data.provider;
-    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit text-emerald-600"></i> Sửa Provider: ${esc(p.name)}`;
+    const p = (data.providers || []).find(x => x.id === id);
+    if (!p) throw new Error('Không tìm thấy provider.');
+
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit text-emerald-600"></i> Sửa Provider: ${esc(p.display_name || p.name)}`;
     document.getElementById('editId').value = id;
-    document.getElementById('fName').value = p.name;
-    document.getElementById('fBaseUrl').value = p.base_url;
+    document.getElementById('fProviderId').value = p.provider_id || '';
+    document.getElementById('fDisplayName').value = p.display_name || '';
+    document.getElementById('fBaseUrl').value = p.base_url || '';
+    document.getElementById('fProtocol').value = p.api_protocol || 'openai-completions';
     document.getElementById('fApiKey').value = '';
     document.getElementById('fApiKey').placeholder = 'Để trống = giữ nguyên key cũ';
-    document.getElementById('fModels').value = JSON.stringify(p.models || [], null, 2);
     document.getElementById('fPriority').value = p.priority || 0;
     document.getElementById('fActive').checked = p.is_active !== false;
+    document.getElementById('modelsContainer').innerHTML = '';
+    (p.models || []).forEach(m => addModelRow(m));
+    if (!(p.models || []).length) addModelRow();
     document.getElementById('providerForm').classList.remove('hidden');
     document.getElementById('providerForm').scrollIntoView({ behavior: 'smooth' });
   } catch (e) {
@@ -335,17 +291,15 @@ async function editProvider(id) {
 
 async function saveProvider() {
   const id = document.getElementById('editId').value;
-  let models;
-  try {
-    models = JSON.parse(document.getElementById('fModels').value);
-  } catch {
-    toast('Models JSON không hợp lệ', false);
-    return;
-  }
+  const models = collectModels();
+  if (!models.length) { toast('Cần ít nhất 1 model.', false); return; }
 
   const body = {
-    name: document.getElementById('fName').value.trim(),
+    provider_id: document.getElementById('fProviderId').value.trim(),
+    display_name: document.getElementById('fDisplayName').value.trim(),
+    name: document.getElementById('fDisplayName').value.trim() || document.getElementById('fProviderId').value.trim(),
     base_url: document.getElementById('fBaseUrl').value.trim(),
+    api_protocol: document.getElementById('fProtocol').value,
     models,
     priority: Number(document.getElementById('fPriority').value) || 0,
     is_active: document.getElementById('fActive').checked
@@ -359,11 +313,7 @@ async function saveProvider() {
     const headers = getHeaders();
     headers['content-type'] = 'application/json';
 
-    const res = await fetch(url, {
-      method,
-      headers,
-      body: JSON.stringify(body)
-    });
+    const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
     const data = await res.json();
     if (!data.ok) throw new Error(data.message || 'Save failed');
 
@@ -378,8 +328,7 @@ async function saveProvider() {
 async function deleteProvider(id, name) {
   if (!confirm(`Xóa provider "${name}"?`)) return;
   try {
-    const headers = getHeaders();
-    const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE', headers });
+    const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE', headers: getHeaders() });
     const data = await res.json();
     if (!data.ok) throw new Error(data.message);
     toast('Đã xóa provider.');
@@ -389,15 +338,13 @@ async function deleteProvider(id, name) {
   }
 }
 
-// Tự động load khi trang sẵn sàng
 document.addEventListener('DOMContentLoaded', () => {
   if (!localStorage.getItem(SESSION_TOKEN_KEY)) {
     document.getElementById('providerList').innerHTML = `
       <div class="text-center py-12 text-yellow-600">
         <i class="fas fa-exclamation-triangle text-3xl block mb-2"></i>
         Bạn chưa đăng nhập. Vui lòng đăng nhập vào hệ thống trước.
-      </div>
-    `;
+      </div>`;
   } else {
     loadProviders();
   }

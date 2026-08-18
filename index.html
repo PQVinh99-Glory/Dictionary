@@ -1019,11 +1019,11 @@ const CONFIG = {
   LOCAL_TOKEN_KEY: 'catalogue_app_session_token_v3_r2',
   PAGE_LIMIT: 36,
 
-  // Auto-login (chế độ prototype): vào thẳng hệ thống, bỏ qua màn hình đăng nhập.
-  // Nếu đăng nhập tự động thất bại sẽ quay lại form đăng nhập thủ công.
-  AUTO_LOGIN_ENABLED: true,
-  AUTO_LOGIN_USERNAME: 'Vinh',
-  AUTO_LOGIN_PASSWORD: '123',
+  // Auto-login (chế độ prototype): TẮT mặc định vì credential không được hardcode.
+  // Muốn bật lại chỉ dùng cho demo nội bộ: set true + điền user/pass thật, KHÔNG commit lên production.
+  AUTO_LOGIN_ENABLED: false,
+  AUTO_LOGIN_USERNAME: '',
+  AUTO_LOGIN_PASSWORD: '',
 
   // Thư ký Kim V5.5 — Browser DINOv2
   KIM_BROWSER_VECTOR_ENABLED: true,

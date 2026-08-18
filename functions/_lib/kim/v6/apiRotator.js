@@ -1,35 +1,38 @@
-// API Rotator — Cloudflare Workers/Pages compatible version.
-// Dùng Web Crypto API (không Node crypto), fetch providers từ Supabase hoặc env.
-// Auto-rotate khi 429/quota, cooldown per-model, streaming passthrough.
+// API Rotator v2 — Cloudflare Workers/Pages compatible.
+// Hỗ trợ 3 protocol:
+//   - openai-completions  : POST {baseURL}/chat/completions (OpenAI-compatible chuẩn)
+//   - openai-responses    : POST {baseURL}/responses (OpenAI Responses API)
+//   - anthropic-messages  : POST {baseURL}/messages (Anthropic Messages API)
 //
-// Ưu tiên config: (1) env KIM_PROVIDERS → (2) Supabase table kim_provider_config → (3) fallback
+// Config ưu tiên: (1) env KIM_PROVIDERS → (2) Supabase kim_provider_config → (3) fallback env.
+// API key mã hóa AES-256-GCM trong DB, giải mã tại edge.
+// Auto-rotate khi 429/quota/lỗi mạng, cooldown per-model, streaming passthrough.
+//
 // Roles: "vision" | "orchestrator" | "synthesizer" | "fallback" | "lightweight"
 
 const DEFAULT_COOLDOWN_MS = 60_000;
 const MAX_RETRIES = 3;
 const DB_CACHE_TTL_MS = 5 * 60_000;
 
+export const PROTOCOLS = ["openai-completions", "openai-responses", "anthropic-messages"];
+
 // In-memory state (per-isolate, resets on cold start — acceptable for rotation)
 const modelCooldowns = new Map();
 let dbCache = null; // { providers, fetchedAt }
 
-/**
- * Decrypt AES-256-GCM encrypted API key.
- * Format: base64(iv):base64(ciphertext+tag)
- * Uses Web Crypto API (available in CF Workers).
- */
+// ==================================================================
+// Crypto: decrypt AES-256-GCM API key (Web Crypto API)
+// ==================================================================
+
 async function decryptApiKey(encryptedStr, encKeyHex) {
   if (!encryptedStr || !encryptedStr.includes(":")) return null;
   if (!encKeyHex || encKeyHex.length !== 64) return null;
-
   try {
     const fromBase64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
     const encKeyBytes = Uint8Array.from(encKeyHex.match(/.{2}/g), (b) => parseInt(b, 16));
-
     const parts = encryptedStr.split(":");
     const iv = fromBase64(parts[0]);
     const ciphertextWithTag = fromBase64(parts[1]);
-
     const cryptoKey = await crypto.subtle.importKey("raw", encKeyBytes, "AES-GCM", false, ["decrypt"]);
     const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, ciphertextWithTag);
     return new TextDecoder().decode(decrypted);
@@ -38,10 +41,10 @@ async function decryptApiKey(encryptedStr, encKeyHex) {
   }
 }
 
-/**
- * Fetch providers from Supabase table kim_provider_config.
- * Returns null if not configured or error.
- */
+// ==================================================================
+// Provider resolution: env → DB → fallback
+// ==================================================================
+
 async function fetchProvidersFromDb(env) {
   if (dbCache && Date.now() - dbCache.fetchedAt < DB_CACHE_TTL_MS) {
     return dbCache.providers;
@@ -71,8 +74,11 @@ async function fetchProvidersFromDb(env) {
       if (!apiKey) continue;
 
       providers.push({
+        providerId: row.provider_id || row.name,
         name: row.name,
+        displayName: row.display_name || row.name,
         baseURL: row.base_url,
+        protocol: PROTOCOLS.includes(row.api_protocol) ? row.api_protocol : "openai-completions",
         apiKey, // plaintext in-memory only
         models: Array.isArray(row.models) ? row.models : [],
         priority: row.priority || 0,
@@ -89,36 +95,38 @@ async function fetchProvidersFromDb(env) {
   }
 }
 
-/**
- * Parse providers from env var KIM_PROVIDERS (JSON array).
- */
 function parseProvidersFromEnv(env) {
   const raw = String(env.KIM_PROVIDERS || "").trim();
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return null;
-    // Resolve apiKeyEnv to actual keys
     return parsed.map((p) => ({
-      ...p,
+      providerId: p.providerId || p.provider_id || p.name,
+      name: p.name,
+      displayName: p.displayName || p.display_name || p.name,
+      baseURL: p.baseURL || p.base_url,
+      protocol: PROTOCOLS.includes(p.protocol || p.api_protocol) ? (p.protocol || p.api_protocol) : "openai-completions",
       apiKey: p.apiKey || String(env[p.apiKeyEnv] || env.XKIRO_API_KEY || "").trim(),
+      models: p.models || [],
+      priority: p.priority || 0,
     }));
   } catch {
     return null;
   }
 }
 
-/**
- * Build fallback single provider from legacy env vars.
- */
 function buildFallbackProvider(env) {
   const baseURL = String(env.KIM_LLM_BASE_URL || "https://api.xkiro.com/v1");
   const apiKey = String(env.KIM_LLM_API_KEY || env.XKIRO_API_KEY || "").trim();
   const defaultModel = String(env.KIM_LLM_MODEL || "qwen/qwen3.8-max");
   return [
     {
+      providerId: "default",
       name: "default",
+      displayName: "Default Provider",
       baseURL,
+      protocol: "openai-completions",
       apiKey,
       models: [{ id: defaultModel, roles: ["orchestrator", "vision", "synthesizer", "fallback"] }],
       priority: 0,
@@ -139,6 +147,10 @@ export async function resolveProviders(env) {
   return buildFallbackProvider(env);
 }
 
+// ==================================================================
+// Cooldown management
+// ==================================================================
+
 function isCooledDown(providerName, modelId) {
   const key = `${providerName}/${modelId}`;
   const until = modelCooldowns.get(key);
@@ -151,8 +163,12 @@ function setCooldown(providerName, modelId, retryAfterMs) {
   modelCooldowns.set(key, Date.now() + ms);
 }
 
+// ==================================================================
+// Candidate selection
+// ==================================================================
+
 /**
- * Select candidate models for a given role, sorted by priority and cooldown status.
+ * Select candidate models for a given role, sorted by priority and cooldown.
  */
 export function selectCandidates(providers, role) {
   const candidates = [];
@@ -177,12 +193,146 @@ export function selectCandidates(providers, role) {
   return candidates;
 }
 
+// ==================================================================
+// Protocol adapters: build request per protocol
+// ==================================================================
+
+/**
+ * Convert internal messages [{role, content}] to protocol-specific format.
+ * @param {string} protocol
+ * @param {object} body - { model, messages, temperature, max_tokens, response_format?, stream? }
+ * @returns {{ url, headers, body }} protocol-specific fetch params
+ */
+function buildProtocolRequest(provider, body, stream) {
+  const base = provider.baseURL.replace(/\/+$/, "");
+
+  switch (provider.protocol) {
+    // ── OpenAI Chat Completions (chuẩn) ─────────────────────────────
+    case "openai-completions": {
+      const url = `${base}/chat/completions`;
+      const requestBody = { ...body };
+      if (stream) requestBody.stream = true;
+      return {
+        url,
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${provider.apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      };
+    }
+
+    // ── OpenAI Responses API ────────────────────────────────────────
+    case "openai-responses": {
+      const url = `${base}/responses`;
+      // Responses API dùng "input" thay vì "messages"
+      const { messages, ...rest } = body;
+      const requestBody = {
+        ...rest,
+        input: messages,
+        max_output_tokens: rest.max_tokens || 4096,
+      };
+      delete requestBody.max_tokens;
+      if (stream) requestBody.stream = true;
+      return {
+        url,
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${provider.apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      };
+    }
+
+    // ── Anthropic Messages API ──────────────────────────────────────
+    case "anthropic-messages": {
+      const url = `${base}/messages`;
+      const { messages, ...rest } = body;
+
+      // Anthropic tách system ra khỏi messages
+      const systemParts = messages.filter((m) => m.role === "system");
+      const nonSystem = messages.filter((m) => m.role !== "system");
+      const system = systemParts.map((m) => (typeof m.content === "string" ? m.content : JSON.stringify(m.content))).join("\n\n");
+
+      // Convert content: Anthropic cần format content blocks cho images
+      const convertedMessages = nonSystem.map((m) => {
+        if (typeof m.content === "string") return m;
+        // Array content (vision): convert image_url → base64 source
+        if (Array.isArray(m.content)) {
+          return {
+            role: m.role,
+            content: m.content.map((block) => {
+              if (block.type === "image_url" && block.image_url?.url?.startsWith("data:")) {
+                const match = /^data:([^;]+);base64,(.+)$/s.exec(block.image_url.url);
+                if (match) {
+                  return {
+                    type: "image",
+                    source: { type: "base64", media_type: match[1], data: match[2] },
+                  };
+                }
+              }
+              if (block.type === "text") return { type: "text", text: block.text || "" };
+              return { type: "text", text: JSON.stringify(block) };
+            }),
+          };
+        }
+        return m;
+      });
+
+      const requestBody = {
+        model: rest.model,
+        max_tokens: rest.max_tokens || 4096,
+        temperature: rest.temperature ?? 0.1,
+        messages: convertedMessages,
+      };
+      if (system) requestBody.system = system;
+      if (stream) requestBody.stream = true;
+
+      return {
+        url,
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": provider.apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify(requestBody),
+      };
+    }
+
+    default:
+      throw new Error(`Protocol không hỗ trợ: ${provider.protocol}`);
+  }
+}
+
+/**
+ * Extract text content from protocol-specific response.
+ */
+function extractContent(protocol, data) {
+  switch (protocol) {
+    case "openai-completions":
+      return data?.choices?.[0]?.message?.content || "";
+    case "openai-responses":
+      return data?.output_text || data?.output?.[0]?.content?.[0]?.text || "";
+    case "anthropic-messages": {
+      const block = data?.content?.find((b) => b.type === "text");
+      return block?.text || "";
+    }
+    default:
+      return "";
+  }
+}
+
+// ==================================================================
+// Core: call with rotation
+// ==================================================================
+
 /**
  * Call LLM with automatic rotation across providers/models.
+ * @param {object} env - Cloudflare env bindings
  * @param {string} role - "vision" | "orchestrator" | "synthesizer" | "fallback" | "lightweight"
- * @param {object} body - OpenAI chat/completions request body (model field will be overridden)
+ * @param {object} body - Internal format: { model?, messages, temperature?, max_tokens? }
  * @param {object} options - { stream, signal, maxRetries }
- * @returns {{ data?, stream?, modelUsed, providerUsed }}
+ * @returns {{ data?, stream?, content?, modelUsed, providerUsed, protocol }}
  */
 export async function callWithRotation(env, role, body, options = {}) {
   const { stream = false, signal, maxRetries = MAX_RETRIES } = options;
@@ -202,42 +352,37 @@ export async function callWithRotation(env, role, body, options = {}) {
 
     const { provider, model } = candidate;
     if (!provider.apiKey) {
-      lastError = new Error(`Missing API key for ${provider.name}`);
+      lastError = new Error(`Missing API key for ${provider.displayName}`);
       continue;
     }
 
-    const url = `${provider.baseURL.replace(/\/+$/, "")}/chat/completions`;
-    const requestBody = { ...body, model: model.id };
-    if (stream) requestBody.stream = true;
-
     try {
-      const res = await fetch(url, {
+      const req = buildProtocolRequest(provider, { ...body, model: model.id }, stream);
+
+      const res = await fetch(req.url, {
         method: "POST",
         signal,
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${provider.apiKey}`,
-        },
-        body: JSON.stringify(requestBody),
+        headers: req.headers,
+        body: req.body,
       });
 
       if (res.status === 429) {
         const retryAfter = res.headers.get("retry-after");
         const retryMs = retryAfter ? Number(retryAfter) * 1000 : DEFAULT_COOLDOWN_MS;
         setCooldown(provider.name, model.id, retryMs);
-        lastError = Object.assign(new Error(`Rate limited: ${provider.name}/${model.id}`), { code: "KIM_RATE_LIMITED" });
+        lastError = Object.assign(new Error(`Rate limited: ${provider.displayName}/${model.id}`), { code: "KIM_RATE_LIMITED" });
         continue;
       }
 
       if (res.status === 402 || res.status === 403) {
         setCooldown(provider.name, model.id, 300_000);
-        lastError = Object.assign(new Error(`Quota/auth error: ${provider.name}/${model.id} HTTP ${res.status}`), { code: "KIM_QUOTA_EXHAUSTED" });
+        lastError = Object.assign(new Error(`Quota/auth error: ${provider.displayName}/${model.id} HTTP ${res.status}`), { code: "KIM_QUOTA_EXHAUSTED" });
         continue;
       }
 
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
-        lastError = Object.assign(new Error(`${provider.name}/${model.id} HTTP ${res.status}: ${errText.slice(0, 200)}`), { code: "KIM_API_ERROR" });
+        lastError = Object.assign(new Error(`${provider.displayName}/${model.id} HTTP ${res.status}: ${errText.slice(0, 200)}`), { code: "KIM_API_ERROR" });
         continue;
       }
 
@@ -245,13 +390,15 @@ export async function callWithRotation(env, role, body, options = {}) {
         return {
           stream: res.body,
           modelUsed: model.id,
-          providerUsed: provider.name,
+          providerUsed: provider.displayName,
+          protocol: provider.protocol,
           contentType: res.headers.get("content-type"),
         };
       }
 
       const data = await res.json();
-      return { data, modelUsed: model.id, providerUsed: provider.name };
+      const content = extractContent(provider.protocol, data);
+      return { data, content, modelUsed: model.id, providerUsed: provider.displayName, protocol: provider.protocol };
     } catch (e) {
       if (e.name === "AbortError") throw e;
       lastError = e;
@@ -266,8 +413,16 @@ export async function callWithRotation(env, role, body, options = {}) {
   );
 }
 
+// ==================================================================
+// Convenience: call and parse JSON
+// ==================================================================
+
 /**
- * Convenience: call LLM and parse JSON response.
+ * Call LLM and parse JSON response.
+ * @param {object} env
+ * @param {string} role
+ * @param {Array} messages - [{role, content}]
+ * @param {object} options - { temperature, maxTokens, responseFormat, signal }
  */
 export async function callJson(env, role, messages, options = {}) {
   const { temperature = 0.1, maxTokens = 4096, responseFormat, signal } = options;
@@ -275,19 +430,23 @@ export async function callJson(env, role, messages, options = {}) {
   if (responseFormat) body.response_format = responseFormat;
 
   const result = await callWithRotation(env, role, body, { stream: false, signal });
-  const content = result.data?.choices?.[0]?.message?.content || "";
+  const content = result.content || "";
 
-  let json = null;
-  if (responseFormat?.type === "json_object" || content.trim().startsWith("{")) {
+  let parsed = null;
+  if (responseFormat?.type === "json_object" || content.trim().startsWith("{") || content.trim().startsWith("[")) {
     try {
-      json = JSON.parse(content);
+      parsed = JSON.parse(content);
     } catch {
-      // Not valid JSON
+      // Not valid JSON — return raw
     }
   }
 
-  return { content, json, modelUsed: result.modelUsed, providerUsed: result.providerUsed };
+  return { content, json: parsed, modelUsed: result.modelUsed, providerUsed: result.providerUsed, protocol: result.protocol };
 }
+
+// ==================================================================
+// Status: debug rotation state
+// ==================================================================
 
 /**
  * Get current rotation status for debugging.
@@ -300,7 +459,9 @@ export async function getRotatorStatus(env) {
       const key = `${provider.name}/${model.id}`;
       const until = modelCooldowns.get(key);
       status.push({
-        provider: provider.name,
+        provider: provider.displayName,
+        providerId: provider.providerId,
+        protocol: provider.protocol,
         model: model.id,
         roles: model.roles || ["fallback"],
         cooledDown: until ? Date.now() < until : false,
@@ -310,4 +471,3 @@ export async function getRotatorStatus(env) {
   }
   return status;
 }
-

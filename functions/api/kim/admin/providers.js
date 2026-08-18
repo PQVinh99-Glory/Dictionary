@@ -6,11 +6,16 @@
 //
 // Bảo mật: chỉ chấp nhận request có KIM_ADMIN_TOKEN hoặc session_token hợp lệ.
 // API key được mã hóa AES-256-GCM trước khi lưu vào DB.
+//
+// Schema v2 (sql/004_kim_provider_config_v2.sql):
+//   provider_id, name, display_name, base_url, api_protocol,
+//   api_key_encrypted, models, is_active, priority
 
 import { json, readJson } from "../../../_lib/shared/http.js";
 
-const ADMIN_TOKEN = ""; // Đọc từ env bên dưới; để trống = disable token check nếu có session
-const ENCRYPTION_KEY_ENV = "KIM_CONFIG_ENCRYPTION_KEY"; // 32-byte hex key cho AES-256-GCM
+const VALID_PROTOCOLS = ["openai-completions", "openai-responses", "anthropic-messages"];
+const VALID_ROLES = ["vision", "orchestrator", "synthesizer", "fallback", "lightweight"];
+const ENCRYPTION_KEY_ENV = "KIM_CONFIG_ENCRYPTION_KEY";
 
 function getAdminToken(env) {
   return String(env.KIM_ADMIN_TOKEN || "").trim();
@@ -31,24 +36,8 @@ async function encryptApiKey(plaintext, keyBytes) {
   const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt"]);
   const encoded = new TextEncoder().encode(plaintext);
   const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded));
-  // Format: base64(iv):base64(ciphertext)
   const toBase64 = (arr) => btoa(String.fromCharCode(...arr));
   return `${toBase64(iv)}:${toBase64(ciphertext)}`;
-}
-
-async function decryptApiKey(stored, keyBytes) {
-  const parts = stored.split(":");
-  if (parts.length !== 2) return null;
-  const fromBase64 = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-  const iv = fromBase64(parts[0]);
-  const ciphertext = fromBase64(parts[1]);
-  const key = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["decrypt"]);
-  try {
-    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
-    return new TextDecoder().decode(decrypted);
-  } catch {
-    return null;
-  }
 }
 
 function maskKey(encrypted) {
@@ -60,10 +49,8 @@ async function validateAdminAccess(request, env) {
   const adminToken = getAdminToken(env);
   const headerToken = String(request.headers.get("x-kim-admin-token") || "").trim();
 
-  // Ưu tiên admin token
   if (adminToken && headerToken === adminToken) return true;
 
-  // Fallback: session_token (validate qua Supabase)
   const sessionToken = String(
     request.headers.get("x-session-token") || ""
   ).trim();
@@ -77,7 +64,7 @@ async function validateAdminAccess(request, env) {
     }
   }
 
-  return !adminToken; // Nếu không set admin token và không có session → reject
+  return false;
 }
 
 function supabaseService(env) {
@@ -87,22 +74,39 @@ function supabaseService(env) {
   return { url, key };
 }
 
-async function dbQuery(env, sql, params = []) {
-  const { url, key } = supabaseService(env);
-  const res = await fetch(`${url}/rest/v1/rpc`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "apikey": key,
-      "authorization": `Bearer ${key}`
-    },
-    body: JSON.stringify({ query: sql, params })
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Supabase RPC error ${res.status}: ${text}`);
-  }
-  return res.json();
+// Validate + sanitize provider payload from client
+function sanitizeProviderBody(body) {
+  const out = {};
+
+  const providerId = String(body.provider_id || body.providerId || "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
+  const name = String(body.name || "").trim().slice(0, 120);
+  const displayName = String(body.display_name || body.displayName || name || providerId).trim().slice(0, 120);
+  const baseUrl = String(body.base_url || body.baseURL || "").trim().slice(0, 500);
+  const protocol = String(body.api_protocol || body.protocol || "openai-completions").trim();
+
+  if (!providerId) return { error: "Thiếu Provider ID." };
+  if (!name && !displayName) return { error: "Thiếu tên provider." };
+  if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) return { error: "Base URL không hợp lệ (cần bắt đầu bằng http:// hoặc https://)." };
+  if (!VALID_PROTOCOLS.includes(protocol)) return { error: `API protocol phải là: ${VALID_PROTOCOLS.join(", ")}` };
+
+  out.provider_id = providerId;
+  out.name = name || providerId;
+  out.display_name = displayName;
+  out.base_url = baseUrl;
+  out.api_protocol = protocol;
+
+  // Models: sanitize array
+  const models = Array.isArray(body.models) ? body.models : [];
+  out.models = models.slice(0, 100).map(m => ({
+    id: String(m.id || "").trim().slice(0, 200),
+    roles: (Array.isArray(m.roles) ? m.roles : []).filter(r => VALID_ROLES.includes(r)),
+    contextWindow: Number(m.contextWindow) || undefined
+  })).filter(m => m.id);
+
+  if (body.priority !== undefined) out.priority = Number(body.priority) || 0;
+  if (body.is_active !== undefined) out.is_active = !!body.is_active;
+
+  return { value: out };
 }
 
 // --- Handlers ---
@@ -115,16 +119,18 @@ export async function onRequestGet({ request, env }) {
   try {
     const { url, key } = supabaseService(env);
     const res = await fetch(`${url}/rest/v1/kim_provider_config?select=*&order=priority.asc`, {
-      headers: { "apikey": key, "authorization": `Bearer ${key}` }
+      headers: { apikey: key, authorization: `Bearer ${key}` }
     });
     if (!res.ok) throw new Error(`DB error ${res.status}`);
     const rows = await res.json();
 
-    // Mask API keys trong response
     const safe = rows.map(r => ({
       id: r.id,
+      provider_id: r.provider_id || r.name,
       name: r.name,
+      display_name: r.display_name || r.name,
       base_url: r.base_url,
+      api_protocol: r.api_protocol || "openai-completions",
       models: r.models,
       is_active: r.is_active,
       priority: r.priority,
@@ -133,7 +139,7 @@ export async function onRequestGet({ request, env }) {
       updated_at: r.updated_at
     }));
 
-    return json({ ok: true, providers: safe });
+    return json({ ok: true, providers: safe, valid_protocols: VALID_PROTOCOLS, valid_roles: VALID_ROLES });
   } catch (e) {
     return json({ ok: false, message: e.message }, 500);
   }
@@ -156,42 +162,36 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, message: "Server chưa cấu hình KIM_CONFIG_ENCRYPTION_KEY" }, 500);
   }
 
-  const name = String(body.name || "").trim();
-  const baseUrl = String(body.base_url || "").trim();
   const apiKey = String(body.api_key || "").trim();
-  const models = Array.isArray(body.models) ? body.models : [];
-  const isActive = body.is_active !== false;
-  const priority = Number(body.priority) || 0;
+  const sanitized = sanitizeProviderBody(body);
+  if (sanitized.error) return json({ ok: false, message: sanitized.error }, 400);
+  const payload = sanitized.value;
 
-  if (!name || !baseUrl || !apiKey) {
-    return json({ ok: false, message: "Thiếu name, base_url hoặc api_key" }, 400);
+  if (!apiKey) {
+    return json({ ok: false, message: "Thiếu api_key." }, 400);
+  }
+  if (!payload.models.length) {
+    return json({ ok: false, message: "Cần ít nhất 1 model với role hợp lệ." }, 400);
   }
 
   try {
-    const encrypted = await encryptApiKey(apiKey, encKey);
+    payload.api_key_encrypted = await encryptApiKey(apiKey, encKey);
     const { url, key } = supabaseService(env);
     const res = await fetch(`${url}/rest/v1/kim_provider_config`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "apikey": key,
-        "authorization": `Bearer ${key}`,
-        "prefer": "return=representation"
+        apikey: key,
+        authorization: `Bearer ${key}`,
+        prefer: "return=representation"
       },
-      body: JSON.stringify({
-        name,
-        base_url: baseUrl,
-        api_key_encrypted: encrypted,
-        models,
-        is_active: isActive,
-        priority
-      })
+      body: JSON.stringify(payload)
     });
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       if (text.includes("unique") || text.includes("duplicate")) {
-        return json({ ok: false, message: `Provider '${name}' đã tồn tại` }, 409);
+        return json({ ok: false, message: `Provider '${payload.provider_id}' đã tồn tại.` }, 409);
       }
       throw new Error(`DB error ${res.status}: ${text}`);
     }
@@ -219,19 +219,17 @@ export async function onRequestPut({ request, env, params }) {
   }
 
   const encKey = getEncryptionKey(env);
-  const updates = {};
+  const sanitized = sanitizeProviderBody(body);
+  if (sanitized.error) return json({ ok: false, message: sanitized.error }, 400);
 
-  if (body.name !== undefined) updates.name = String(body.name).trim();
-  if (body.base_url !== undefined) updates.base_url = String(body.base_url).trim();
-  if (body.models !== undefined) updates.models = Array.isArray(body.models) ? body.models : [];
-  if (body.is_active !== undefined) updates.is_active = !!body.is_active;
-  if (body.priority !== undefined) updates.priority = Number(body.priority) || 0;
+  const updates = { ...sanitized.value };
+  delete updates.models; // chỉ ghi models khi có gửi
+  if (body.models !== undefined) updates.models = sanitized.value.models;
 
-  // Chỉ mã hóa lại API key nếu có gửi mới
-  if (body.api_key && encKey) {
-    updates.api_key_encrypted = await encryptApiKey(String(body.api_key).trim(), encKey);
-  } else if (body.api_key && !encKey) {
-    return json({ ok: false, message: "Server chưa cấu hình KIM_CONFIG_ENCRYPTION_KEY" }, 500);
+  const apiKey = String(body.api_key || "").trim();
+  if (apiKey) {
+    if (!encKey) return json({ ok: false, message: "Server chưa cấu hình KIM_CONFIG_ENCRYPTION_KEY" }, 500);
+    updates.api_key_encrypted = await encryptApiKey(apiKey, encKey);
   }
 
   if (Object.keys(updates).length === 0) {
@@ -244,9 +242,9 @@ export async function onRequestPut({ request, env, params }) {
       method: "PATCH",
       headers: {
         "content-type": "application/json",
-        "apikey": key,
-        "authorization": `Bearer ${key}`,
-        "prefer": "return=representation"
+        apikey: key,
+        authorization: `Bearer ${key}`,
+        prefer: "return=representation"
       },
       body: JSON.stringify(updates)
     });
@@ -273,7 +271,7 @@ export async function onRequestDelete({ request, env, params }) {
     const { url, key } = supabaseService(env);
     const res = await fetch(`${url}/rest/v1/kim_provider_config?id=eq.${encodeURIComponent(id)}`, {
       method: "DELETE",
-      headers: { "apikey": key, "authorization": `Bearer ${key}` }
+      headers: { apikey: key, authorization: `Bearer ${key}` }
     });
 
     if (!res.ok) throw new Error(`DB error ${res.status}`);

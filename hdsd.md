@@ -168,29 +168,18 @@ dsh --profile kim "Tìm bushing màu xám có 4 lỗ"
 dsh --profile kim "Phân tích ảnh này" --attach ./anh.jpg
 ```
 
-### 6.2 Bridge HTTP
+### 6.2 Chạy CF-native (Production — KHÔNG cần VPS)
 
-```bash
-node kim-harness/bridge/server.mjs
-# Mặc định http://127.0.0.1:3090
-
-curl http://localhost:3090/health
-curl -X POST http://localhost:3090/search \
-  -H "content-type: application/json" \
-  -H "x-kim-bridge-token: <token>" \
-  -d '{"message":"Tìm bạc lót cao su"}'
-```
-
-### 6.3 Kết nối DictionaryAI (Production)
+Kim v6 giờ chạy trực tiếp trên Cloudflare Pages Functions qua `/api/kim/search-dsh` (pipeline 4 tầng) và `/api/kim/chat` (hỏi đáp ngôn ngữ tự nhiên trả Top-5). Bridge HTTP trên VPS đã bị gỡ bỏ.
 
 Trên Cloudflare Pages, thêm biến:
 ```
-KIM_DSH_PROXY_ENABLED=true
-KIM_DSH_BRIDGE_URL=http://<vps>:3090
-KIM_BRIDGE_TOKEN=<secret>
+KIM_V6_ENABLED=true
+SUPABASE_SERVICE_ROLE_KEY=<service role key>
+KIM_CONFIG_ENCRYPTION_KEY=<64 ký tự hex>
 ```
 
-Frontend gọi `/api/kim/search-dsh` → proxy tới bridge. Tắt flag → fallback Kim v5.
+Cấu hình provider/model quản lý qua trang `kim-admin.html` (lưu vào bảng `kim_provider_config`) hoặc env `KIM_PROVIDERS`. Tắt `KIM_V6_ENABLED` → frontend fallback về Kim v5.
 
 ---
 
