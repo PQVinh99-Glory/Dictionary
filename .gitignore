@@ -4,3 +4,7 @@
 *.env.local
 kim-harness/.env
 deepseek-harness/
+
+# Screenshots / local-only images
+Book.png
+Screenshot.png
