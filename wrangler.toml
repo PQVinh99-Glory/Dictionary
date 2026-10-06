@@ -13,7 +13,10 @@ compatibility_flags = ["nodejs_compat"]
 # Lý do: "./" khiến .env + .dev.vars + sql/ + kim-harness/ thành static asset công khai.
 # Chạy `node tools/build-static.mjs` trước khi dev/deploy.
 # functions/ vẫn được wrangler đọc từ root theo chuẩn Pages Functions.
-pages_build_output_dir = "./dist"
+pages_build_output_dir = "dist"
+
+[build]
+command = "npm run build"
 
 # ---------- Bindings ----------
 # Xác minh qua API: bucket tồn tại, location APAC.
@@ -31,6 +34,7 @@ MORIS_ENABLED = "true"
 MORIS_VECTOR_SEARCH_ENABLED = "true"
 MORIS_V6_ENABLED = "false"
 MORIS_V4_ROLLBACK_ENABLED = "true"
+MORIS_ALLOWED_ORIGINS = "https://dictionary.pages.dev"
 
 # Vector profile — phải khớp src/moris/vector/browserDinov2.js:5
 MORIS_VECTOR_MODEL = "onnx-community/dinov2-small"
@@ -46,10 +50,6 @@ MORIS_MAX_SCAN_ROWS = "1500"
 MORIS_AMBIGUITY_GAP = "0.06"
 MORIS_GEMINI_VECTOR_FLOOR = "0.86"
 MORIS_JUDGE_GAP = "0.05"
-
-# ---------- Production overrides ----------
-[env.production.vars]
-MORIS_ALLOWED_ORIGINS = "https://dictionary.pages.dev"
 
 # ============================================================
 # SECRETS — đặt bằng CLI, KHÔNG ghi trong file này:

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Moris — Trung tâm Vector</title>
+  <style>
+    :root{
+      font-family:Calibri,Carlito,'Segoe UI',system-ui,sans-serif;
+      color:#0f172a;
+      background:
+        radial-gradient(circle at top left,#d1fae5 0,transparent 34%),
+        linear-gradient(180deg,#f8fafc,#ecfdf5);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;padding:20px;min-height:100vh}
+    .wrap{max-width:1040px;margin:auto}
+    .top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px}
+    .card{
+      background:rgba(255,255,255,.94);
+      border:1px solid #dbe7e2;
+      border-radius:24px;
+      padding:20px;
+      box-shadow:0 18px 50px rgba(15,23,42,.08)
+    }
+    h1{margin:0;font-size:26px}
+    h2{margin:0 0 12px;font-size:18px}
+    p{color:#64748b}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .kpi{padding:14px;border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc}
+    .kpi span{display:block;color:#64748b;font-size:12px;font-weight:800}
+    .kpi b{display:block;font-size:24px;color:#047857;margin-top:4px}
+    .layout{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;margin-top:16px}
+    button,a.btn{
+      border:0;border-radius:14px;padding:12px 16px;
+      font-weight:850;cursor:pointer;text-decoration:none;
+      display:inline-flex;align-items:center;justify-content:center
+    }
+    .primary{background:#059669;color:#fff}
+    .secondary{background:#e2e8f0;color:#334155}
+    .danger{background:#fee2e2;color:#b91c1c}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .bar{height:14px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin:14px 0}
+    .bar>div{height:100%;background:#10b981;width:0;transition:width .2s}
+    pre{
+      white-space:pre-wrap;background:#0f172a;color:#d1fae5;
+      padding:14px;border-radius:16px;max-height:330px;overflow:auto
+    }
+    .status{
+      padding:12px 14px;border-radius:14px;background:#f8fafc;
+      border:1px solid #e2e8f0;font-weight:750;color:#475569
+    }
+    .good{color:#047857}
+    .bad{color:#b91c1c}
+    .warn{color:#b45309}
+    code{background:#f1f5f9;padding:2px 6px;border-radius:7px}
+    @media(max-width:800px){
+      .grid{grid-template-columns:repeat(2,1fr)}
+      .layout{grid-template-columns:1fr}
+      body{padding:10px}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Moris — Trung tâm Vector</h1>
+      <p>Quản lý model, coverage và tạo vector cho toàn bộ ảnh catalogue.</p>
+    </div>
+    <a class="btn secondary" href="/">Về Catalogue</a>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div class="kpi"><span>Encoder DINOv2</span><b id="ready">—</b></div>
+      <div class="kpi"><span>SKU đã có vector</span><b id="records">0</b></div>
+      <div class="kpi"><span>Tổng vector ảnh</span><b id="vectors">0</b></div>
+      <div class="kpi"><span>Cursor catalogue</span><b id="offset">0</b></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="card">
+      <h2>1. Model DINOv2</h2>
+      <div id="runtime" class="status">Chưa khởi tạo model.</div>
+      <div class="bar"><div id="modelBar"></div></div>
+      <div class="row">
+        <button id="loadModel" class="primary">Nạp model DINOv2</button>
+        <button id="testModel" class="secondary" disabled>Test model</button>
+      </div>
+      <p>
+        Ưu tiên <code>WebGPU/fp16</code>, fallback
+        <code>WASM/q8</code>. Model chạy trong Web Worker.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>2. Coverage Supabase</h2>
+      <div id="coverage" class="status">Chưa đọc trạng thái vector.</div>
+      <div class="row" style="margin-top:12px">
+        <button id="refreshStatus" class="secondary">Làm mới trạng thái</button>
+      </div>
+      <p>
+        Profile phải khớp tuyệt đối giữa ảnh cũ và ảnh query.
+      </p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>3. Tạo vector cho ảnh đã có sẵn</h2>
+    <p>
+      Chạy tuần tự theo batch. Có thể tạm dừng, đóng tab và tiếp tục sau;
+      offset được lưu trong trình duyệt.
+    </p>
+
+    <div class="bar"><div id="jobBar"></div></div>
+    <div id="jobStatus" class="status">Sẵn sàng.</div>
+    <div id="batchDiag" class="status" style="margin-top:10px">
+      Chưa chạy batch.
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button id="start" class="primary">Bắt đầu / Tiếp tục</button>
+      <button id="pause" class="secondary" disabled>Tạm dừng</button>
+      <button id="reset" class="danger">Reset offset</button>
+    </div>
+
+    <div class="grid" style="margin-top:14px">
+      <div class="kpi"><span>Đã embed</span><b id="processed">0</b></div>
+      <div class="kpi"><span>Đã ghi</span><b id="written">0</b></div>
+      <div class="kpi"><span>Lỗi</span><b id="failed">0</b></div>
+      <div class="kpi"><span>Batch</span><b id="batchNo">0</b></div>
+    </div>
+
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<script src="/config.js"></script>
+<script src="/src/authToken.js"></script>
+<script type="module" src="./moris-vector-center.js"></script>
+</body>
+</html>

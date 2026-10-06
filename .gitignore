@@ -19,6 +19,3 @@ Screenshot.png
 image.png
 *.zip
 assets/
-
-# Build output (Cloudflare Pages static assets)
-dist/

@@ -1,0 +1,34 @@
+# Cloudflare Pages _headers
+#
+# LƯU Ý QUAN TRỌNG: CSP chặn origin ngoài. Trước khi deploy production,
+# hãy mở trang bằng trình duyệt thật và kiểm tra Console — nếu model DINOv2
+# không tải được thì bổ sung host tương ứng vào connect-src.
+#
+# Nguồn ngoài đã xác minh từ code (không đoán):
+#   script  : cdn.tailwindcss.com, unpkg.com, cdn.jsdelivr.net
+#   style   : fonts.googleapis.com, fonts.gstatic.com, cdnjs.cloudflare.com (font-awesome)
+#   connect : *.supabase.co, huggingface.co (model weights), cdn.jsdelivr.net + unpkg.com
+#             (module @huggingface/transformers + wasm/config), pub-*.r2.dev (ảnh)
+#   img     : data:, blob:, pub-*.r2.dev
+#   GHI CHÚ : app KHÔNG dùng script inline nữa (đã tách ra src/app.js,
+#             src/moris-admin.js, tools/*.js) nên KHÔNG cần 'unsafe-inline' cho script-src.
+
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev https://*.r2.dev; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://*.supabase.co https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co https://cdn.jsdelivr.net https://unpkg.com wss://*.supabase.co blob: data:; manifest-src 'self'; upgrade-insecure-requests
+
+# API không bao giờ được cache
+/api/*
+  Cache-Control: no-store
+
+# Cấu hình runtime chứa biến public — không cache để deploy đổi config có hiệu lực
+/config.js
+  Cache-Control: no-store
+
+# Trang chính
+/
+  Cache-Control: no-store

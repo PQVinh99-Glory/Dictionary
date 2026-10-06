@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Catalogue AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Font màn hình LED của công cụ quy đổi (Orbitron + Share Tech Mono) -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23059669'/%3E%3Cpath d='M18 38h12v8H18zM34 18h12v8H34zM21 18h9v9h-9zM36 35h10v10H36z' fill='white' opacity='.95'/%3E%3Cpath d='M30 31h7M32 27v8M25 38l10-12' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Config runtime sinh từ .env lúc build. Chỉ chứa biến PUBLIC_*, không có secret. -->
+  <script src="/config.js"></script>
+
+  <style>
+    :root {
+      --green:#059669;
+      --lime:#84cc16;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --glass:rgba(255,255,255,.85);
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      min-height:100dvh;
+      font-family: Calibri, Carlito, 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(16,185,129,.15), transparent 40%),
+        radial-gradient(circle at top right, rgba(132,204,22,.15), transparent 35%),
+        linear-gradient(135deg,#f8fafc,#f1f5f9 48%,#e2e8f0);
+      overflow-x:hidden;
+    }
+    [v-cloak] { display:none; }
+    .glass {
+      background:var(--glass);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border:1px solid rgba(255,255,255,.9);
+      box-shadow: 0 10px 40px -10px rgba(15,23,42,.08), 0 4px 6px -4px rgba(15,23,42,.05);
+    }
+    .btn {
+      display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+      border-radius:1rem; font-weight:800; transition:all .2s cubic-bezier(0.4, 0, 0.2, 1); user-select:none;
+      white-space:nowrap;
+    }
+    .btn:active { transform:scale(.96); }
+    .input {
+      width:100%; border-radius:1rem; border:1px solid #cbd5e1; background:rgba(255,255,255,.9);
+      padding:.78rem 1rem; outline:none; transition:all .2s ease;
+      font-weight:600; color:#1e293b;
+    }
+    .input:focus { border-color:#059669; box-shadow:0 0 0 4px rgba(5,150,105,.15); background:#fff; }
+    .soft-card { background:rgba(255,255,255,.9); border:1px solid #e2e8f0; }
+    
+    /* Scrollbar xịn */
+    .scrollbar-soft::-webkit-scrollbar { width:6px; height:6px; }
+    .scrollbar-soft::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:999px; }
+    .scrollbar-soft:hover::-webkit-scrollbar-thumb { background:#94a3b8; }
+    
+    /* Checker background cho ảnh trong suốt */
+    .checker {
+      background-color:rgba(255,255,255,.7);
+      background-image:
+        linear-gradient(45deg, rgba(203,213,225,.3) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(203,213,225,.3) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(203,213,225,.3) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(203,213,225,.3) 75%);
+      background-size:16px 16px;
+      background-position:0 0,0 8px,8px -8px,-8px 0;
+    }
+    .part-img { filter: drop-shadow(0 12px 24px rgba(15,23,42,.2)); }
+    
+    /* Thẻ Sản phẩm tối ưu chống Crash (Virtual render CSS) */
+    .catalog-card {
+      content-visibility: auto;
+      contain-intrinsic-size: 100% 320px;
+      border:1px solid rgba(255,255,255,.9);
+      box-shadow:0 12px 30px -10px rgba(15,23,42,.06);
+      transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+      background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.85) 100%);
+    }
+    .catalog-card:hover {
+      transform:translateY(-4px);
+      box-shadow:0 24px 45px -12px rgba(15,23,42,.12);
+      border-color:rgba(16,185,129,.3);
+    }
+    .catalog-code {
+      font-size:1.45rem;
+      line-height:1.2;
+      letter-spacing:-0.03em;
+      font-weight:800;
+      color:#0f172a;
+    }
+    .meta-block {
+      border:1px solid #e2e8f0;
+      background:rgba(255,255,255,.8);
+      border-radius:1rem;
+      padding:.6rem .8rem;
+    }
+    .meta-label {
+      display:block;
+      font-size:.65rem;
+      line-height:1;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      font-weight:800;
+      color:#0f766e;
+      margin-bottom:.3rem;
+    }
+    .meta-value {
+      display:block;
+      font-size:.9rem;
+      line-height:1.4;
+      font-weight:700;
+      color:#1e293b;
+    }
+    .meta-value.muted { color:#64748b; font-weight:600; }
+    .feature-block {
+      border-radius:1rem;
+      padding:.75rem .8rem;
+      background:linear-gradient(180deg, rgba(255,255,255,.9), rgba(241,245,249,.7));
+      border:1px solid #e2e8f0;
+      min-height:4.5rem;
+    }
+    .feature-block .meta-value {
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+    .modal-shell { max-height:calc(100dvh - 24px); }
+    .detail-overlay {
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .viewer-stage {
+      height:clamp(360px, 68dvh, 690px);
+      min-height:360px;
+      background:
+        radial-gradient(circle at 30% 15%, rgba(255,255,255,1), rgba(255,255,255,.8) 40%, transparent 70%),
+        linear-gradient(135deg, #f8fafc, #f1f5f9 48%, #e2e8f0);
+      border:1px solid rgba(255,255,255,.8);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,1), 0 20px 50px -10px rgba(15,23,42,.15);
+      touch-action:none;
+      user-select:none;
+      cursor:grab;
+      overscroll-behavior:contain;
+    }
+    .viewer-stage {
+      contain:layout paint style;
+      transform:translateZ(0);
+      -webkit-transform:translateZ(0);
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
+    }
+    .detail-grid,
+    .detail-side {
+      contain:layout paint style;
+    }
+    .viewer-stage.dragging { cursor:grabbing; }
+    .viewer-object {
+      transform-origin:center center;
+      will-change:transform;
+      -webkit-user-drag:none;
+      user-select:none;
+    }
+    .detail-side { max-height:86dvh; }
+    
+    @media (max-width: 1024px) {
+      .detail-grid { max-width:760px; }
+      .viewer-stage { height:48dvh; min-height:290px; }
+      .detail-side { max-height:none; }
+    }
+    @media (max-width: 760px) {
+      .modal-shell { max-height:100dvh; border-radius:1.5rem 1.5rem 0 0 !important; }
+      .mobile-bottom { align-items:flex-end !important; padding:0 !important; }
+      .mobile-bottom .modal-shell { width:100% !important; margin:0 !important; }
+      .hide-mobile { display:none !important; }
+      .detail-overlay { padding:0 !important; align-items:flex-start !important; }
+      .detail-grid { gap:0 !important; margin:0 !important; width:100%; height:100dvh; display:flex !important; flex-direction:column; overflow:hidden; }
+      .viewer-stage { height:45dvh; min-height:250px; border-radius:0 0 1.5rem 1.5rem !important; padding:.5rem !important; flex:0 0 45dvh; box-shadow:0 10px 25px rgba(15,23,42,.12) !important; z-index:10; }
+      .detail-side { border-radius:1.5rem 1.5rem 0 0 !important; width:100%; max-height:none !important; flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; background:rgba(255,255,255,0.95); z-index:5; padding-top:2rem !important; margin-top:-1rem !important; }
+      .detail-overlay { overflow:hidden !important; }
+    }
+  
+  /* ================================================================
+     THƯ KÝ KIM — Trợ lý tra cứu linh kiện
+     Giữ UI app hiện tại; chỉ thêm assistant layer.
+  ================================================================= */
+  .moris-launcher{
+    position:fixed;right:18px;bottom:max(18px,env(safe-area-inset-bottom));
+    z-index:70;display:flex;align-items:center;gap:10px;
+    padding:10px 14px 10px 10px;border-radius:999px;
+    color:#fff;background:linear-gradient(135deg,#0f766e,#059669 58%,#10b981);
+    box-shadow:0 18px 50px rgba(5,150,105,.28),0 2px 10px rgba(15,23,42,.16);
+    border:1px solid rgba(255,255,255,.3);font-weight:900;letter-spacing:.01em;
+    transition:transform .2s ease,box-shadow .2s ease;
+  }
+  .moris-launcher:hover{transform:translateY(-2px);box-shadow:0 22px 56px rgba(5,150,105,.34),0 4px 14px rgba(15,23,42,.18)}
+  .moris-orb{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.18);backdrop-filter:blur(10px)}
+  .moris-live-dot{width:8px;height:8px;border-radius:50%;background:#a7f3d0;box-shadow:0 0 0 5px rgba(167,243,208,.13)}
+  .moris-backdrop{position:fixed;inset:0;z-index:79;background:rgba(15,23,42,.22);backdrop-filter:blur(3px)}
+  .moris-panel{
+    position:fixed;z-index:80;right:14px;top:14px;bottom:14px;width:min(440px,calc(100vw - 28px));
+    display:flex;flex-direction:column;overflow:hidden;border-radius:30px;
+    background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,250,252,.98));
+    border:1px solid rgba(148,163,184,.25);
+    box-shadow:0 30px 90px rgba(15,23,42,.25);
+  }
+  .moris-head{padding:16px 18px;border-bottom:1px solid rgba(226,232,240,.9);background:linear-gradient(135deg,rgba(236,253,245,.98),rgba(240,253,250,.98))}
+  .moris-thread{flex:1;overflow:auto;padding:16px;background:
+    radial-gradient(circle at 15% 10%,rgba(16,185,129,.06),transparent 24%),
+    linear-gradient(180deg,#f8fafc,#fff)}
+  .moris-msg{max-width:92%;margin-bottom:12px}
+  .moris-msg.user{margin-left:auto}
+  .moris-bubble{padding:12px 14px;border-radius:18px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .moris-msg.user .moris-bubble{background:#0f172a;color:#fff;border-bottom-right-radius:6px}
+  .moris-msg.assistant .moris-bubble{background:#fff;color:#334155;border:1px solid #e2e8f0;border-bottom-left-radius:6px;box-shadow:0 6px 18px rgba(15,23,42,.05)}
+  .moris-candidates{display:grid;gap:8px;margin-top:10px}
+  .moris-candidate{width:100%;display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border-radius:15px;background:#fff;border:1px solid #e2e8f0;text-align:left;transition:.18s ease}
+  .moris-candidate:hover{border-color:#6ee7b7;transform:translateY(-1px);box-shadow:0 8px 24px rgba(15,23,42,.07)}
+  .moris-candidate img{width:58px;height:58px;object-fit:contain;border-radius:11px;background:
+    linear-gradient(45deg,#f1f5f9 25%,transparent 25%),linear-gradient(-45deg,#f1f5f9 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#f1f5f9 75%),linear-gradient(-45deg,transparent 75%,#f1f5f9 75%);
+    background-size:12px 12px;background-position:0 0,0 6px,6px -6px,-6px 0}
+  .moris-compose{padding:12px;border-top:1px solid #e2e8f0;background:rgba(255,255,255,.96)}
+  .moris-input-wrap{border:1px solid #cbd5e1;border-radius:18px;background:#fff;box-shadow:0 8px 30px rgba(15,23,42,.06);overflow:hidden}
+  .moris-textarea{width:100%;min-height:52px;max-height:132px;resize:none;border:0;outline:0;padding:13px 14px 8px;background:transparent;font-size:14px}
+  .moris-compose-actions{display:flex;align-items:center;justify-content:space-between;padding:7px 8px 8px}
+  .moris-icon-btn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;border:1px solid #e2e8f0;background:#fff;color:#475569}
+  .moris-send{height:38px;padding:0 14px;border-radius:12px;background:#059669;color:#fff;font-weight:900;display:flex;gap:7px;align-items:center}
+  .moris-send:disabled{opacity:.5;cursor:not-allowed}
+  .moris-preview{margin:0 8px 8px;display:flex;align-items:center;gap:10px;padding:8px;border-radius:13px;background:#f0fdfa;border:1px solid #99f6e4}
+  .moris-preview img{width:46px;height:46px;object-fit:cover;border-radius:10px}
+
+  /* ============================================
+     CYBERPUNK 2077 LOADING — Moris
+     Pure CSS, no external libraries
+  ============================================ */
+  .cyber-loader{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px 16px;gap:16px;width:100%;
+  }
+  .cyber-hex-ring{
+    position:relative;width:80px;height:80px;
+  }
+  .cyber-hex-ring::before,.cyber-hex-ring::after{
+    content:'';position:absolute;inset:0;
+    border:2px solid transparent;border-radius:50%;
+  }
+  .cyber-hex-ring::before{
+    border-top-color:#00f0ff;border-right-color:#00f0ff;
+    animation:cyber-spin 1.2s linear infinite;
+  }
+  .cyber-hex-ring::after{
+    border-bottom-color:#f0e130;border-left-color:#f0e130;
+    inset:8px;
+    animation:cyber-spin 0.8s linear infinite reverse;
+  }
+  .cyber-hex-core{
+    position:absolute;inset:18px;
+    background:radial-gradient(circle,rgba(0,240,255,.15),transparent 70%);
+    border-radius:50%;
+    animation:cyber-pulse 1.5s ease-in-out infinite;
+  }
+  .cyber-glitch-text{
+    font-family:'Courier New',monospace;font-size:11px;font-weight:700;
+    letter-spacing:.15em;text-transform:uppercase;
+    color:#00f0ff;
+    text-shadow:0 0 8px rgba(0,240,255,.6);
+    animation:cyber-flicker 2s steps(4) infinite;
+  }
+  .cyber-status-line{
+    display:flex;align-items:center;gap:8px;
+    font-family:'Courier New',monospace;font-size:10px;
+    color:#94a3b8;letter-spacing:.08em;
+  }
+  .cyber-dot{
+    width:6px;height:6px;border-radius:50%;background:#00f0ff;
+    box-shadow:0 0 6px #00f0ff;
+    animation:cyber-blink 0.6s ease-in-out infinite alternate;
+  }
+  .cyber-bar-track{
+    width:100%;max-width:260px;height:3px;
+    background:rgba(0,240,255,.12);border-radius:2px;overflow:hidden;
+  }
+  .cyber-bar-fill{
+    height:100%;border-radius:2px;
+    background:linear-gradient(90deg,#00f0ff,#f0e130);
+    box-shadow:0 0 10px rgba(0,240,255,.5);
+    transition:width .3s ease;
+  }
+  .cyber-scanline{
+    width:100%;max-width:260px;height:1px;
+    background:linear-gradient(90deg,transparent,#00f0ff,transparent);
+    opacity:.4;
+    animation:cyber-scanmove 2s linear infinite;
+  }
+  @keyframes cyber-spin{to{transform:rotate(360deg)}}
+  @keyframes cyber-pulse{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.8;transform:scale(1.1)}}
+  @keyframes cyber-flicker{0%{opacity:1}25%{opacity:.4}50%{opacity:1}75%{opacity:.6}100%{opacity:1}}
+  @keyframes cyber-blink{from{opacity:.3}to{opacity:1}}
+  @keyframes cyber-scanmove{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+
+
+  /* ================================================================
+     KIM v6 — Wireframe Streaming Animation + Heatmap
+  ================================================================= */
+  }
+    width:180px;height:180px;position:relative;
+    transform-style:preserve-3d;
+    animation:morisRotate 4s linear infinite;
+  }
+    position:absolute;inset:0;border:1.5px solid rgba(52,211,153,.6);
+    background:rgba(16,185,129,.04);
+  }
+  @keyframes morisRotate{from{transform:rotateX(-20deg) rotateY(0deg)}to{transform:rotateX(-20deg) rotateY(360deg)}}
+
+  @media(max-width:640px){
+    .moris-launcher{right:12px;bottom:max(12px,env(safe-area-inset-bottom));padding-right:12px}
+    .moris-panel{inset:0;width:100%;border-radius:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+    .moris-backdrop{display:none}
+  }
+
+  /* ==== CÔNG CỤ QUY ĐỔI — màn hình LED (Orbitron / Share Tech Mono) ==== */
+  .digital-font { font-family: 'Orbitron', ui-monospace, monospace; }
+  .digital-sub  { font-family: 'Share Tech Mono', ui-monospace, monospace; }
+  .led-glow-green { text-shadow: 0 0 12px rgba(16, 185, 129, 0.7); }
+  .led-glow-amber { text-shadow: 0 0 12px rgba(245, 158, 11, 0.7); }
+  /* Ẩn spinner số của input type=number để đồng bộ với giao diện mẫu */
+  .modal-shell input[type=number]::-webkit-outer-spin-button,
+  .modal-shell input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+  .modal-shell input[type=number] { -moz-appearance:textfield; }
+
+</style>
+</head>
+<body>
+<div id="app" v-cloak>
+  <!-- LOGIN -->
+  <section v-if="!session.user" class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+    <!-- Trang trí nền -->
+    <div class="absolute -top-40 -right-40 w-96 h-96 bg-emerald-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
+    <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
+    
+    <div class="glass w-full max-w-md rounded-[2.5rem] p-8 sm:p-10 relative z-10">
+      <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white flex items-center justify-center shadow-xl shadow-emerald-200 mb-8 mx-auto">
+        <i data-lucide="layers" class="w-10 h-10"></i>
+      </div>
+      <h1 class="text-3xl font-black tracking-tight text-center text-slate-800">Catalogue AI</h1>
+      <p class="mt-2 text-slate-500 font-semibold text-center">Hệ thống quản lý tra cứu thông minh.</p>
+
+      <form @submit.prevent="login" class="mt-8 space-y-4">
+        <div>
+          <label class="block text-xs font-black tracking-widest text-slate-400 uppercase mb-1 ml-2">Email đăng nhập</label>
+          <input class="input h-14" v-model.trim="loginForm.username" placeholder="ten@email.com" autocomplete="username" inputmode="email" />
+        </div>
+        <div>
+          <label class="block text-xs font-black tracking-widest text-slate-400 uppercase mb-1 ml-2">Mật khẩu</label>
+          <input class="input h-14" v-model="loginForm.password" type="password" placeholder="Nhập mật khẩu..." autocomplete="current-password" />
+        </div>
+        <button class="btn w-full h-14 mt-4 bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200" :disabled="loading">
+          <i data-lucide="log-in" class="w-5 h-5"></i>{{ loading ? 'Đang xác thực...' : 'Vào hệ thống' }}
+        </button>
+      </form>
+      <p v-if="notice.text" :class="['mt-6 rounded-2xl p-4 text-sm font-bold text-center', notice.type==='error' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-emerald-50 text-emerald-600 border border-emerald-200']">{{ notice.text }}</p>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <main v-else class="pb-12">
+    <header class="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-white shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-4 min-w-0">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-100">
+            <i data-lucide="layers" class="w-6 h-6"></i>
+          </div>
+          <div class="min-w-0">
+            <h1 class="text-xl sm:text-2xl font-black truncate text-slate-800">Catalogue Linh Kiện</h1>
+            <p class="text-xs sm:text-sm text-slate-500 font-bold truncate">Xin chào, <span class="text-emerald-700">{{ session.user.display_name || session.user.username }}</span> <span class="mx-1">•</span> Role: <span class="bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">{{ session.user.role_name }}</span></p>
+          </div>
+        </div>
+        <div class="flex gap-2 sm:gap-3 shrink-0">
+          <a
+            v-if="session.user?.role_name === 'admin'"
+            href="/tools/moris-vector-center.html"
+            class="btn h-11 px-4 sm:px-5 bg-violet-600 text-white hover:bg-violet-700 shadow-md shadow-violet-100"
+            title="Trung tâm Vector AI"
+          >
+            <i data-lucide="orbit" class="w-5 h-5"></i>
+            <span class="hide-mobile">Vector AI</span>
+          </a>
+          <button @click="openBulkImport()" v-if="canEdit" class="btn h-11 px-4 sm:px-5 bg-teal-600 text-white hover:bg-teal-700 shadow-md shadow-teal-100">
+            <i data-lucide="folder-up" class="w-5 h-5"></i><span class="hide-mobile">Thêm ảnh tự động</span>
+          </button>
+          <button @click="openEditor()" v-if="canEdit" class="btn h-11 px-4 sm:px-5 bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-100">
+            <i data-lucide="plus" class="w-5 h-5"></i><span class="hide-mobile">Thêm mã mới</span>
+          </button>
+
+          <button @click="openWeightCalc()" class="btn h-11 px-4 sm:px-5 bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-100">
+            <i data-lucide="calculator" class="w-5 h-5"></i><span class="hide-mobile">Quy đổi</span>
+          </button>
+
+          <button @click="logout" class="btn h-11 w-11 sm:w-auto sm:px-4 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
+            <i data-lucide="log-out" class="w-5 h-5"></i><span class="hide-mobile">Thoát</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+      <div class="glass rounded-[2rem] p-4 sm:p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-[1fr_180px_180px_60px] gap-3">
+          <label class="relative block">
+            <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600"></i>
+            <input v-model.trim="filters.search" @keyup.enter="loadParts(true)" class="input pl-12 h-12 shadow-inner" placeholder="Tìm mã hàng, ID, đặc điểm..." />
+          </label>
+          <select v-model="filters.usage" @change="loadParts(true)" class="input h-12 cursor-pointer">
+            <option value="all">Tất cả vị trí</option><option value="left">Bên trái</option><option value="right">Bên phải</option><option value="both">Cả hai bên</option><option value="unknown">Chưa xác định</option>
+          </select>
+          <select v-model="filters.viewMode" @change="loadParts(true)" class="input h-12 cursor-pointer">
+            <option value="all">Tất cả kiểu ảnh</option><option value="single_face">1 mặt</option><option value="dual_face">2 mặt</option><option value="detail_set">Chi tiết</option>
+          </select>
+          <button @click="loadParts(true)" class="btn h-12 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100">
+            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
+          <span class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center gap-1.5"><i data-lucide="database" class="w-3.5 h-3.5 text-emerald-600"></i> {{ listStatusText }}</span>
+          <span class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1.5"><i data-lucide="cloud" class="w-3.5 h-3.5"></i> R2 CDN</span>
+          <span class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center gap-1.5"><i data-lucide="clock" class="w-3.5 h-3.5 text-blue-500"></i> {{ nowText }}</span>
+        </div>
+      </div>
+
+      <p v-if="notice.text" :class="['mb-6 rounded-2xl px-5 py-4 text-sm font-bold shadow-sm', notice.type==='error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200']">{{ notice.text }}</p>
+
+      <div v-if="loadingImages" class="glass rounded-[2.5rem] p-12 text-center">
+        <div class="w-12 h-12 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="font-black text-slate-500 text-lg">Đang tải dữ liệu từ máy chủ...</p>
+      </div>
+
+      <div v-else-if="!displayedParts.length" class="glass rounded-[2.5rem] p-16 text-center">
+        <div class="mx-auto w-24 h-24 rounded-[2rem] bg-slate-100 text-slate-400 flex items-center justify-center border border-slate-200 mb-6"><i data-lucide="package-search" class="w-12 h-12"></i></div>
+        <h2 class="text-2xl font-black text-slate-700">Chưa có dữ liệu</h2>
+        <p class="mt-2 text-slate-500 font-semibold">Thử thay đổi bộ lọc hoặc bấm Thêm mã mới.</p>
+      </div>
+
+
+      <div v-if="morisSearch.active" class="glass rounded-[2rem] p-4 sm:p-5 mb-6 border border-emerald-200 bg-emerald-50/70">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black tracking-widest uppercase">Moris</span>
+              <span class="text-sm font-black text-emerald-800">{{ morisSearch.results.length }} mã phù hợp</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button @click="clearMorisSearch" class="btn h-10 px-4 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+              <i data-lucide="list-restart" class="w-4 h-4"></i> Xóa kết quả
+            </button>
+            <button @click="openMoris" class="btn h-10 px-4 bg-emerald-600 text-white hover:bg-emerald-700">
+              <i data-lucide="messages-square" class="w-4 h-4"></i> Mở Moris
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Danh sách - Sử dụng CSS content-visibility để tăng hiệu năng -->
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <article v-for="item in displayedParts" :key="item.id" class="catalog-card rounded-[2rem] overflow-hidden group">
+          <button @click="openDetail(item)" class="block w-full text-left h-full flex flex-col">
+            <div class="checker aspect-[4/3] flex items-center justify-center overflow-hidden border-b border-slate-100 relative">
+              <img v-if="partThumbUrl(item)" :src="partThumbUrl(item)" loading="lazy" decoding="async" fetchpriority="low" width="320" height="320" class="part-img max-w-[85%] max-h-[85%] object-contain transition duration-500 group-hover:scale-[1.08]" />
+              <div v-else class="text-slate-300"><i data-lucide="image-off" class="w-12 h-12"></i></div>
+              <!-- Badge -->
+              <div v-if="item.is_symmetric" class="absolute top-3 right-3 px-2.5 py-1 bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg backdrop-blur-sm">Đối xứng</div>
+            </div>
+            <div class="p-5 flex-1 flex flex-col">
+              <div class="text-[10px] uppercase tracking-[0.2em] font-black text-emerald-600 mb-1">Mã linh kiện</div>
+              <h3 class="catalog-code break-all group-hover:text-emerald-700 transition-colors">{{ item.code }}</h3>
+              
+              <div class="mt-4 grid grid-cols-2 gap-2">
+                <div class="meta-block">
+                  <span class="meta-label">ID</span>
+                  <span class="meta-value truncate" :class="{ muted: !item.part_id }">{{ item.part_id || '---' }}</span>
+                </div>
+                <div class="meta-block">
+                  <span class="meta-label">Vị trí</span>
+                  <span class="meta-value truncate">{{ usageLabel(item.usage_side) }}</span>
+                </div>
+              </div>
+              <div class="feature-block mt-2 flex-1">
+                <span class="meta-label">Nhận dạng</span>
+                <span class="meta-value text-sm text-slate-600" :class="{ muted: !item.identifying_features }">{{ item.identifying_features || '---' }}</span>
+              </div>
+            </div>
+          </button>
+        </article>
+      </div>
+
+      <div v-if="!morisSearch.active && (parts.length || page > 0)" class="mt-10 pb-10">
+        <div class="glass rounded-[1.5rem] p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border border-slate-200 bg-white/80">
+          <button
+            @click="goPage(-1)"
+            :disabled="page===0 || loadingImages"
+            class="btn h-12 px-5 bg-white border border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i> Trang trước
+          </button>
+
+          <div class="text-center min-w-0">
+            <div class="text-[10px] uppercase tracking-[.18em] font-black text-slate-400">Phân trang phía máy chủ</div>
+            <div class="font-black text-slate-700">Trang {{ page + 1 }} · {{ parts.length }} mã đang render</div>
+            <div class="text-xs font-semibold text-slate-400">Mỗi lần chỉ giữ tối đa {{ CONFIG.PAGE_LIMIT }} card trong DOM</div>
+          </div>
+
+          <button
+            @click="goPage(1)"
+            :disabled="!hasMore || loadingImages"
+            class="btn h-12 px-5 bg-white border border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            Trang sau <i data-lucide="chevron-right" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- DETAIL MODAL -->
+  <div v-if="detail.open" class="detail-overlay fixed inset-0 z-50 p-3 sm:p-5 overflow-y-auto flex items-center justify-center" @click.self="closeDetail">
+    <div class="detail-grid w-full max-w-7xl grid lg:grid-cols-[minmax(0,1fr)_380px] gap-4 sm:gap-6">
+      
+      <section :class="['viewer-stage rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden relative flex items-center justify-center', detail.dragging ? 'dragging' : '']"
+        @wheel.prevent="onViewerWheel"
+        @pointerdown="onViewerPointerDown"
+        @pointermove="onViewerPointerMove"
+        @pointerup="onViewerPointerUp"
+        @pointercancel="onViewerPointerUp"
+        @lostpointercapture="onViewerPointerUp">
+
+        <img v-if="activeAssetUrl" :src="activeAssetUrl" class="viewer-object part-img max-w-[90%] max-h-[90%] object-contain" :style="viewerTransform" draggable="false" />
+        
+        <div v-else class="text-slate-400 text-center font-black flex flex-col items-center">
+          <i data-lucide="image-off" class="w-16 h-16 mb-3"></i>
+          {{ detail.tab==='back' ? 'Chưa có ảnh mặt sau' : 'Không có ảnh' }}
+        </div>
+        
+        <div class="absolute left-4 bottom-4 flex flex-wrap gap-2 text-[11px] uppercase tracking-wider font-black text-slate-600">
+          <span class="px-3 py-2 rounded-xl bg-white/90 border border-slate-200 shadow-sm backdrop-blur-md flex items-center gap-1.5"><i data-lucide="monitor" class="w-3.5 h-3.5 text-emerald-600"></i> {{ detailTabLabel }}</span>
+          <span class="px-3 py-2 rounded-xl bg-white/90 border border-slate-200 shadow-sm backdrop-blur-md">Zoom {{ detail.zoom.toFixed(1) }}x</span>
+          <span v-if="detail.item?.is_symmetric" class="px-3 py-2 rounded-xl bg-emerald-500 text-white shadow-md flex items-center gap-1.5"><i data-lucide="split-square-horizontal" class="w-3.5 h-3.5"></i> Đối xứng 2 mặt</span>
+        </div>
+      </section>
+
+      <aside class="detail-side glass rounded-[2rem] sm:rounded-[2.5rem] p-5 sm:p-6 flex flex-col h-full bg-white/80">
+        <div class="flex items-start justify-between gap-3 mb-6">
+          <div class="min-w-0">
+            <p class="text-[10px] font-black tracking-[.25em] text-emerald-600 uppercase mb-1">Mã linh kiện</p>
+            <h2 class="text-3xl font-black break-all text-slate-800 leading-tight">{{ detail.item?.code }}</h2>
+          </div>
+          <button @click="closeDetail" class="btn w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 shrink-0 text-slate-500"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </div>
+        
+        <div class="space-y-3 text-sm flex-1 overflow-y-auto pr-2 scrollbar-soft">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="soft-card rounded-2xl p-3.5">
+              <span class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">ID</span>
+              <span class="font-black text-slate-700">{{ detail.item?.part_id || '---' }}</span>
+            </div>
+            <div class="soft-card rounded-2xl p-3.5">
+              <span class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Vị trí</span>
+              <span class="font-black text-slate-700">{{ usageLabel(detail.item?.usage_side) }}</span>
+            </div>
+          </div>
+          
+          <div class="soft-card rounded-2xl p-4">
+            <span class="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Đặc điểm nhận dạng</span>
+            <span class="font-semibold text-slate-700 leading-relaxed">{{ detail.item?.identifying_features || 'Chưa cập nhật' }}</span>
+          </div>
+          
+          <div v-if="detail.item?.confusing_note" class="rounded-2xl p-4 bg-amber-50 border border-amber-200">
+            <span class="block text-[10px] uppercase tracking-widest font-bold text-amber-600 mb-1.5 flex items-center gap-1"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Chú ý nhầm lẫn</span>
+            <span class="font-bold text-amber-800 leading-relaxed">{{ detail.item.confusing_note }}</span>
+          </div>
+          
+          <div v-if="detail.item && !detail.item.is_symmetric && !trueBackUrl" class="rounded-2xl p-3.5 bg-blue-50 border border-blue-200 text-blue-800 font-semibold text-xs flex gap-2">
+            <i data-lucide="info" class="w-5 h-5 shrink-0 text-blue-500 mt-0.5"></i>
+            <span>Mã này chưa có ảnh mặt sau. Hệ thống không tạo mặt sau giả để tránh hiểu lầm trái/phải.</span>
+          </div>
+          
+          <div class="pt-4 border-t border-slate-200/60 mt-4">
+            <div class="grid grid-cols-2 gap-2.5">
+              <button @click="setDetailTab('front')" :class="tabBtnClass('front')"><i data-lucide="panel-top" class="w-4 h-4"></i> Mặt chính</button>
+              <button @click="setDetailTab('back')" :class="tabBtnClass('back')" :disabled="!hasBackView"><i data-lucide="panel-bottom" class="w-4 h-4"></i> Mặt sau</button>
+              <button @click="setDetailTab('detail')" :class="tabBtnClass('detail')" :disabled="!detailAssets.length"><i data-lucide="scan-search" class="w-4 h-4"></i> Chi tiết</button>
+              
+            </div>
+          </div>
+          
+          <div class="mt-3 grid grid-cols-4 gap-2.5">
+            <button @click="zoomOut" class="btn h-11 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Thu nhỏ"><i data-lucide="zoom-out" class="w-5 h-5"></i></button>
+            <button @click="resetViewer" class="btn h-11 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Khôi phục"><i data-lucide="rotate-ccw" class="w-5 h-5"></i></button>
+            <button @click="zoomIn" class="btn h-11 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Phóng to"><i data-lucide="zoom-in" class="w-5 h-5"></i></button>
+            
+          </div>
+          
+          <div v-if="detailAssets.length" class="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-soft">
+            <button v-for="a in detailAssets" :key="a.id || a.image_path" @click="detail.activeAsset=a" class="checker rounded-xl overflow-hidden h-16 min-w-[4rem] border-2 transition-colors shrink-0" :class="detail.activeAsset===a ? 'border-emerald-500' : 'border-slate-200'">
+              <img :src="assetUrl(a)" class="w-full h-full object-contain" loading="lazy" decoding="async" fetchpriority="low" />
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-slate-200/60 shrink-0">
+          <button v-if="canEdit" @click="openEditor(detail.item)" class="btn w-full h-12 bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200 mb-2"><i data-lucide="pencil" class="w-4 h-4"></i> Cập nhật linh kiện</button>
+          <button v-if="canEdit" @click="deleteCurrentPart" class="btn w-full h-11 bg-white text-red-600 border border-red-100 hover:bg-red-50"><i data-lucide="trash-2" class="w-4 h-4"></i> Xóa mã này</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- EDITOR MODAL -->
+  <div v-if="editor.open" class="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-md p-3 sm:p-5 overflow-y-auto flex items-center justify-center mobile-bottom" @click.self="closeEditor">
+    <div class="modal-shell glass w-full max-w-5xl rounded-[2.5rem] p-5 sm:p-8 overflow-auto scrollbar-soft my-auto bg-white/90">
+      <div class="flex items-start justify-between gap-4 mb-6 border-b border-slate-200/60 pb-5">
+        <div>
+          <span class="inline-block px-3 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-widest mb-2">{{ editor.form.id ? 'Chỉnh sửa' : 'Thêm mới' }}</span>
+          <h2 class="text-2xl sm:text-3xl font-black text-slate-800">Thông tin linh kiện</h2>
+        </div>
+        <button @click="closeEditor" class="btn w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500 shrink-0"><i data-lucide="x" class="w-6 h-6"></i></button>
+      </div>
+
+      <div class="grid lg:grid-cols-[340px_minmax(0,1fr)] gap-8">
+        <!-- Khu vực Ảnh -->
+        <section class="flex flex-col gap-4">
+          <div class="checker rounded-[2rem] aspect-square flex items-center justify-center overflow-hidden border border-slate-200 shadow-inner bg-white">
+            <img v-if="editorPreview" :src="editorPreview" class="part-img max-w-[85%] max-h-[85%] object-contain" />
+            <div v-else class="text-center text-slate-400 font-bold"><i data-lucide="image-plus" class="w-16 h-16 mx-auto mb-3 text-slate-300"></i>Chưa có ảnh</div>
+          </div>
+          
+          <div class="rounded-2xl border border-violet-100 bg-violet-50 p-4 shadow-sm">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-sm font-black text-violet-900">Vector hình ảnh</p>
+                <p class="text-xs font-semibold text-violet-700 mt-1">
+                  {{ editor.vectorStatus || 'Ảnh mới sẽ được đưa vào hàng đợi tạo vector sau khi lưu.' }}
+                </p>
+              </div>
+              <button
+                v-if="editor.form.id"
+                type="button"
+                @click="vectorizeCurrentEditorPart"
+                class="btn h-10 px-3 bg-violet-600 text-white hover:bg-violet-700 shrink-0"
+                :disabled="editor.vectorBusy"
+              >
+                <i v-if="editor.vectorBusy" data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                <i v-else data-lucide="sparkles" class="w-4 h-4"></i>
+                {{ editor.vectorBusy ? 'Đang tạo...' : 'Tạo vector' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-2.5">
+            <label class="btn h-12 bg-emerald-600 text-white shadow-md shadow-emerald-100 hover:bg-emerald-700 cursor-pointer relative overflow-hidden">
+              <i data-lucide="image" class="w-5 h-5"></i> Tải lên Mặt chính (Front)
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="absolute inset-0 opacity-0 cursor-pointer" @change="onFileChange('front', 1, $event)" :disabled="saving" />
+            </label>
+            <label class="btn h-12 bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 cursor-pointer relative overflow-hidden">
+              <i data-lucide="image" class="w-5 h-5 text-slate-400"></i> Tải lên Mặt sau (Back)
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="absolute inset-0 opacity-0 cursor-pointer" @change="onFileChange('back', 1, $event)" :disabled="saving" />
+            </label>
+            <div class="grid grid-cols-2 gap-2.5">
+              <label class="btn h-11 bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 cursor-pointer relative overflow-hidden text-sm">
+                <i data-lucide="scan-search" class="w-4 h-4 text-slate-400"></i> Chi tiết 1
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="absolute inset-0 opacity-0 cursor-pointer" @change="onFileChange('detail', 1, $event)" :disabled="saving" />
+              </label>
+              <label class="btn h-11 bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 cursor-pointer relative overflow-hidden text-sm">
+                <i data-lucide="scan-search" class="w-4 h-4 text-slate-400"></i> Chi tiết 2
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/*" class="absolute inset-0 opacity-0 cursor-pointer" @change="onFileChange('detail', 2, $event)" :disabled="saving" />
+              </label>
+            </div>
+          </div>
+          
+          <div v-if="editorAssetList.length" class="soft-card rounded-2xl p-4 mt-2">
+            <p class="text-[11px] font-black tracking-wider text-emerald-700 uppercase mb-3">Tài nguyên chuẩn bị lưu</p>
+            <div class="grid grid-cols-4 gap-2">
+              <div v-for="a in editorAssetList" :key="a.asset_type + '_' + a.sort_order" class="checker rounded-xl overflow-hidden aspect-square border border-slate-200 relative bg-white">
+                <img :src="a.preview || assetPathUrl(a.image_path, a.storage_provider)" class="w-full h-full object-contain p-1" />
+                <span class="absolute left-1 bottom-1 px-1.5 py-0.5 rounded-md bg-slate-900/80 text-white text-[9px] font-bold">{{ a.asset_type }}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Khu vực Form -->
+        <form @submit.prevent="savePart" class="flex flex-col gap-5">
+          <div class="grid sm:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Mã linh kiện *</label>
+              <input v-model.trim="editor.form.code" required class="input h-12 text-lg font-black" placeholder="Nhập mã hàng..." />
+            </div>
+            <div>
+              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">ID</label>
+              <input v-model.trim="editor.form.part_id" class="input h-12" placeholder="Ví dụ: 5633, 5634..." />
+            </div>
+          </div>
+          
+          <div class="grid sm:grid-cols-3 gap-5">
+            <div>
+              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Vị trí lắp</label>
+              <select v-model="editor.form.usage_side" class="input h-12 cursor-pointer">
+                <option value="unknown">Chưa xác định</option><option value="left">Bên trái</option><option value="right">Bên phải</option><option value="both">Cả hai</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Kiểu ảnh</label>
+              <select v-model="editor.form.view_mode" class="input h-12 cursor-pointer">
+                <option value="single_face">1 mặt</option><option value="dual_face">2 mặt (Front/Back)</option><option value="detail_set">Có ảnh chi tiết</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Cấu trúc</label>
+              <select v-model="editor.form.is_symmetric" class="input h-12 cursor-pointer bg-emerald-50 border-emerald-200 text-emerald-800">
+                <option :value="false">Không đối xứng</option><option :value="true">Đối xứng 2 mặt</option>
+              </select>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Đặc điểm nhận dạng</label>
+            <textarea v-model.trim="editor.form.identifying_features" class="input min-h-[100px] resize-y" placeholder="Mô tả hình dáng, ngàm, lỗ, kích thước..."></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Ghi chú chống nhầm lẫn</label>
+            <textarea v-model.trim="editor.form.confusing_note" class="input min-h-[80px] resize-y border-amber-200 bg-amber-50 focus:border-amber-400 focus:ring-amber-200" placeholder="Hay nhầm với mã nào? Điểm khác biệt là gì?"></textarea>
+          </div>
+
+          <div class="mt-auto pt-6 flex flex-col sm:flex-row gap-3 border-t border-slate-200/60">
+            <button class="btn h-14 sm:flex-1 bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200/50 text-lg" :disabled="saving">
+              <i v-if="saving" data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+              <i v-else data-lucide="save" class="w-5 h-5"></i>
+              {{ saving ? 'Đang xử lý & Lưu...' : 'Lưu vào Hệ Thống' }}
+            </button>
+            <button type="button" @click="closeEditor" class="btn h-14 px-8 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50" :disabled="saving">Hủy bỏ</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- BULK IMPORT MODAL -->
+  <div v-if="bulkImport.open" class="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-md p-3 sm:p-5 overflow-y-auto flex items-center justify-center" @click.self="!bulkImport.uploading && closeBulkImport()">
+    <div class="modal-shell glass w-full max-w-4xl rounded-[2.5rem] p-5 sm:p-8 bg-white/95">
+      <div class="flex items-start justify-between gap-4 mb-6 border-b border-slate-200/60 pb-5">
+        <div>
+          <span class="inline-block px-3 py-1 rounded-lg bg-teal-100 text-teal-800 text-[10px] font-black uppercase tracking-widest mb-2">Tải Lên Hàng Loạt</span>
+          <h2 class="text-2xl sm:text-3xl font-black text-slate-800">Nhập Tự Động (Bulk Import)</h2>
+        </div>
+        <button v-if="!bulkImport.uploading" @click="closeBulkImport" class="btn w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500 shrink-0"><i data-lucide="x" class="w-6 h-6"></i></button>
+      </div>
+
+      <div v-if="!bulkImport.uploading && bulkImport.groups.length === 0" class="text-center py-10">
+        <div class="w-24 h-24 mx-auto bg-slate-50 border-2 border-dashed border-slate-300 rounded-3xl flex items-center justify-center text-slate-400 mb-6">
+          <i data-lucide="images" class="w-10 h-10"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-700 mb-2">Chọn ảnh hoặc thư mục để tải lên</h3>
+        <p class="text-sm text-slate-500 mb-8 max-w-md mx-auto">Hệ thống sẽ tự động ghép cặp nếu file có đuôi <code class="bg-slate-100 px-1.5 py-0.5 rounded text-red-500 font-black">-back</code> (Ví dụ: 3445627878-back.png).</p>
+        
+        <div class="flex flex-wrap justify-center gap-4">
+          <label class="btn h-14 px-8 bg-teal-600 text-white shadow-lg hover:bg-teal-700 cursor-pointer text-lg">
+            <i data-lucide="folder-search" class="w-5 h-5"></i> Chọn Thư Mục Chứa Ảnh
+            <input type="file" multiple webkitdirectory directory accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onBulkFileSelect" />
+          </label>
+          <label class="btn h-14 px-8 bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 cursor-pointer text-lg">
+            <i data-lucide="file-image" class="w-5 h-5"></i> Chọn Các File Lẻ
+            <input type="file" multiple accept="image/png,image/jpeg,image/webp,image/*" class="hidden" @change="onBulkFileSelect" />
+          </label>
+        </div>
+      </div>
+
+      <div v-else-if="!bulkImport.uploading" class="flex flex-col h-[60vh] min-h-[400px]">
+        <div class="flex items-center justify-between mb-4 px-2">
+          <div class="font-bold text-slate-700">Đã nhận diện: <span class="text-teal-600 text-xl">{{ bulkImport.groups.length }}</span> mã linh kiện</div>
+          <button @click="bulkImport.groups = []" class="text-sm font-bold text-red-500 hover:text-red-700">Làm lại (Xóa danh sách)</button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto bg-slate-50 rounded-2xl border border-slate-200 p-4 scrollbar-soft space-y-3">
+          <div v-for="(g, index) in bulkImport.groups" :key="index" class="bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 font-bold text-xs border border-slate-200">
+                #{{ index + 1 }}
+              </div>
+              <div>
+                <h4 class="font-black text-slate-800 text-lg">{{ g.code }}</h4>
+                <div class="text-xs font-semibold text-slate-500 mt-0.5 flex gap-2">
+                  <span v-if="g.front" class="text-teal-600"><i data-lucide="check-circle-2" class="w-3 h-3 inline"></i> Mặt chính</span>
+                  <span v-if="g.back" class="text-blue-600"><i data-lucide="check-circle-2" class="w-3 h-3 inline"></i> Mặt sau (-back)</span>
+                </div>
+              </div>
+            </div>
+            <div class="text-right text-xs font-bold text-slate-400">
+              <span v-if="g.back" class="px-2 py-1 bg-amber-50 text-amber-600 rounded shadow-sm">2 Mặt (Bất đối xứng)</span>
+              <span v-else class="px-2 py-1 bg-emerald-50 text-emerald-600 rounded shadow-sm">1 Mặt (Đối xứng mặc định)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end">
+          <button @click="startBulkImport" class="btn h-14 px-10 bg-slate-900 text-white shadow-xl hover:bg-slate-800 text-lg">
+            <i data-lucide="upload-cloud" class="w-5 h-5"></i> Bắt đầu Tải Lên Hệ Thống
+          </button>
+        </div>
+      </div>
+
+      <div v-else class="py-10">
+        <h3 class="text-2xl font-black text-slate-800 text-center mb-2">Đang tải dữ liệu lên...</h3>
+        <p class="text-center font-semibold text-slate-500 mb-8">{{ bulkImport.statusText }}</p>
+        
+        <div class="w-full bg-slate-100 rounded-full h-6 mb-4 overflow-hidden border border-slate-200 shadow-inner relative">
+          <div class="bg-gradient-to-r from-teal-500 to-emerald-400 h-6 rounded-full transition-all duration-300 ease-out flex items-center justify-end px-2" :style="{ width: bulkImport.progress + '%' }">
+            <span class="text-[10px] font-black text-white mix-blend-overlay">{{ bulkImport.progress.toFixed(1) }}%</span>
+          </div>
+        </div>
+        
+        <div class="flex justify-between text-sm font-bold text-slate-600 mb-8">
+          <span>Đã xử lý: {{ bulkImport.current }} / {{ bulkImport.total }}</span>
+          <div class="flex gap-4">
+            <span class="text-emerald-600"><i data-lucide="check" class="w-4 h-4 inline"></i> Thành công: {{ bulkImport.successCount }}</span>
+            <span class="text-red-500"><i data-lucide="x" class="w-4 h-4 inline"></i> Lỗi: {{ bulkImport.errorCount }}</span>
+          </div>
+        </div>
+
+        <div v-if="bulkImport.current === bulkImport.total" class="text-center">
+          <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i data-lucide="check-check" class="w-8 h-8"></i>
+          </div>
+          <h4 class="text-xl font-black text-slate-800 mb-6">Đã Hoàn Tất!</h4>
+          <button @click="finishBulkImport" class="btn h-12 px-8 bg-slate-900 text-white hover:bg-slate-800">Đóng và Tải lại danh sách</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================================
+       CÔNG CỤ QUY ĐỔI ĐỊNH LƯỢNG — PCS <-> KG
+       Port từ weight-calculator.zip; dữ liệu đọc/ghi bảng
+       public.material_weights (Supabase, RLS authenticated).
+  =============================================================== -->
+  <div v-if="weightCalc.open" class="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-md p-3 sm:p-5 overflow-y-auto flex items-center justify-center mobile-bottom" @click.self="closeWeightCalc">
+    <div class="modal-shell glass w-full max-w-5xl rounded-[2.5rem] p-5 sm:p-8 bg-white/95 my-auto">
+
+      <!-- Header -->
+      <div class="flex items-start justify-between gap-4 mb-5 border-b border-slate-200/60 pb-5">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-11 h-11 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shrink-0">
+            <i data-lucide="calculator" class="w-6 h-6 text-indigo-600"></i>
+          </div>
+          <div class="min-w-0">
+            <h2 class="text-lg sm:text-2xl font-black text-slate-800 truncate">CÔNG CỤ QUY ĐỔI ĐỊNH LƯỢNG KHO THỰC TẾ</h2>
+            <p class="text-[11px] sm:text-xs text-slate-500 font-bold">Đơn trọng kg/pcs đồng bộ trực tiếp từ cơ sở dữ liệu ({{ weightCalc.list.length }} mã)</p>
+          </div>
+        </div>
+        <button @click="closeWeightCalc" class="btn w-11 h-11 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500 shrink-0"><i data-lucide="x" class="w-6 h-6"></i></button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-2 mb-5">
+        <button @click="weightCalc.tab='calc'" :class="['btn h-10 px-4 text-xs uppercase tracking-wider font-black', weightCalc.tab==='calc' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']">
+          <i data-lucide="arrow-right-left" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Quy đổi
+        </button>
+        <button @click="weightCalc.tab='list'" :class="['btn h-10 px-4 text-xs uppercase tracking-wider font-black', weightCalc.tab==='list' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']">
+          <i data-lucide="list" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Danh sách đơn trọng
+          <span class="ml-1 px-1.5 py-0.5 rounded-md text-[10px] bg-white/20">{{ weightCalc.list.length }}</span>
+        </button>
+        <button v-if="weightCalc.tab==='list'" @click="loadWeights()" :disabled="weightCalc.loading" class="btn h-10 px-3 text-xs uppercase tracking-wider font-black bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 disabled:opacity-50" title="Tải lại từ DB">
+          <i data-lucide="refresh-cw" :class="['w-4 h-4 inline-block align-[-2px]', weightCalc.loading ? 'animate-spin' : '']"></i>
+        </button>
+      </div>
+
+      <!-- ================= TAB 1: QUY ĐỔI ================= -->
+      <div v-show="weightCalc.tab==='calc'" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Cột trái: nhập liệu -->
+        <div class="lg:col-span-5 space-y-5">
+          <div class="bg-white/90 p-4 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+            <h4 class="text-xs font-bold text-slate-500 tracking-wider uppercase flex items-center">
+              <i data-lucide="settings" class="w-4 h-4 text-indigo-500 mr-2"></i>Tham số quy đổi
+            </h4>
+            <div class="relative">
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Mã hàng</label>
+              <div class="relative">
+                <input type="text" v-model="weightCalc.form.code" @input="wcCodeChanged()" @keydown.enter="wcCodeEnter()"
+                  placeholder="Nhập 2-4 ký tự để tìm kiếm..."
+                  class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-3 pr-10 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-semibold uppercase tracking-wider transition">
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 pointer-events-none">
+                  <i data-lucide="search" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <div v-if="calcCodes.length > 0" class="absolute z-50 w-full bg-white border border-slate-200 rounded-lg mt-1 max-h-48 overflow-y-auto shadow-2xl divide-y divide-slate-100">
+                <div v-for="item in calcCodes" :key="item.id" @click="wcSelect(item)"
+                  class="px-3 py-2.5 hover:bg-indigo-50 cursor-pointer text-xs text-slate-700 transition flex justify-between items-center">
+                  <span class="font-bold font-mono text-slate-800">{{ item.code }}</span>
+                  <span class="text-indigo-600 font-semibold">{{ Number(item.kg).toFixed(4) }} kg/pcs</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+              <div class="flex justify-between text-slate-500 mb-1">
+                <span>Mã đang nạp:</span>
+                <span class="font-bold text-indigo-600 font-mono uppercase">{{ weightCalc.selected ? weightCalc.selected.code : 'Chưa chọn' }}</span>
+              </div>
+              <div class="flex justify-between text-slate-500">
+                <span>Đơn trọng tiêu chuẩn:</span>
+                <span class="font-bold text-emerald-600 font-mono">{{ calcUnitWeightText ? calcUnitWeightText + ' kg/con' : '---' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white/90 p-4 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+            <h4 class="text-xs font-bold text-slate-500 tracking-wider uppercase flex items-center">
+              <i data-lucide="arrow-right-left" class="w-4 h-4 text-cyan-600 mr-2"></i>Quy đổi trực tiếp
+            </h4>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Quy đổi PCS -&gt; KG</label>
+              <div class="relative">
+                <input type="number" v-model.number="weightCalc.form.pcs" @input="wcOnPcs()" :disabled="!weightCalc.selected"
+                  placeholder="Nhập số lượng Pcs cần quy đổi..."
+                  class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-3 pr-12 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-cyan-500 font-bold disabled:opacity-40 disabled:bg-slate-100">
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 pointer-events-none text-[10px] font-bold">PCS</div>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Quy đổi KG -&gt; PCS</label>
+              <div class="relative">
+                <input type="number" step="any" v-model.number="weightCalc.form.kg" @input="wcOnKg()" :disabled="!weightCalc.selected"
+                  placeholder="Nhập trọng lượng Kg cần quy đổi..."
+                  class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-3 pr-12 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 font-bold disabled:opacity-40 disabled:bg-slate-100">
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 pointer-events-none text-[10px] font-bold">KG</div>
+              </div>
+            </div>
+            <p v-if="weightCalc.selected && Number(weightCalc.selected.kg)===0" class="text-[11px] font-bold text-rose-600">
+              Mã này đơn trọng = 0 kg/pcs, không quy đổi KG -&gt; PCS được.
+            </p>
+          </div>
+        </div>
+
+        <!-- Cột phải: màn hình LED -->
+        <div class="lg:col-span-7 flex flex-col justify-between space-y-4">
+          <div class="bg-slate-950 p-5 sm:p-6 rounded-2xl border-4 border-slate-300 shadow-inner flex-1 flex flex-col justify-center space-y-5 relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-b from-transparent via-white/[0.01] to-black/[0.1] pointer-events-none"></div>
+
+            <div class="flex justify-between items-center text-[10px] text-slate-500 tracking-widest uppercase font-bold border-b border-slate-800/60 pb-2">
+              <span><i data-lucide="cpu" class="w-3.5 h-3.5 text-indigo-400 inline-block align-[-2px] mr-1"></i> DIGITAL WEIGHT CONVERTER</span>
+              <span class="animate-pulse text-emerald-500 font-mono flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></span> ONLINE</span>
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-[10px] text-slate-400 tracking-wider font-bold uppercase">
+                <span>TRỌNG LƯỢNG THỰC TẾ (ACTUAL WEIGHT)</span><span class="text-emerald-400/80">UNIT: KG</span>
+              </div>
+              <div class="bg-black/40 rounded-xl p-4 border border-slate-800/80 flex items-center justify-between">
+                <div class="digital-font text-3xl sm:text-4xl font-black text-emerald-400 led-glow-green tracking-widest">{{ calcKgText }}</div>
+                <div class="digital-sub text-slate-500 text-lg font-bold">KG</div>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-[10px] text-slate-400 tracking-wider font-bold uppercase">
+                <span>SỐ LƯỢNG QUY ĐỔI (PCS COUNT)</span><span class="text-amber-400/80">UNIT: PCS</span>
+              </div>
+              <div class="bg-black/40 rounded-xl p-4 border border-slate-800/80 flex items-center justify-between">
+                <div class="digital-font text-3xl sm:text-4xl font-black text-amber-500 led-glow-amber tracking-widest">{{ calcPcsText }}</div>
+                <div class="digital-sub text-slate-500 text-lg font-bold">PCS</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-[10px] text-slate-400 pt-4 border-t border-slate-800/60">
+              <div>
+                <span class="block text-slate-500 font-semibold">MÃ THIẾT BỊ:</span>
+                <span class="font-mono text-slate-300 uppercase">{{ weightCalc.selected ? weightCalc.selected.code : 'CHƯA CHỌN' }}</span>
+              </div>
+              <div class="text-right">
+                <span class="block text-slate-500 font-semibold">TỶ LỆ KHỐI LƯỢNG:</span>
+                <span class="font-mono text-emerald-400 font-bold">{{ calcUnitWeightText ? calcUnitWeightText + ' KG/PCS' : 'N/A' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex space-x-3">
+            <button type="button" @click="wcReset()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-lg text-xs tracking-wider uppercase transition">Reset màn hình</button>
+            <button type="button" @click="closeWeightCalc()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg text-xs tracking-wider uppercase transition shadow-lg">Hoàn tất</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= TAB 2: DANH SÁCH ĐƠN TRỌNG ================= -->
+      <div v-show="weightCalc.tab==='list'">
+
+        <!-- Thêm mới -->
+        <div class="bg-white/90 border border-slate-200/80 rounded-2xl p-4 mb-4 flex flex-col sm:flex-row gap-3 sm:items-end">
+          <div class="flex-1">
+            <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Mã hàng mới</label>
+            <input type="text" v-model="weightCalc.draft.code" placeholder="VD: 3400010001"
+              class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono uppercase text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div class="sm:w-44">
+            <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Đơn trọng (kg/pcs)</label>
+            <input type="number" step="any" min="0" v-model="weightCalc.draft.kg" placeholder="0.1100"
+              class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <button @click="wcSaveNew()" :disabled="weightCalc.saving"
+            class="btn h-[38px] px-5 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 text-xs uppercase tracking-wider font-black shrink-0">
+            <i data-lucide="plus" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Thêm
+          </button>
+        </div>
+
+        <!-- Tìm kiếm -->
+        <div class="relative mb-3">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+          <input type="text" v-model="weightCalc.listFilter" placeholder="Lọc theo mã hàng..."
+            class="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <!-- Bảng -->
+        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white/90">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider">
+                <th class="text-left font-black px-4 py-3">Mã hàng</th>
+                <th class="text-left font-black px-4 py-3 w-44">Đơn trọng (kg/pcs)</th>
+                <th class="text-right font-black px-4 py-3 w-56">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-if="weightCalc.loading && !weightCalc.list.length">
+                <td colspan="3" class="px-4 py-8 text-center text-slate-400 font-bold">Đang tải danh sách...</td>
+              </tr>
+              <tr v-else-if="!weightRows.length">
+                <td colspan="3" class="px-4 py-8 text-center text-slate-400 font-bold">Không có mã nào khớp.</td>
+              </tr>
+              <tr v-for="row in weightRows" :key="row.id" class="hover:bg-slate-50/70">
+                <!-- Đang sửa -->
+                <template v-if="weightCalc.editingId === row.id">
+                  <td class="px-4 py-2">
+                    <input type="text" v-model="weightCalc.editDraft.code"
+                      class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-mono uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  </td>
+                  <td class="px-4 py-2">
+                    <input type="number" step="any" min="0" v-model="weightCalc.editDraft.kg"
+                      class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  </td>
+                  <td class="px-4 py-2 text-right whitespace-nowrap">
+                    <button @click="wcSaveEdit(row)" :disabled="weightCalc.saving" class="btn h-8 px-3 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 mr-1.5 text-[11px] uppercase font-black"><i data-lucide="check" class="w-3.5 h-3.5 inline-block align-[-2px]"></i> Lưu</button>
+                    <button @click="wcCancelEdit()" class="btn h-8 px-3 bg-slate-200 text-slate-600 hover:bg-slate-300 text-[11px] uppercase font-black">Huỷ</button>
+                  </td>
+                </template>
+                <!-- Hiển thị -->
+                <template v-else>
+                  <td class="px-4 py-2.5 font-mono font-bold text-slate-800 uppercase">{{ row.code }}</td>
+                  <td class="px-4 py-2.5 font-mono text-emerald-700 font-bold">{{ Number(row.kg).toFixed(4) }}</td>
+                  <td class="px-4 py-2.5 text-right whitespace-nowrap">
+                    <button @click="wcUseInCalc(row)" title="Dùng mã này để quy đổi" class="btn h-8 px-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 mr-1.5 text-[11px] uppercase font-black"><i data-lucide="arrow-right-left" class="w-3.5 h-3.5 inline-block align-[-2px]"></i></button>
+                    <button @click="wcStartEdit(row)" title="Sửa" class="btn h-8 px-2.5 bg-slate-100 text-slate-600 hover:bg-slate-200 mr-1.5 text-[11px] uppercase font-black"><i data-lucide="pencil" class="w-3.5 h-3.5 inline-block align-[-2px]"></i></button>
+                    <button @click="wcDelete(row)" title="Xoá" class="btn h-8 px-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 text-[11px] uppercase font-black"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block align-[-2px]"></i></button>
+                  </td>
+                </template>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="text-[11px] text-slate-400 font-bold mt-3">
+          Hiển thị {{ weightRows.length }} / {{ weightCalc.list.length }} mã. Thay đổi được lưu ngay vào bảng <span class="font-mono text-slate-500">material_weights</span> và dùng chung cho tab Quy đổi.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==============================================================
+       THƯ KÝ KIM — Trợ lý tra cứu linh kiện
+       Read-only intelligence layer. Không đổi metadata/RPC/R2.
+  =============================================================== -->
+  <button
+    v-if="session.user && !moris.open"
+    @click="openMoris"
+    class="moris-launcher"
+    aria-label="Mở trợ lý Moris">
+    <span class="moris-orb"><i data-lucide="sparkles" class="w-5 h-5"></i></span>
+    <span>Moris</span>
+    <span class="moris-live-dot"></span>
+  </button>
+
+  <div v-if="moris.open" class="moris-backdrop" @click="closeMoris"></div>
+
+  <aside v-if="moris.open" class="moris-panel" aria-label="Trợ lý Moris">
+    <header class="moris-head">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-700 to-emerald-500 text-white grid place-items-center shadow-lg shadow-emerald-200/60">
+            <i data-lucide="brain-circuit" class="w-6 h-6"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg font-black text-slate-900">Moris</h2>
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            </div>
+            <p class="text-xs font-bold text-slate-500 truncate">Hỏi đáp & tra cứu linh kiện thông minh</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button @click="closeMoris" class="moris-icon-btn" aria-label="Đóng Moris">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+    </header>
+
+    <section ref="morisThread" class="moris-thread scrollbar-soft">
+
+      <div
+        v-for="(m, idx) in moris.messages"
+        :key="m.id || idx"
+        :class="['moris-msg', m.role]">
+        <div class="moris-bubble">
+          <div v-if="m.role==='assistant'" class="mb-1 text-[10px] uppercase tracking-[.18em] font-black text-emerald-600">Moris</div>
+          {{ m.text }}
+        </div>
+
+        <div v-if="m.candidates?.length" class="moris-candidates">
+          <button
+            v-for="c in m.candidates.slice(0,5)"
+            :key="c.id"
+            class="moris-candidate"
+            @click="openMorisCandidate(c)">
+            <img v-if="morisCandidateUrl(c)" :src="morisCandidateUrl(c)" loading="lazy" decoding="async" fetchpriority="low" alt="" />
+            <div v-else class="w-[58px] h-[58px] rounded-xl bg-slate-100 grid place-items-center text-slate-300">
+              <i data-lucide="image-off" class="w-5 h-5"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs font-black text-slate-900 truncate">{{ c.code }}</div>
+              <div class="text-[10px] font-bold text-slate-500 truncate">ID: {{ c.part_id || c.code || '---' }} · {{ usageLabel(c.usage_side) }}</div>
+              <div v-if="c.match_reason" class="mt-1 text-[10px] text-emerald-700 font-bold line-clamp-2">{{ c.match_reason }}</div>
+            </div>
+            <div class="text-right">
+              <div v-if="morisCandidatePercent(c)!==null" class="text-xs font-black text-emerald-700">{{ morisCandidatePercent(c) }}%</div>
+                <div v-else class="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-1">Khớp đặc điểm</div>
+              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 ml-auto mt-1"></i>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Moris v6 Scan Animation -->
+      <div v-if="morisScan.active" class="moris-msg assistant" style="max-width:100%">
+        <div class="cyber-loader">
+          <div class="cyber-hex-ring">
+            <div class="cyber-hex-core"></div>
+          </div>
+          <div class="cyber-glitch-text">{{ morisScan.phaseLabel || 'INITIALIZING...' }}</div>
+          <div class="cyber-bar-track">
+            <div class="cyber-bar-fill" :style="{width: morisScan.progress + '%'}"></div>
+          </div>
+          <div class="cyber-scanline"></div>
+          <div class="cyber-status-line">
+            <span class="cyber-dot"></span>
+            <span>{{ morisScan.statusText || 'CONNECTING TO NEURAL NET...' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="moris.busy" class="moris-msg assistant">
+        <div class="moris-bubble flex items-center gap-3">
+          <span class="w-5 h-5 rounded-full border-2 border-emerald-100 border-t-emerald-600 animate-spin"></span>
+          <span class="font-bold text-slate-500">{{ moris.status || 'Moris đang phân tích...' }}</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="moris-compose">
+      <div v-if="moris.imagePreview" class="moris-preview">
+        <img :src="moris.imagePreview" alt="Ảnh truy vấn" />
+        <div class="min-w-0 flex-1">
+          <div class="text-xs font-black text-teal-800">Ảnh truy vấn</div>
+          <div class="text-[10px] font-bold text-teal-600 truncate">{{ moris.imageName }}</div>
+        </div>
+        <button @click="clearMorisImage" class="moris-icon-btn !w-8 !h-8" aria-label="Bỏ ảnh">
+          <i data-lucide="x" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+
+      <div class="moris-input-wrap">
+        <textarea
+          v-model="moris.input"
+          @keydown.enter.exact.prevent="sendMorisMessage"
+          class="moris-textarea"
+          placeholder="Hỏi bất kỳ điều gì về linh kiện, hoặc gửi ảnh để tìm kiếm..."
+          :disabled="moris.busy"></textarea>
+
+        <div class="moris-compose-actions">
+          <div class="flex items-center gap-2">
+            <button @click="triggerMorisImage" class="moris-icon-btn" :disabled="moris.busy" aria-label="Đính kèm ảnh">
+              <i data-lucide="image-plus" class="w-4 h-4"></i>
+            </button>
+            <input ref="morisImageInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="onMorisImageSelect" />
+            <span class="text-[10px] font-bold text-slate-400">Enter để gửi</span>
+          </div>
+          <button @click="sendMorisMessage" class="moris-send" :disabled="moris.busy || (!moris.input.trim() && !moris.imageDataUrl)">
+            <span>{{ moris.busy ? 'Đang nghĩ' : 'Gửi' }}</span>
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+      <p class="mt-2 px-1 text-[9px] leading-relaxed font-bold text-slate-400">
+        Moris v6 — Hỏi đáp, tra cứu mã hàng, phân tích ảnh linh kiện.
+      </p>
+    </footer>
+  </aside>
+
+</div>
+
+<script src="/src/app.js"></script>
+</body>
+</html>
