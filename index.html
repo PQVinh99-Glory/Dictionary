@@ -6,13 +6,16 @@
   <title>Catalogue AI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Font màn hình LED của công cụ quy đổi (Orbitron + Share Tech Mono) -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23059669'/%3E%3Cpath d='M18 38h12v8H18zM34 18h12v8H34zM21 18h9v9h-9zM36 35h10v10H36z' fill='white' opacity='.95'/%3E%3Cpath d='M30 31h7M32 27v8M25 38l10-12' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Config runtime sinh từ .env lúc build. Chỉ chứa biến PUBLIC_*, không có secret. -->
+  <script src="/config.js"></script>
 
   <style>
     :root {
@@ -26,7 +29,7 @@
     body {
       margin:0;
       min-height:100dvh;
-      font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: Calibri, Carlito, 'Segoe UI', system-ui, -apple-system, sans-serif;
       color:var(--ink);
       background:
         radial-gradient(circle at top left, rgba(16,185,129,.15), transparent 40%),
@@ -192,7 +195,7 @@
      THƯ KÝ KIM — Trợ lý tra cứu linh kiện
      Giữ UI app hiện tại; chỉ thêm assistant layer.
   ================================================================= */
-  .denis-launcher{
+  .moris-launcher{
     position:fixed;right:18px;bottom:max(18px,env(safe-area-inset-bottom));
     z-index:70;display:flex;align-items:center;gap:10px;
     padding:10px 14px 10px 10px;border-radius:999px;
@@ -201,45 +204,45 @@
     border:1px solid rgba(255,255,255,.3);font-weight:900;letter-spacing:.01em;
     transition:transform .2s ease,box-shadow .2s ease;
   }
-  .denis-launcher:hover{transform:translateY(-2px);box-shadow:0 22px 56px rgba(5,150,105,.34),0 4px 14px rgba(15,23,42,.18)}
-  .denis-orb{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.18);backdrop-filter:blur(10px)}
-  .denis-live-dot{width:8px;height:8px;border-radius:50%;background:#a7f3d0;box-shadow:0 0 0 5px rgba(167,243,208,.13)}
-  .denis-backdrop{position:fixed;inset:0;z-index:79;background:rgba(15,23,42,.22);backdrop-filter:blur(3px)}
-  .denis-panel{
+  .moris-launcher:hover{transform:translateY(-2px);box-shadow:0 22px 56px rgba(5,150,105,.34),0 4px 14px rgba(15,23,42,.18)}
+  .moris-orb{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.18);backdrop-filter:blur(10px)}
+  .moris-live-dot{width:8px;height:8px;border-radius:50%;background:#a7f3d0;box-shadow:0 0 0 5px rgba(167,243,208,.13)}
+  .moris-backdrop{position:fixed;inset:0;z-index:79;background:rgba(15,23,42,.22);backdrop-filter:blur(3px)}
+  .moris-panel{
     position:fixed;z-index:80;right:14px;top:14px;bottom:14px;width:min(440px,calc(100vw - 28px));
     display:flex;flex-direction:column;overflow:hidden;border-radius:30px;
     background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,250,252,.98));
     border:1px solid rgba(148,163,184,.25);
     box-shadow:0 30px 90px rgba(15,23,42,.25);
   }
-  .denis-head{padding:16px 18px;border-bottom:1px solid rgba(226,232,240,.9);background:linear-gradient(135deg,rgba(236,253,245,.98),rgba(240,253,250,.98))}
-  .denis-thread{flex:1;overflow:auto;padding:16px;background:
+  .moris-head{padding:16px 18px;border-bottom:1px solid rgba(226,232,240,.9);background:linear-gradient(135deg,rgba(236,253,245,.98),rgba(240,253,250,.98))}
+  .moris-thread{flex:1;overflow:auto;padding:16px;background:
     radial-gradient(circle at 15% 10%,rgba(16,185,129,.06),transparent 24%),
     linear-gradient(180deg,#f8fafc,#fff)}
-  .denis-msg{max-width:92%;margin-bottom:12px}
-  .denis-msg.user{margin-left:auto}
-  .denis-bubble{padding:12px 14px;border-radius:18px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
-  .denis-msg.user .denis-bubble{background:#0f172a;color:#fff;border-bottom-right-radius:6px}
-  .denis-msg.assistant .denis-bubble{background:#fff;color:#334155;border:1px solid #e2e8f0;border-bottom-left-radius:6px;box-shadow:0 6px 18px rgba(15,23,42,.05)}
-  .denis-candidates{display:grid;gap:8px;margin-top:10px}
-  .denis-candidate{width:100%;display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border-radius:15px;background:#fff;border:1px solid #e2e8f0;text-align:left;transition:.18s ease}
-  .denis-candidate:hover{border-color:#6ee7b7;transform:translateY(-1px);box-shadow:0 8px 24px rgba(15,23,42,.07)}
-  .denis-candidate img{width:58px;height:58px;object-fit:contain;border-radius:11px;background:
+  .moris-msg{max-width:92%;margin-bottom:12px}
+  .moris-msg.user{margin-left:auto}
+  .moris-bubble{padding:12px 14px;border-radius:18px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .moris-msg.user .moris-bubble{background:#0f172a;color:#fff;border-bottom-right-radius:6px}
+  .moris-msg.assistant .moris-bubble{background:#fff;color:#334155;border:1px solid #e2e8f0;border-bottom-left-radius:6px;box-shadow:0 6px 18px rgba(15,23,42,.05)}
+  .moris-candidates{display:grid;gap:8px;margin-top:10px}
+  .moris-candidate{width:100%;display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border-radius:15px;background:#fff;border:1px solid #e2e8f0;text-align:left;transition:.18s ease}
+  .moris-candidate:hover{border-color:#6ee7b7;transform:translateY(-1px);box-shadow:0 8px 24px rgba(15,23,42,.07)}
+  .moris-candidate img{width:58px;height:58px;object-fit:contain;border-radius:11px;background:
     linear-gradient(45deg,#f1f5f9 25%,transparent 25%),linear-gradient(-45deg,#f1f5f9 25%,transparent 25%),
     linear-gradient(45deg,transparent 75%,#f1f5f9 75%),linear-gradient(-45deg,transparent 75%,#f1f5f9 75%);
     background-size:12px 12px;background-position:0 0,0 6px,6px -6px,-6px 0}
-  .denis-compose{padding:12px;border-top:1px solid #e2e8f0;background:rgba(255,255,255,.96)}
-  .denis-input-wrap{border:1px solid #cbd5e1;border-radius:18px;background:#fff;box-shadow:0 8px 30px rgba(15,23,42,.06);overflow:hidden}
-  .denis-textarea{width:100%;min-height:52px;max-height:132px;resize:none;border:0;outline:0;padding:13px 14px 8px;background:transparent;font-size:14px}
-  .denis-compose-actions{display:flex;align-items:center;justify-content:space-between;padding:7px 8px 8px}
-  .denis-icon-btn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;border:1px solid #e2e8f0;background:#fff;color:#475569}
-  .denis-send{height:38px;padding:0 14px;border-radius:12px;background:#059669;color:#fff;font-weight:900;display:flex;gap:7px;align-items:center}
-  .denis-send:disabled{opacity:.5;cursor:not-allowed}
-  .denis-preview{margin:0 8px 8px;display:flex;align-items:center;gap:10px;padding:8px;border-radius:13px;background:#f0fdfa;border:1px solid #99f6e4}
-  .denis-preview img{width:46px;height:46px;object-fit:cover;border-radius:10px}
+  .moris-compose{padding:12px;border-top:1px solid #e2e8f0;background:rgba(255,255,255,.96)}
+  .moris-input-wrap{border:1px solid #cbd5e1;border-radius:18px;background:#fff;box-shadow:0 8px 30px rgba(15,23,42,.06);overflow:hidden}
+  .moris-textarea{width:100%;min-height:52px;max-height:132px;resize:none;border:0;outline:0;padding:13px 14px 8px;background:transparent;font-size:14px}
+  .moris-compose-actions{display:flex;align-items:center;justify-content:space-between;padding:7px 8px 8px}
+  .moris-icon-btn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;border:1px solid #e2e8f0;background:#fff;color:#475569}
+  .moris-send{height:38px;padding:0 14px;border-radius:12px;background:#059669;color:#fff;font-weight:900;display:flex;gap:7px;align-items:center}
+  .moris-send:disabled{opacity:.5;cursor:not-allowed}
+  .moris-preview{margin:0 8px 8px;display:flex;align-items:center;gap:10px;padding:8px;border-radius:13px;background:#f0fdfa;border:1px solid #99f6e4}
+  .moris-preview img{width:46px;height:46px;object-fit:cover;border-radius:10px}
 
   /* ============================================
-     CYBERPUNK 2077 LOADING — Thư ký Kim
+     CYBERPUNK 2077 LOADING — Moris
      Pure CSS, no external libraries
   ============================================ */
   .cyber-loader{
@@ -315,18 +318,28 @@
   }
     width:180px;height:180px;position:relative;
     transform-style:preserve-3d;
-    animation:kimRotate 4s linear infinite;
+    animation:morisRotate 4s linear infinite;
   }
     position:absolute;inset:0;border:1.5px solid rgba(52,211,153,.6);
     background:rgba(16,185,129,.04);
   }
-  @keyframes kimRotate{from{transform:rotateX(-20deg) rotateY(0deg)}to{transform:rotateX(-20deg) rotateY(360deg)}}
+  @keyframes morisRotate{from{transform:rotateX(-20deg) rotateY(0deg)}to{transform:rotateX(-20deg) rotateY(360deg)}}
 
   @media(max-width:640px){
-    .denis-launcher{right:12px;bottom:max(12px,env(safe-area-inset-bottom));padding-right:12px}
-    .denis-panel{inset:0;width:100%;border-radius:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
-    .denis-backdrop{display:none}
+    .moris-launcher{right:12px;bottom:max(12px,env(safe-area-inset-bottom));padding-right:12px}
+    .moris-panel{inset:0;width:100%;border-radius:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+    .moris-backdrop{display:none}
   }
+
+  /* ==== CÔNG CỤ QUY ĐỔI — màn hình LED (Orbitron / Share Tech Mono) ==== */
+  .digital-font { font-family: 'Orbitron', ui-monospace, monospace; }
+  .digital-sub  { font-family: 'Share Tech Mono', ui-monospace, monospace; }
+  .led-glow-green { text-shadow: 0 0 12px rgba(16, 185, 129, 0.7); }
+  .led-glow-amber { text-shadow: 0 0 12px rgba(245, 158, 11, 0.7); }
+  /* Ẩn spinner số của input type=number để đồng bộ với giao diện mẫu */
+  .modal-shell input[type=number]::-webkit-outer-spin-button,
+  .modal-shell input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+  .modal-shell input[type=number] { -moz-appearance:textfield; }
 
 </style>
 </head>
@@ -347,8 +360,8 @@
 
       <form @submit.prevent="login" class="mt-8 space-y-4">
         <div>
-          <label class="block text-xs font-black tracking-widest text-slate-400 uppercase mb-1 ml-2">Tên đăng nhập</label>
-          <input class="input h-14" v-model.trim="loginForm.username" placeholder="Nhập tài khoản..." autocomplete="username" />
+          <label class="block text-xs font-black tracking-widest text-slate-400 uppercase mb-1 ml-2">Email đăng nhập</label>
+          <input class="input h-14" v-model.trim="loginForm.username" placeholder="ten@email.com" autocomplete="username" inputmode="email" />
         </div>
         <div>
           <label class="block text-xs font-black tracking-widest text-slate-400 uppercase mb-1 ml-2">Mật khẩu</label>
@@ -378,7 +391,7 @@
         <div class="flex gap-2 sm:gap-3 shrink-0">
           <a
             v-if="session.user?.role_name === 'admin'"
-            href="/tools/kim-vector-center.html"
+            href="/tools/moris-vector-center.html"
             class="btn h-11 px-4 sm:px-5 bg-violet-600 text-white hover:bg-violet-700 shadow-md shadow-violet-100"
             title="Trung tâm Vector AI"
           >
@@ -390,6 +403,10 @@
           </button>
           <button @click="openEditor()" v-if="canEdit" class="btn h-11 px-4 sm:px-5 bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-100">
             <i data-lucide="plus" class="w-5 h-5"></i><span class="hide-mobile">Thêm mã mới</span>
+          </button>
+
+          <button @click="openWeightCalc()" class="btn h-11 px-4 sm:px-5 bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-100">
+            <i data-lucide="calculator" class="w-5 h-5"></i><span class="hide-mobile">Quy đổi</span>
           </button>
 
           <button @click="logout" class="btn h-11 w-11 sm:w-auto sm:px-4 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
@@ -437,20 +454,20 @@
       </div>
 
 
-      <div v-if="denisSearch.active" class="glass rounded-[2rem] p-4 sm:p-5 mb-6 border border-emerald-200 bg-emerald-50/70">
+      <div v-if="morisSearch.active" class="glass rounded-[2rem] p-4 sm:p-5 mb-6 border border-emerald-200 bg-emerald-50/70">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <span class="px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black tracking-widest uppercase">Thư ký Kim</span>
-              <span class="text-sm font-black text-emerald-800">{{ denisSearch.results.length }} mã phù hợp</span>
+              <span class="px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black tracking-widest uppercase">Moris</span>
+              <span class="text-sm font-black text-emerald-800">{{ morisSearch.results.length }} mã phù hợp</span>
             </div>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <button @click="clearDenisSearch" class="btn h-10 px-4 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+            <button @click="clearMorisSearch" class="btn h-10 px-4 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50">
               <i data-lucide="list-restart" class="w-4 h-4"></i> Xóa kết quả
             </button>
-            <button @click="openDenis" class="btn h-10 px-4 bg-emerald-600 text-white hover:bg-emerald-700">
-              <i data-lucide="messages-square" class="w-4 h-4"></i> Mở Kim
+            <button @click="openMoris" class="btn h-10 px-4 bg-emerald-600 text-white hover:bg-emerald-700">
+              <i data-lucide="messages-square" class="w-4 h-4"></i> Mở Moris
             </button>
           </div>
         </div>
@@ -489,7 +506,7 @@
         </article>
       </div>
 
-      <div v-if="!denisSearch.active && (parts.length || page > 0)" class="mt-10 pb-10">
+      <div v-if="!morisSearch.active && (parts.length || page > 0)" class="mt-10 pb-10">
         <div class="glass rounded-[1.5rem] p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border border-slate-200 bg-white/80">
           <button
             @click="goPage(-1)"
@@ -627,12 +644,6 @@
             <div v-else class="text-center text-slate-400 font-bold"><i data-lucide="image-plus" class="w-16 h-16 mx-auto mb-3 text-slate-300"></i>Chưa có ảnh</div>
           </div>
           
-          <!-- Nút Tự động tách nền (Tích hợp Worker remove.bg) -->
-          <div class="rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 p-4 shadow-sm flex items-center gap-3">
-            <input type="checkbox" id="auto-rmbg" v-model="editor.autoRemoveBg" class="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-emerald-300 cursor-pointer">
-            <label for="auto-rmbg" class="text-sm font-extrabold text-emerald-800 cursor-pointer select-none">AI tự động tách nền<br><span class="text-xs font-semibold text-emerald-600">Áp dụng khi chọn ảnh mặt chính/mặt sau</span></label>
-          </div>
-
           <div class="rounded-2xl border border-violet-100 bg-violet-50 p-4 shadow-sm">
             <div class="flex items-center justify-between gap-3">
               <div>
@@ -838,23 +849,260 @@
   </div>
 
   <!-- ==============================================================
+       CÔNG CỤ QUY ĐỔI ĐỊNH LƯỢNG — PCS <-> KG
+       Port từ weight-calculator.zip; dữ liệu đọc/ghi bảng
+       public.material_weights (Supabase, RLS authenticated).
+  =============================================================== -->
+  <div v-if="weightCalc.open" class="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-md p-3 sm:p-5 overflow-y-auto flex items-center justify-center mobile-bottom" @click.self="closeWeightCalc">
+    <div class="modal-shell glass w-full max-w-5xl rounded-[2.5rem] p-5 sm:p-8 bg-white/95 my-auto">
+
+      <!-- Header -->
+      <div class="flex items-start justify-between gap-4 mb-5 border-b border-slate-200/60 pb-5">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-11 h-11 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shrink-0">
+            <i data-lucide="calculator" class="w-6 h-6 text-indigo-600"></i>
+          </div>
+          <div class="min-w-0">
+            <h2 class="text-lg sm:text-2xl font-black text-slate-800 truncate">CÔNG CỤ QUY ĐỔI ĐỊNH LƯỢNG KHO THỰC TẾ</h2>
+            <p class="text-[11px] sm:text-xs text-slate-500 font-bold">Đơn trọng kg/pcs đồng bộ trực tiếp từ cơ sở dữ liệu ({{ weightCalc.list.length }} mã)</p>
+          </div>
+        </div>
+        <button @click="closeWeightCalc" class="btn w-11 h-11 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500 shrink-0"><i data-lucide="x" class="w-6 h-6"></i></button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-2 mb-5">
+        <button @click="weightCalc.tab='calc'" :class="['btn h-10 px-4 text-xs uppercase tracking-wider font-black', weightCalc.tab==='calc' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']">
+          <i data-lucide="arrow-right-left" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Quy đổi
+        </button>
+        <button @click="weightCalc.tab='list'" :class="['btn h-10 px-4 text-xs uppercase tracking-wider font-black', weightCalc.tab==='list' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']">
+          <i data-lucide="list" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Danh sách đơn trọng
+          <span class="ml-1 px-1.5 py-0.5 rounded-md text-[10px] bg-white/20">{{ weightCalc.list.length }}</span>
+        </button>
+        <button v-if="weightCalc.tab==='list'" @click="loadWeights()" :disabled="weightCalc.loading" class="btn h-10 px-3 text-xs uppercase tracking-wider font-black bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 disabled:opacity-50" title="Tải lại từ DB">
+          <i data-lucide="refresh-cw" :class="['w-4 h-4 inline-block align-[-2px]', weightCalc.loading ? 'animate-spin' : '']"></i>
+        </button>
+      </div>
+
+      <!-- ================= TAB 1: QUY ĐỔI ================= -->
+      <div v-show="weightCalc.tab==='calc'" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Cột trái: nhập liệu -->
+        <div class="lg:col-span-5 space-y-5">
+          <div class="bg-white/90 p-4 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+            <h4 class="text-xs font-bold text-slate-500 tracking-wider uppercase flex items-center">
+              <i data-lucide="settings" class="w-4 h-4 text-indigo-500 mr-2"></i>Tham số quy đổi
+            </h4>
+            <div class="relative">
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Mã hàng</label>
+              <div class="relative">
+                <input type="text" v-model="weightCalc.form.code" @input="wcCodeChanged()" @keydown.enter="wcCodeEnter()"
+                  placeholder="Nhập 2-4 ký tự để tìm kiếm..."
+                  class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-3 pr-10 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 font-semibold uppercase tracking-wider transition">
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 pointer-events-none">
+                  <i data-lucide="search" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <div v-if="calcCodes.length > 0" class="absolute z-50 w-full bg-white border border-slate-200 rounded-lg mt-1 max-h-48 overflow-y-auto shadow-2xl divide-y divide-slate-100">
+                <div v-for="item in calcCodes" :key="item.id" @click="wcSelect(item)"
+                  class="px-3 py-2.5 hover:bg-indigo-50 cursor-pointer text-xs text-slate-700 transition flex justify-between items-center">
+                  <span class="font-bold font-mono text-slate-800">{{ item.code }}</span>
+                  <span class="text-indigo-600 font-semibold">{{ Number(item.kg).toFixed(4) }} kg/pcs</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+              <div class="flex justify-between text-slate-500 mb-1">
+                <span>Mã đang nạp:</span>
+                <span class="font-bold text-indigo-600 font-mono uppercase">{{ weightCalc.selected ? weightCalc.selected.code : 'Chưa chọn' }}</span>
+              </div>
+              <div class="flex justify-between text-slate-500">
+                <span>Đơn trọng tiêu chuẩn:</span>
+                <span class="font-bold text-emerald-600 font-mono">{{ calcUnitWeightText ? calcUnitWeightText + ' kg/con' : '---' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white/90 p-4 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+            <h4 class="text-xs font-bold text-slate-500 tracking-wider uppercase flex items-center">
+              <i data-lucide="arrow-right-left" class="w-4 h-4 text-cyan-600 mr-2"></i>Quy đổi trực tiếp
+            </h4>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Quy đổi PCS -&gt; KG</label>
+              <div class="relative">
+                <input type="number" v-model.number="weightCalc.form.pcs" @input="wcOnPcs()" :disabled="!weightCalc.selected"
+                  placeholder="Nhập số lượng Pcs cần quy đổi..."
+                  class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-3 pr-12 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-cyan-500 font-bold disabled:opacity-40 disabled:bg-slate-100">
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 pointer-events-none text-[10px] font-bold">PCS</div>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Quy đổi KG -&gt; PCS</label>
+              <div class="relative">
+                <input type="number" step="any" v-model.number="weightCalc.form.kg" @input="wcOnKg()" :disabled="!weightCalc.selected"
+                  placeholder="Nhập trọng lượng Kg cần quy đổi..."
+                  class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-3 pr-12 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 font-bold disabled:opacity-40 disabled:bg-slate-100">
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 pointer-events-none text-[10px] font-bold">KG</div>
+              </div>
+            </div>
+            <p v-if="weightCalc.selected && Number(weightCalc.selected.kg)===0" class="text-[11px] font-bold text-rose-600">
+              Mã này đơn trọng = 0 kg/pcs, không quy đổi KG -&gt; PCS được.
+            </p>
+          </div>
+        </div>
+
+        <!-- Cột phải: màn hình LED -->
+        <div class="lg:col-span-7 flex flex-col justify-between space-y-4">
+          <div class="bg-slate-950 p-5 sm:p-6 rounded-2xl border-4 border-slate-300 shadow-inner flex-1 flex flex-col justify-center space-y-5 relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-b from-transparent via-white/[0.01] to-black/[0.1] pointer-events-none"></div>
+
+            <div class="flex justify-between items-center text-[10px] text-slate-500 tracking-widest uppercase font-bold border-b border-slate-800/60 pb-2">
+              <span><i data-lucide="cpu" class="w-3.5 h-3.5 text-indigo-400 inline-block align-[-2px] mr-1"></i> DIGITAL WEIGHT CONVERTER</span>
+              <span class="animate-pulse text-emerald-500 font-mono flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></span> ONLINE</span>
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-[10px] text-slate-400 tracking-wider font-bold uppercase">
+                <span>TRỌNG LƯỢNG THỰC TẾ (ACTUAL WEIGHT)</span><span class="text-emerald-400/80">UNIT: KG</span>
+              </div>
+              <div class="bg-black/40 rounded-xl p-4 border border-slate-800/80 flex items-center justify-between">
+                <div class="digital-font text-3xl sm:text-4xl font-black text-emerald-400 led-glow-green tracking-widest">{{ calcKgText }}</div>
+                <div class="digital-sub text-slate-500 text-lg font-bold">KG</div>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-[10px] text-slate-400 tracking-wider font-bold uppercase">
+                <span>SỐ LƯỢNG QUY ĐỔI (PCS COUNT)</span><span class="text-amber-400/80">UNIT: PCS</span>
+              </div>
+              <div class="bg-black/40 rounded-xl p-4 border border-slate-800/80 flex items-center justify-between">
+                <div class="digital-font text-3xl sm:text-4xl font-black text-amber-500 led-glow-amber tracking-widest">{{ calcPcsText }}</div>
+                <div class="digital-sub text-slate-500 text-lg font-bold">PCS</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-[10px] text-slate-400 pt-4 border-t border-slate-800/60">
+              <div>
+                <span class="block text-slate-500 font-semibold">MÃ THIẾT BỊ:</span>
+                <span class="font-mono text-slate-300 uppercase">{{ weightCalc.selected ? weightCalc.selected.code : 'CHƯA CHỌN' }}</span>
+              </div>
+              <div class="text-right">
+                <span class="block text-slate-500 font-semibold">TỶ LỆ KHỐI LƯỢNG:</span>
+                <span class="font-mono text-emerald-400 font-bold">{{ calcUnitWeightText ? calcUnitWeightText + ' KG/PCS' : 'N/A' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex space-x-3">
+            <button type="button" @click="wcReset()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-lg text-xs tracking-wider uppercase transition">Reset màn hình</button>
+            <button type="button" @click="closeWeightCalc()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg text-xs tracking-wider uppercase transition shadow-lg">Hoàn tất</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= TAB 2: DANH SÁCH ĐƠN TRỌNG ================= -->
+      <div v-show="weightCalc.tab==='list'">
+
+        <!-- Thêm mới -->
+        <div class="bg-white/90 border border-slate-200/80 rounded-2xl p-4 mb-4 flex flex-col sm:flex-row gap-3 sm:items-end">
+          <div class="flex-1">
+            <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Mã hàng mới</label>
+            <input type="text" v-model="weightCalc.draft.code" placeholder="VD: 3400010001"
+              class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono uppercase text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div class="sm:w-44">
+            <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Đơn trọng (kg/pcs)</label>
+            <input type="number" step="any" min="0" v-model="weightCalc.draft.kg" placeholder="0.1100"
+              class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <button @click="wcSaveNew()" :disabled="weightCalc.saving"
+            class="btn h-[38px] px-5 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 text-xs uppercase tracking-wider font-black shrink-0">
+            <i data-lucide="plus" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Thêm
+          </button>
+        </div>
+
+        <!-- Tìm kiếm -->
+        <div class="relative mb-3">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+          <input type="text" v-model="weightCalc.listFilter" placeholder="Lọc theo mã hàng..."
+            class="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <!-- Bảng -->
+        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white/90">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider">
+                <th class="text-left font-black px-4 py-3">Mã hàng</th>
+                <th class="text-left font-black px-4 py-3 w-44">Đơn trọng (kg/pcs)</th>
+                <th class="text-right font-black px-4 py-3 w-56">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-if="weightCalc.loading && !weightCalc.list.length">
+                <td colspan="3" class="px-4 py-8 text-center text-slate-400 font-bold">Đang tải danh sách...</td>
+              </tr>
+              <tr v-else-if="!weightRows.length">
+                <td colspan="3" class="px-4 py-8 text-center text-slate-400 font-bold">Không có mã nào khớp.</td>
+              </tr>
+              <tr v-for="row in weightRows" :key="row.id" class="hover:bg-slate-50/70">
+                <!-- Đang sửa -->
+                <template v-if="weightCalc.editingId === row.id">
+                  <td class="px-4 py-2">
+                    <input type="text" v-model="weightCalc.editDraft.code"
+                      class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-mono uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  </td>
+                  <td class="px-4 py-2">
+                    <input type="number" step="any" min="0" v-model="weightCalc.editDraft.kg"
+                      class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  </td>
+                  <td class="px-4 py-2 text-right whitespace-nowrap">
+                    <button @click="wcSaveEdit(row)" :disabled="weightCalc.saving" class="btn h-8 px-3 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 mr-1.5 text-[11px] uppercase font-black"><i data-lucide="check" class="w-3.5 h-3.5 inline-block align-[-2px]"></i> Lưu</button>
+                    <button @click="wcCancelEdit()" class="btn h-8 px-3 bg-slate-200 text-slate-600 hover:bg-slate-300 text-[11px] uppercase font-black">Huỷ</button>
+                  </td>
+                </template>
+                <!-- Hiển thị -->
+                <template v-else>
+                  <td class="px-4 py-2.5 font-mono font-bold text-slate-800 uppercase">{{ row.code }}</td>
+                  <td class="px-4 py-2.5 font-mono text-emerald-700 font-bold">{{ Number(row.kg).toFixed(4) }}</td>
+                  <td class="px-4 py-2.5 text-right whitespace-nowrap">
+                    <button @click="wcUseInCalc(row)" title="Dùng mã này để quy đổi" class="btn h-8 px-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 mr-1.5 text-[11px] uppercase font-black"><i data-lucide="arrow-right-left" class="w-3.5 h-3.5 inline-block align-[-2px]"></i></button>
+                    <button @click="wcStartEdit(row)" title="Sửa" class="btn h-8 px-2.5 bg-slate-100 text-slate-600 hover:bg-slate-200 mr-1.5 text-[11px] uppercase font-black"><i data-lucide="pencil" class="w-3.5 h-3.5 inline-block align-[-2px]"></i></button>
+                    <button @click="wcDelete(row)" title="Xoá" class="btn h-8 px-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 text-[11px] uppercase font-black"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block align-[-2px]"></i></button>
+                  </td>
+                </template>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="text-[11px] text-slate-400 font-bold mt-3">
+          Hiển thị {{ weightRows.length }} / {{ weightCalc.list.length }} mã. Thay đổi được lưu ngay vào bảng <span class="font-mono text-slate-500">material_weights</span> và dùng chung cho tab Quy đổi.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==============================================================
        THƯ KÝ KIM — Trợ lý tra cứu linh kiện
        Read-only intelligence layer. Không đổi metadata/RPC/R2.
   =============================================================== -->
   <button
-    v-if="session.user && !denis.open"
-    @click="openDenis"
-    class="denis-launcher"
-    aria-label="Mở trợ lý Thư ký Kim">
-    <span class="denis-orb"><i data-lucide="sparkles" class="w-5 h-5"></i></span>
-    <span>Thư ký Kim</span>
-    <span class="denis-live-dot"></span>
+    v-if="session.user && !moris.open"
+    @click="openMoris"
+    class="moris-launcher"
+    aria-label="Mở trợ lý Moris">
+    <span class="moris-orb"><i data-lucide="sparkles" class="w-5 h-5"></i></span>
+    <span>Moris</span>
+    <span class="moris-live-dot"></span>
   </button>
 
-  <div v-if="denis.open" class="denis-backdrop" @click="closeDenis"></div>
+  <div v-if="moris.open" class="moris-backdrop" @click="closeMoris"></div>
 
-  <aside v-if="denis.open" class="denis-panel" aria-label="Trợ lý Thư ký Kim">
-    <header class="denis-head">
+  <aside v-if="moris.open" class="moris-panel" aria-label="Trợ lý Moris">
+    <header class="moris-head">
       <div class="flex items-start justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">
           <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-700 to-emerald-500 text-white grid place-items-center shadow-lg shadow-emerald-200/60">
@@ -862,24 +1110,14 @@
           </div>
           <div class="min-w-0">
             <div class="flex items-center gap-2">
-              <h2 class="text-lg font-black text-slate-900">Thư ký Kim</h2>
+              <h2 class="text-lg font-black text-slate-900">Moris</h2>
               <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
             </div>
             <p class="text-xs font-bold text-slate-500 truncate">Hỏi đáp & tra cứu linh kiện thông minh</p>
           </div>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
-          <a
-            v-if="session.user?.role_name === 'admin'"
-            href="/kim-admin.html"
-            target="_blank"
-            class="denis-icon-btn"
-            title="Cấu hình API — Quản lý Providers"
-            aria-label="Cấu hình API"
-          >
-            <i data-lucide="settings" class="w-4 h-4"></i>
-          </a>
-          <button @click="closeDenis" class="denis-icon-btn" aria-label="Đóng Thư ký Kim">
+          <button @click="closeMoris" class="moris-icon-btn" aria-label="Đóng Moris">
             <i data-lucide="x" class="w-4 h-4"></i>
           </button>
         </div>
@@ -887,24 +1125,24 @@
 
     </header>
 
-    <section ref="denisThread" class="denis-thread scrollbar-soft">
+    <section ref="morisThread" class="moris-thread scrollbar-soft">
 
       <div
-        v-for="(m, idx) in denis.messages"
+        v-for="(m, idx) in moris.messages"
         :key="m.id || idx"
-        :class="['denis-msg', m.role]">
-        <div class="denis-bubble">
-          <div v-if="m.role==='assistant'" class="mb-1 text-[10px] uppercase tracking-[.18em] font-black text-emerald-600">Kim</div>
+        :class="['moris-msg', m.role]">
+        <div class="moris-bubble">
+          <div v-if="m.role==='assistant'" class="mb-1 text-[10px] uppercase tracking-[.18em] font-black text-emerald-600">Moris</div>
           {{ m.text }}
         </div>
 
-        <div v-if="m.candidates?.length" class="denis-candidates">
+        <div v-if="m.candidates?.length" class="moris-candidates">
           <button
             v-for="c in m.candidates.slice(0,5)"
             :key="c.id"
-            class="denis-candidate"
-            @click="openDenisCandidate(c)">
-            <img v-if="denisCandidateUrl(c)" :src="denisCandidateUrl(c)" loading="lazy" decoding="async" fetchpriority="low" alt="" />
+            class="moris-candidate"
+            @click="openMorisCandidate(c)">
+            <img v-if="morisCandidateUrl(c)" :src="morisCandidateUrl(c)" loading="lazy" decoding="async" fetchpriority="low" alt="" />
             <div v-else class="w-[58px] h-[58px] rounded-xl bg-slate-100 grid place-items-center text-slate-300">
               <i data-lucide="image-off" class="w-5 h-5"></i>
             </div>
@@ -914,7 +1152,7 @@
               <div v-if="c.match_reason" class="mt-1 text-[10px] text-emerald-700 font-bold line-clamp-2">{{ c.match_reason }}</div>
             </div>
             <div class="text-right">
-              <div v-if="kimCandidatePercent(c)!==null" class="text-xs font-black text-emerald-700">{{ kimCandidatePercent(c) }}%</div>
+              <div v-if="morisCandidatePercent(c)!==null" class="text-xs font-black text-emerald-700">{{ morisCandidatePercent(c) }}%</div>
                 <div v-else class="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-1">Khớp đặc điểm</div>
               <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 ml-auto mt-1"></i>
             </div>
@@ -922,1824 +1160,74 @@
         </div>
       </div>
 
-      <!-- Kim v6 Scan Animation -->
-      <div v-if="kimScan.active" class="denis-msg assistant" style="max-width:100%">
+      <!-- Moris v6 Scan Animation -->
+      <div v-if="morisScan.active" class="moris-msg assistant" style="max-width:100%">
         <div class="cyber-loader">
           <div class="cyber-hex-ring">
             <div class="cyber-hex-core"></div>
           </div>
-          <div class="cyber-glitch-text">{{ kimScan.phaseLabel || 'INITIALIZING...' }}</div>
+          <div class="cyber-glitch-text">{{ morisScan.phaseLabel || 'INITIALIZING...' }}</div>
           <div class="cyber-bar-track">
-            <div class="cyber-bar-fill" :style="{width: kimScan.progress + '%'}"></div>
+            <div class="cyber-bar-fill" :style="{width: morisScan.progress + '%'}"></div>
           </div>
           <div class="cyber-scanline"></div>
           <div class="cyber-status-line">
             <span class="cyber-dot"></span>
-            <span>{{ kimScan.statusText || 'CONNECTING TO NEURAL NET...' }}</span>
+            <span>{{ morisScan.statusText || 'CONNECTING TO NEURAL NET...' }}</span>
           </div>
         </div>
       </div>
 
-      <div v-if="denis.busy" class="denis-msg assistant">
-        <div class="denis-bubble flex items-center gap-3">
+      <div v-if="moris.busy" class="moris-msg assistant">
+        <div class="moris-bubble flex items-center gap-3">
           <span class="w-5 h-5 rounded-full border-2 border-emerald-100 border-t-emerald-600 animate-spin"></span>
-          <span class="font-bold text-slate-500">{{ denis.status || 'Thư ký Kim đang phân tích...' }}</span>
+          <span class="font-bold text-slate-500">{{ moris.status || 'Moris đang phân tích...' }}</span>
         </div>
       </div>
     </section>
 
-    <footer class="denis-compose">
-      <div v-if="denis.imagePreview" class="denis-preview">
-        <img :src="denis.imagePreview" alt="Ảnh truy vấn" />
+    <footer class="moris-compose">
+      <div v-if="moris.imagePreview" class="moris-preview">
+        <img :src="moris.imagePreview" alt="Ảnh truy vấn" />
         <div class="min-w-0 flex-1">
           <div class="text-xs font-black text-teal-800">Ảnh truy vấn</div>
-          <div class="text-[10px] font-bold text-teal-600 truncate">{{ denis.imageName }}</div>
+          <div class="text-[10px] font-bold text-teal-600 truncate">{{ moris.imageName }}</div>
         </div>
-        <button @click="clearDenisImage" class="denis-icon-btn !w-8 !h-8" aria-label="Bỏ ảnh">
+        <button @click="clearMorisImage" class="moris-icon-btn !w-8 !h-8" aria-label="Bỏ ảnh">
           <i data-lucide="x" class="w-3.5 h-3.5"></i>
         </button>
       </div>
 
-      <div class="denis-input-wrap">
+      <div class="moris-input-wrap">
         <textarea
-          v-model="denis.input"
-          @keydown.enter.exact.prevent="sendDenisMessage"
-          class="denis-textarea"
+          v-model="moris.input"
+          @keydown.enter.exact.prevent="sendMorisMessage"
+          class="moris-textarea"
           placeholder="Hỏi bất kỳ điều gì về linh kiện, hoặc gửi ảnh để tìm kiếm..."
-          :disabled="denis.busy"></textarea>
+          :disabled="moris.busy"></textarea>
 
-        <div class="denis-compose-actions">
+        <div class="moris-compose-actions">
           <div class="flex items-center gap-2">
-            <button @click="triggerDenisImage" class="denis-icon-btn" :disabled="denis.busy" aria-label="Đính kèm ảnh">
+            <button @click="triggerMorisImage" class="moris-icon-btn" :disabled="moris.busy" aria-label="Đính kèm ảnh">
               <i data-lucide="image-plus" class="w-4 h-4"></i>
             </button>
-            <input ref="denisImageInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="onDenisImageSelect" />
+            <input ref="morisImageInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="onMorisImageSelect" />
             <span class="text-[10px] font-bold text-slate-400">Enter để gửi</span>
           </div>
-          <button @click="sendDenisMessage" class="denis-send" :disabled="denis.busy || (!denis.input.trim() && !denis.imageDataUrl)">
-            <span>{{ denis.busy ? 'Đang nghĩ' : 'Gửi' }}</span>
+          <button @click="sendMorisMessage" class="moris-send" :disabled="moris.busy || (!moris.input.trim() && !moris.imageDataUrl)">
+            <span>{{ moris.busy ? 'Đang nghĩ' : 'Gửi' }}</span>
             <i data-lucide="send" class="w-4 h-4"></i>
           </button>
         </div>
       </div>
       <p class="mt-2 px-1 text-[9px] leading-relaxed font-bold text-slate-400">
-        Thư ký Kim v6 — Hỏi đáp, tra cứu mã hàng, phân tích ảnh linh kiện.
+        Moris v6 — Hỏi đáp, tra cứu mã hàng, phân tích ảnh linh kiện.
       </p>
     </footer>
   </aside>
 
 </div>
 
-<script>
-// =======================================================================
-// CẤU HÌNH HỆ THỐNG
-// =======================================================================
-const CONFIG = {
-  SUPABASE_URL: 'https://vhsikdgkzecdfopkpzum.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc2lrZGdremVjZGZvcGtwenVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjgyMTcsImV4cCI6MjA5Njg0NDIxN30.bj1yl4azsk8X-V2I1C6l5Qpa0kqt6j0TP4ZCJ3Du0l4',
-  R2_PUBLIC_URL: 'https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev',
-  // Chỉ đổi đường ĐỌC ảnh: đi qua Pages Function cùng origin.
-  // Upload giữ nguyên như hiện tại.
-  R2_MEDIA_BASE_URL: '/api/media',
-  
-  // Upload mới: ưu tiên Pages Function cùng origin.
-  // Trên dictionary.pages.dev => https://dictionary.pages.dev/api/upload
-  UPLOAD_PRIMARY_URL: '/api/upload',
-  UPLOAD_HEALTH_URL: '/api/upload/health',
-  UPLOAD_HEALTH_TTL_MS: 60000,
-
-  // Worker cũ vẫn giữ làm fallback/rollback. Chưa xóa.
-  R2_WORKER_URL: 'https://catalogue-r2-upload-api.pqvinh1999.workers.dev',
-  
-  // URL CỦA WORKER PROXY REMOVE.BG (Anh thay link worker vừa deploy vào đây)
-  REMOVE_BG_WORKER_URL: 'https://remove.pqvinh1999.workers.dev',
-  
-  ALLOWED_ORIGIN: 'https://pqvinh99-glory.github.io',
-  SUPABASE_BUCKET_FALLBACK: 'product-images',
-  LOCAL_TOKEN_KEY: 'catalogue_app_session_token_v3_r2',
-  PAGE_LIMIT: 36,
-
-  // Auto-login (chế độ prototype): TẮT mặc định vì credential không được hardcode.
-  // Muốn bật lại chỉ dùng cho demo nội bộ: set true + điền user/pass thật, KHÔNG commit lên production.
-  AUTO_LOGIN_ENABLED: false,
-  AUTO_LOGIN_USERNAME: '',
-  AUTO_LOGIN_PASSWORD: '',
-
-  // Thư ký Kim V5.5 — Browser DINOv2
-  KIM_BROWSER_VECTOR_ENABLED: true,
-  KIM_BROWSER_VECTOR_MODULE_URL: '/src/kim/vector/browserDinov2.js',
-  KIM_VECTOR_AUTO_ON_SAVE_DESKTOP: true,
-  KIM_VECTOR_AUTO_ON_SAVE_MOBILE: false,
-
-  // V5.8 Query Vector Bridge + durable queue
-  KIM_QUERY_VECTOR_BRIDGE_ENABLED: true,
-  KIM_VECTOR_HEALTH_TTL_MS: 30000,
-  KIM_VECTOR_UPSERT_MODULE_URL: '/src/kim/vector/chunkedUpsert.js',
-  KIM_VECTOR_UPSERT_CHUNK_SIZE: 20,
-
-  KIM_VECTOR_QUEUE_KEY: 'kim_v56_vector_jobs',
-  KIM_VECTOR_QUEUE_FAILED_KEY: 'kim_v58_vector_jobs_failed',
-  KIM_VECTOR_QUEUE_MAX_RETRIES: 4
-};
-
-const { createApp, nextTick } = Vue;
-
-createApp({
-  data() {
-    return {
-      CONFIG,
-      sb:null, loading:false, loadingImages:false, saving:false,
-      catalogueRequestSeq:0,
-      notice:{type:'', text:''}, nowText:'',
-      session:{ token: localStorage.getItem(CONFIG.LOCAL_TOKEN_KEY) || '', user:null },
-      loginForm:{ username:'', password:'' },
-      filters:{ search:'', usage:'all', viewMode:'all' },
-      parts:[], page:0, hasMore:false,
-      detail:{ open:false, item:null, assets:[], tab:'front', activeAsset:null, flipped:false, zoom:1, panX:0, panY:0, rotX:-8, rotY:18, dragging:false, pointerId:null, startX:0, startY:0, startPanX:0, startPanY:0, startRotX:-8, startRotY:18, pinchStartDistance:0, pinchStartZoom:1 },
-      editor:{ open:false, autoRemoveBg: true, form:this.emptyForm(), assets:[], files:{}, previews:{}, vectorStatus:'', vectorBusy:false },
-      bulkImport: { open: false, files: [], groups: [], uploading: false, progress: 0, current: 0, total: 0, successCount: 0, errorCount: 0, statusText: '' },
-      
-      // Cache lựa chọn đường upload để không health-check lặp lại mỗi ảnh.
-      uploadRoute: { provider:'unknown', endpoint:'', checkedAt:0, health:'' },
-
-      denis: {
-        open:false,
-        busy:false,
-        status:'',
-        input:'',
-        imageDataUrl:'',
-        imagePreview:'',
-        imageName:'',
-        imageFile:null,
-        vectorStatus:'',
-        messages:[
-          {
-            id:'denis-welcome',
-            role:'assistant',
-            text:'Chào anh, em là Thư ký Kim. Em có thể giúp gì cho anh?'
-          }
-        ]
-      },
-      kimScan: {
-        active: false,
-        phase: '',
-        phaseLabel: '',
-        progress: 0,
-        statusText: '',
-        imageUrl: ''
-      },
-      denisSearch:{
-        active:false,
-        results:[],
-        ids:[],
-        summary:'',
-        observation:null,
-        updatedAt:null,
-        queryId:'',
-        mode:'',
-        trace:null,
-        imageHash:'',
-        candidatePoolHash:''
-      },
-      pointerCache:null
-    };
-  },
-  computed:{
-    canEdit() { return ['admin','editor'].includes(this.session.user?.role_name); },
-    listStatusText() {
-      if (this.denisSearch.active) {
-        return `${this.denisSearch.results.length} mã từ Thư ký Kim`;
-      }
-      return `Trang ${this.page + 1} · ${this.parts.length} mã đang render`;
-    },
-    displayedParts() {
-      return this.denisSearch.active ? this.denisSearch.results : this.parts;
-    },
-    detailAssets() { return this.detail.assets.filter(a => a.asset_type === 'detail'); },
-    activeAssetUrl() {
-      if (this.detail.tab === 'detail') {
-        return this.detail.activeAsset ? this.assetUrl(this.detail.activeAsset) : (this.detailAssets[0] ? this.assetUrl(this.detailAssets[0]) : '');
-      }
-      if (this.detail.tab === 'back') {
-        return this.detail.item?.is_symmetric ? (this.assetTypeUrl('back') || this.assetTypeUrl('front')) : this.trueBackUrl;
-      }
-      if (this.detail.tab === 'front') return this.assetTypeUrl('front') || this.assetTypeUrl('back');
-      return this.assetTypeUrl(this.detail.tab);
-    },
-    trueBackUrl() {
-      const front = this.assetTypeUrl('front') || '';
-      const back = this.assetTypeUrl('back') || '';
-      if (!back) return '';
-      return back === front ? '' : back;
-    },
-    hasBackView() {
-      return !!(this.trueBackUrl || this.detail.item?.is_symmetric);
-    },
-    detailTabLabel() { return {front:'Mặt chính', back:'Mặt sau', detail:'Ảnh chi tiết'}[this.detail.tab] || 'Ảnh'; },
-    viewerTransform() { return `transform: translate3d(${this.detail.panX}px, ${this.detail.panY}px, 0) scale(${this.detail.zoom});`; },
-
-    editorPreview() {
-      return this.editor.previews['front_1'] || this.assetPathUrl(this.findEditorAsset('front',1)?.image_path, this.findEditorAsset('front',1)?.storage_provider) || '';
-    },
-    editorAssetList() {
-      const map = new Map();
-      for (const a of this.editor.assets) map.set(`${a.asset_type}_${a.sort_order||1}`, {...a});
-      for (const k of Object.keys(this.editor.previews)) {
-        const [type, order] = k.split('_');
-        map.set(k, { asset_type:type, sort_order:Number(order||1), preview:this.editor.previews[k], storage_provider:'r2', image_path:'' });
-      }
-      return [...map.values()].sort((a,b) => (this.assetSort(a)-this.assetSort(b)) || ((a.sort_order||1)-(b.sort_order||1)));
-    }
-  },
-  async mounted() {
-    this.sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-    this.updateTime(); setInterval(this.updateTime, 30000);
-    await this.checkSession();
-    this.renderIcons();
-  },
-  updated() { this.renderIcons(); },
-  methods:{
-    emptyForm() { return { id:null, code:'', part_id:'', usage_side:'unknown', view_mode:'single_face', is_symmetric:false, identifying_features:'', confusing_note:'', image_path:'', image_name:'' }; },
-    updateTime() { this.nowText = new Date().toLocaleString('vi-VN'); },
-    renderIcons() { nextTick(() => lucide?.createIcons?.()); },
-    toast(type,text) { 
-      this.notice={type,text}; 
-      // Auto close toast unless it's a processing state
-      if(text && !text.includes('Đang')) setTimeout(()=>{ if(this.notice.text===text) this.notice={type:'',text:''}; }, 5500); 
-    },
-    readError(err) {
-      const raw = err?.message || String(err) || 'Có lỗi xảy ra';
-      if (/duplicate key|unique constraint|trùng|already exists/i.test(raw)) {
-        return 'Mã này đã tồn tại trong hệ thống (vi phạm khóa chính). Vui lòng nhập mã khác.';
-      }
-      return raw;
-    },
-    async rpcRow(fn,args) { const {data,error} = await this.sb.rpc(fn,args); if(error) throw error; return Array.isArray(data) ? data[0] : data; },
-    async rpcRows(fn,args) { const {data,error} = await this.sb.rpc(fn,args); if(error) throw error; return data || []; },
-
-    async checkSession() {
-      if (!this.session.token) {
-        if (CONFIG.AUTO_LOGIN_ENABLED && CONFIG.AUTO_LOGIN_USERNAME) {
-          await this.autoLogin();
-        }
-        return;
-      }
-      try {
-        const me = await this.rpcRow('app_me', {p_session_token:this.session.token});
-        if (!me?.ok) throw new Error(me?.message || 'Session hết hạn');
-        this.session.user = me;
-        await this.loadParts(true);
-
-        // Retry các vector job còn tồn tại từ lần save trước.
-        setTimeout(() => {
-          this.processKimVectorQueue().catch(
-            error => console.warn('Kim vector queue retry failed', error)
-          );
-        }, 1200);
-      } catch(e) { localStorage.removeItem(CONFIG.LOCAL_TOKEN_KEY); this.session.token=''; this.session.user=null; }
-    },
-    async login() {
-      this.loading=true;
-      try {
-        const row = await this.rpcRow('app_login', { p_username:this.loginForm.username, p_password:this.loginForm.password });
-        if (!row?.ok) throw new Error(row?.message || 'Đăng nhập thất bại');
-        this.session.token = row.session_token;
-        localStorage.setItem(CONFIG.LOCAL_TOKEN_KEY, row.session_token);
-        await this.checkSession();
-        this.toast('success','Đăng nhập thành công.');
-      } catch(e) { this.toast('error', this.readError(e)); } finally { this.loading=false; }
-    },
-    async autoLogin() {
-      try {
-        const row = await this.rpcRow('app_login', {
-          p_username: CONFIG.AUTO_LOGIN_USERNAME,
-          p_password: CONFIG.AUTO_LOGIN_PASSWORD
-        });
-        if (!row?.ok || !row?.session_token) return; // Thất bại → hiện form đăng nhập thủ công
-        this.session.token = row.session_token;
-        localStorage.setItem(CONFIG.LOCAL_TOKEN_KEY, row.session_token);
-        await this.checkSession(); // Luồng chuẩn: app_me + loadParts + retry vector queue
-      } catch (_) {
-        localStorage.removeItem(CONFIG.LOCAL_TOKEN_KEY);
-        this.session.token = '';
-        this.session.user = null; // Hiện form đăng nhập thủ công
-      }
-    },
-    async logout() {
-      try { if(this.session.token) await this.rpcRow('app_logout', {p_session_token:this.session.token}); } catch(_) {}
-      localStorage.removeItem(CONFIG.LOCAL_TOKEN_KEY); this.session={token:'',user:null}; this.parts=[];
-    },
-
-    usageLabel(v) { return {left:'Bên trái', right:'Bên phải', both:'Cả hai bên', unknown:'Chưa xác định'}[v] || 'Chưa xác định'; },
-    viewModeLabel(v) { return {single_face:'1 mặt', dual_face:'2 mặt', detail_set:'Chi tiết'}[v] || '1 mặt'; },
-    assetSort(a) { return {thumb:0, front:1, back:2, detail:3, compare:4}[a.asset_type] ?? 9; },
-    encodeObjectKey(path) {
-      return String(path || '')
-        .replace(/^\/+/, '')
-        .split('/')
-        .filter(Boolean)
-        .map(segment => encodeURIComponent(segment))
-        .join('/');
-    },
-
-    assetPathUrl(path, provider='r2') {
-      if (!path) return '';
-      if (/^https?:\/\//i.test(path)) return path;
-
-      const clean = String(path).replace(/^\/+/, '');
-
-      if ((provider || 'r2') === 'r2') {
-        const encodedKey = this.encodeObjectKey(clean);
-        return `${CONFIG.R2_MEDIA_BASE_URL}/${encodedKey}`;
-      }
-
-      const { data } = this.sb.storage
-        .from(CONFIG.SUPABASE_BUCKET_FALLBACK)
-        .getPublicUrl(clean);
-
-      return data?.publicUrl || '';
-    },
-    assetUrl(asset) { return this.assetPathUrl(asset?.image_path, asset?.storage_provider); },
-    partThumbUrl(item) { return this.assetPathUrl(item.thumb_path || item.front_path || item.fallback_path, item.thumb_provider || item.front_provider || item.fallback_provider || 'r2'); },
-    findAsset(type, order=1) { return this.detail.assets.find(a => a.asset_type===type && Number(a.sort_order||1)===order) || null; },
-    assetTypeUrl(type) { const a = type==='detail' ? this.detailAssets[0] : this.findAsset(type,1); return a ? this.assetUrl(a) : ''; },
-    findEditorAsset(type, order=1) { return this.editor.assets.find(a => a.asset_type===type && Number(a.sort_order||1)===order) || null; },
-
-    async loadParts(reset=false) {
-      if (reset) this.page = 0;
-
-      const requestSeq = ++this.catalogueRequestSeq;
-      this.loadingImages = true;
-
-      try {
-        // Lấy dư 1 row để biết chắc còn trang sau hay không.
-        // DOM vẫn chỉ render đúng CONFIG.PAGE_LIMIT rows.
-        const rows = await this.rpcRows('app_search_catalogue', {
-          p_session_token:this.session.token,
-          p_search:this.filters.search || '',
-          p_usage_side:this.filters.usage,
-          p_view_mode:this.filters.viewMode,
-          p_limit:CONFIG.PAGE_LIMIT + 1,
-          p_offset:this.page * CONFIG.PAGE_LIMIT
-        });
-
-        // Search/filter cũ trả về trễ không được ghi đè request mới.
-        if (requestSeq !== this.catalogueRequestSeq) return;
-
-        this.hasMore = rows.length > CONFIG.PAGE_LIMIT;
-        this.parts = rows.slice(0, CONFIG.PAGE_LIMIT);
-      } catch(e) {
-        if (requestSeq === this.catalogueRequestSeq) {
-          this.toast('error', this.readError(e));
-        }
-      } finally {
-        if (requestSeq === this.catalogueRequestSeq) {
-          this.loadingImages = false;
-          this.renderIcons();
-        }
-      }
-    },
-    async goPage(delta) {
-      if (this.loadingImages || this.denisSearch.active) return;
-
-      const nextPage = this.page + Number(delta || 0);
-      if (nextPage < 0) return;
-      if (delta > 0 && !this.hasMore) return;
-
-      this.page = nextPage;
-      await this.loadParts(false);
-
-      const appTop = document.querySelector('main');
-      appTop?.scrollIntoView?.({behavior:'smooth', block:'start'});
-    },
-    async loadMore() {
-      // Alias rollback-safe cho code cũ; không còn concat DOM.
-      await this.goPage(1);
-    },
-
-    // --- Detail Viewer ---
-    async openDetail(item) {
-      this.detail = {open:true, item, assets:[], tab:'front', activeAsset:null, flipped:false, zoom:1, panX:0, panY:0, rotX:-8, rotY:18, dragging:false, pointerId:null, startX:0, startY:0, startPanX:0, startPanY:0, startRotX:-8, startRotY:18, pinchStartDistance:0, pinchStartZoom:1};
-      try {
-        this.detail.assets = await this.rpcRows('app_get_part_assets', {p_session_token:this.session.token, p_image_id:item.id});
-        if (!this.assetTypeUrl('front') && this.assetTypeUrl('back')) this.detail.tab='back';
-      } catch(e) { this.toast('error', this.readError(e)); }
-      this.renderIcons();
-    },
-    closeDetail() { this.resetViewer(); this.detail.open=false; this.detail.assets=[]; this.detail.item=null; },
-    setDetailTab(t) { this.detail.tab=t; if(t==='detail') this.detail.activeAsset=this.detailAssets[0] || null; this.resetViewer(); },
-    tabBtnClass(t) { return ['btn h-10 px-3 text-xs sm:text-sm border transition-colors', this.detail.tab===t ? 'bg-emerald-600 text-white border-emerald-700 shadow-inner' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'].join(' '); },
-    clamp(n,min,max) { return Math.max(min, Math.min(max, n)); },
-    ensurePointerCache() {
-      if (!this.pointerCache) this.pointerCache = new Map();
-      return this.pointerCache;
-    },
-    resetViewer() {
-      this.detail.zoom = 1; this.detail.panX = 0; this.detail.panY = 0;
-      this.detail.rotX = -8; this.detail.rotY = 18;
-      this.detail.startRotX = -8; this.detail.startRotY = 18;
-      this.detail.dragging = false; this.detail.pointerId = null; this.detail.pinchStartDistance = 0;
-      const cache = this.ensurePointerCache(); cache.clear();
-    },
-    zoomIn() { this.detail.zoom = this.clamp(this.detail.zoom * 1.25, 1, 8); },
-    zoomOut() {
-      this.detail.zoom = this.clamp(this.detail.zoom / 1.25, 1, 8);
-      if (this.detail.zoom === 1) { this.detail.panX = 0; this.detail.panY = 0; }
-    },
-    onViewerWheel(e) {
-      const delta = e.deltaY < 0 ? 1.12 : 0.88;
-      this.detail.zoom = this.clamp(this.detail.zoom * delta, 1, 8);
-      if (this.detail.zoom === 1) { this.detail.panX = 0; this.detail.panY = 0; }
-    },
-    pointerDistance(cache) {
-      const pts = [...cache.values()];
-      if (pts.length < 2) return 0;
-      return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-    },
-    onViewerPointerDown(e) {
-      const cache = this.ensurePointerCache();
-      e.currentTarget?.setPointerCapture?.(e.pointerId);
-      cache.set(e.pointerId, {x:e.clientX, y:e.clientY});
-      this.detail.dragging = true;
-
-      if (cache.size === 1) {
-        this.detail.pointerId = e.pointerId;
-        this.detail.startX = e.clientX; this.detail.startY = e.clientY;
-        this.detail.startPanX = this.detail.panX; this.detail.startPanY = this.detail.panY;
-        this.detail.startRotX = this.detail.rotX; this.detail.startRotY = this.detail.rotY;
-      }
-      if (cache.size === 2) {
-        this.detail.pinchStartDistance = this.pointerDistance(cache);
-        this.detail.pinchStartZoom = this.detail.zoom;
-      }
-    },
-    onViewerPointerMove(e) {
-      const cache = this.ensurePointerCache();
-      if (!cache.has(e.pointerId)) return;
-      cache.set(e.pointerId, {x:e.clientX, y:e.clientY});
-
-      if (cache.size >= 2 && this.detail.pinchStartDistance > 0) {
-        const dist = this.pointerDistance(cache);
-        if (dist > 0) this.detail.zoom = this.clamp(this.detail.pinchStartZoom * (dist / this.detail.pinchStartDistance), 1, 8);
-        return;
-      }
-
-      if (this.detail.dragging && e.pointerId === this.detail.pointerId) {
-        const dx = e.clientX - this.detail.startX;
-        const dy = e.clientY - this.detail.startY;
-
-        this.detail.panX = this.detail.startPanX + dx;
-        this.detail.panY = this.detail.startPanY + dy;
-      }
-    },
-    onViewerPointerUp(e) {
-      const cache = this.ensurePointerCache();
-      try { e.currentTarget?.releasePointerCapture?.(e.pointerId); } catch(_) {}
-      cache.delete(e.pointerId);
-
-      if (cache.size === 0) {
-        this.detail.dragging = false; this.detail.pointerId = null; this.detail.pinchStartDistance = 0;
-        return;
-      }
-      if (cache.size === 1) {
-        const [id, pt] = [...cache.entries()][0];
-        this.detail.pointerId = id;
-        this.detail.startX = pt.x; this.detail.startY = pt.y;
-        this.detail.startPanX = this.detail.panX; this.detail.startPanY = this.detail.panY;
-        this.detail.startRotX = this.detail.rotX; this.detail.startRotY = this.detail.rotY;
-        this.detail.pinchStartDistance = 0;
-      }
-    },
-
-    // --- Editor & API Tách Nền ---
-    async openEditor(item=null) {
-      if(!this.canEdit) return this.toast('error','Tài khoản không có quyền.');
-      this.clearEditorFiles();
-      this.editor.open=true;
-      if(item) {
-        this.editor.form = { id:item.id, code:item.code || '', part_id:item.part_id || '', usage_side:item.usage_side || 'unknown', view_mode:item.view_mode || 'single_face', is_symmetric:!!item.is_symmetric, identifying_features:item.identifying_features || '', confusing_note:item.confusing_note || '', image_path:item.fallback_path || '', image_name:'' };
-        try { this.editor.assets = await this.rpcRows('app_get_part_assets', {p_session_token:this.session.token, p_image_id:item.id}); } catch(e) { this.editor.assets=[]; }
-      } else {
-        this.editor.form = this.emptyForm();
-        this.editor.assets = [];
-      }
-      this.renderIcons();
-    },
-    closeEditor() { this.editor.open=false; this.clearEditorFiles(); },
-    clearEditorFiles() {
-      for (const src of Object.values(this.editor?.previews || {})) { try { URL.revokeObjectURL(src); } catch(_) {} }
-      if (this.editor) { this.editor.files={}; this.editor.previews={}; }
-    },
-    
-    // Gọi Cloudflare Worker để tách nền bằng API remove.bg
-    async removeBgApi(file) {
-      if (!CONFIG.REMOVE_BG_WORKER_URL || CONFIG.REMOVE_BG_WORKER_URL.includes('[THAY-LINK-WORKER')) {
-        throw new Error('Chưa cấu hình Link Cloudflare Worker (REMOVE_BG_WORKER_URL) trong phần <script>.');
-      }
-      const form = new FormData();
-      form.append('image_file', file);
-      
-      const res = await fetch(CONFIG.REMOVE_BG_WORKER_URL, { 
-        method: 'POST', 
-        body: form 
-      });
-      
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
-      const blob = await res.blob();
-      return new File([blob], file.name.replace(/\.[^.]+$/, '.png'), {type: 'image/png'});
-    },
-
-    async onFileChange(type, order, e) {
-      let file = e.target.files?.[0]; e.target.value=''; if(!file) return;
-      
-      const key = `${type}_${order}`;
-      if(this.editor.previews[key]) URL.revokeObjectURL(this.editor.previews[key]);
-      
-      // LOGIC TỰ ĐỘNG TÁCH NỀN (CHỈ ÁP DỤNG CHO FRONT/BACK)
-      if (this.editor.autoRemoveBg && (type === 'front' || type === 'back')) {
-        this.saving = true; // Khóa nút lưu trong lúc tách nền
-        this.toast('info', `AI đang tách nền...`);
-        try {
-          file = await this.removeBgApi(file);
-          this.toast('success', `Tách nền thành công mặt ${type}!`);
-        } catch(err) {
-          this.toast('error', 'Lỗi tách nền: ' + this.readError(err));
-          // Nếu tách lỗi, vẫn dùng ảnh gốc để người dùng tự xử lý
-        } finally {
-          this.saving = false;
-        }
-      }
-
-      this.editor.files[key]=file;
-      this.editor.previews[key]=URL.createObjectURL(file);
-      
-      if(!this.editor.form.code) this.editor.form.code = this.codeFromFilename(file.name);
-      if(type==='back' && this.editor.form.view_mode === 'single_face') this.editor.form.view_mode='dual_face';
-      if(type==='detail') this.editor.form.view_mode='detail_set';
-    },
-    codeFromFilename(name) { return String(name||'').replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g,'').toUpperCase(); },
-
-    // --- Compress & Upload ---
-    async compressImageToWebp(file, maxEdge=1600, quality=.88) {
-      if(!file?.type?.startsWith('image/')) return file;
-      const img = new Image(); const objectUrl = URL.createObjectURL(file);
-      try {
-        await new Promise((resolve,reject)=>{ img.onload=resolve; img.onerror=reject; img.src=objectUrl; });
-        const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
-        const w = Math.max(1, Math.round(img.naturalWidth * scale));
-        const h = Math.max(1, Math.round(img.naturalHeight * scale));
-        const canvas = document.createElement('canvas'); canvas.width=w; canvas.height=h;
-        const ctx = canvas.getContext('2d', {alpha:true}); ctx.clearRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
-        if(!blob) return file;
-        const base = String(file.name||'image').replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_-]+/g,'_');
-        return new File([blob], `${base}.webp`, {type:'image/webp'});
-      } finally { URL.revokeObjectURL(objectUrl); }
-    },
-    async makeThumbFile(file) { return this.compressImageToWebp(file, 460, .75); },
-    
-    async fetchWithTimeout(url, options={}, timeoutMs=3500) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        return await fetch(url, {...options, signal:controller.signal});
-      } finally {
-        clearTimeout(timer);
-      }
-    },
-
-    async resolveUploadProvider(force=false) {
-      const now = Date.now();
-      const ttl = Number(CONFIG.UPLOAD_HEALTH_TTL_MS || 60000);
-
-      if (
-        !force &&
-        this.uploadRoute.endpoint &&
-        (now - Number(this.uploadRoute.checkedAt || 0)) < ttl
-      ) {
-        return this.uploadRoute;
-      }
-
-      // 1) Ưu tiên Pages Function cùng origin.
-      try {
-        const res = await this.fetchWithTimeout(
-          CONFIG.UPLOAD_HEALTH_URL,
-          {
-            method:'GET',
-            headers:{'accept':'application/json'},
-            cache:'no-store'
-          },
-          2500
-        );
-        const data = await res.json().catch(() => null);
-
-        if (res.ok && data?.ok && data?.provider === 'pages-r2') {
-          this.uploadRoute = {
-            provider:'pages-r2',
-            endpoint:CONFIG.UPLOAD_PRIMARY_URL,
-            checkedAt:now,
-            health:'healthy'
-          };
-          return this.uploadRoute;
-        }
-      } catch (_) {
-        // App cũ/GitHub Pages có thể chưa có Pages Function.
-      }
-
-      // 2) Fallback có kiểm soát về Worker cũ.
-      // Không POST thử rồi mới fallback để tránh upload trùng.
-      this.uploadRoute = {
-        provider:'legacy-worker',
-        endpoint:`${String(CONFIG.R2_WORKER_URL || '').replace(/\/+$/,'')}/upload`,
-        checkedAt:now,
-        health:'fallback'
-      };
-      return this.uploadRoute;
-    },
-
-    async uploadToR2(file, code, assetType) {
-      const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent || '');
-      const maxEdge = assetType === 'thumb' ? 420 : (assetType === 'detail' ? (isIOS ? 1100 : 1300) : (isIOS ? 1400 : 1600));
-      const quality = assetType === 'thumb' ? .75 : (isIOS ? .85 : .90);
-
-      const prepared = assetType === 'thumb'
-        ? await this.makeThumbFile(file)
-        : await this.compressImageToWebp(file, maxEdge, quality);
-
-      const route = await this.resolveUploadProvider(false);
-      if (!route?.endpoint) throw new Error('Không tìm thấy đường upload khả dụng.');
-
-      const form = new FormData();
-      form.append('file', prepared);
-      form.append('code', code);
-      form.append('asset_type', assetType);
-
-      const uploadId = globalThis.crypto?.randomUUID?.()
-        || `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      form.append('upload_id', uploadId);
-
-      let res;
-      try {
-        res = await this.fetchWithTimeout(
-          route.endpoint,
-          {
-            method:'POST',
-            headers:{
-              'x-session-token':this.session.token,
-              'x-upload-id':uploadId
-            },
-            body:form
-          },
-          30000
-        );
-      } catch (e) {
-        // Không tự POST lại sang provider khác:
-        // request đầu có thể đã ghi R2 nhưng response bị mất.
-        throw new Error(
-          `Upload qua ${route.provider} thất bại: ${e?.name === 'AbortError' ? 'quá thời gian chờ' : this.readError(e)}`
-        );
-      }
-
-      const data = await res.json().catch(()=>({}));
-      if(!res.ok || !data.ok) {
-        throw new Error(
-          data.message || `Lỗi upload R2 qua ${route.provider} (HTTP ${res.status})`
-        );
-      }
-
-      return {
-        asset_type:data.asset_type || assetType,
-        storage_provider:'r2',
-        bucket_name:'catalogue-images',
-        image_path:data.image_path,
-        image_name:data.image_name || prepared.name
-      };
-    },
-    mergeAsset(list, asset, sortOrder=1) {
-      const idx = list.findIndex(a => a.asset_type===asset.asset_type && Number(a.sort_order||1)===sortOrder);
-      const row = {...asset, sort_order:sortOrder};
-      if(idx>=0) list.splice(idx,1,row); else list.push(row);
-    },
-
-    async savePart() {
-      if(!this.canEdit) return;
-      this.saving=true;
-      try {
-        const code = this.editor.form.code.trim().toUpperCase();
-        if(!code) throw new Error('Cần nhập mã sản phẩm.');
-
-        // Kiểm tra trùng mã khi thêm mới (không có id): báo lỗi trong app, không dùng alert trình duyệt.
-        if(!this.editor.form.id) {
-          const existing = await this.rpcRows('app_search_catalogue', {
-            p_session_token:this.session.token,
-            p_search:code,
-            p_usage_side:'',
-            p_view_mode:'',
-            p_limit:CONFIG.PAGE_LIMIT,
-            p_offset:0
-          });
-          const dup = existing.find(r => (r.code || '').toUpperCase() === code);
-          if(dup) throw new Error(`Mã "${code}" đã tồn tại trong hệ thống. Vui lòng nhập mã khác.`);
-        }
-
-        let assets = this.editor.assets.map(a => ({ asset_type:a.asset_type, storage_provider:a.storage_provider || 'r2', bucket_name:a.bucket_name || 'catalogue-images', image_path:a.image_path, image_name:a.image_name || null, sort_order:Number(a.sort_order||1) }));
-
-        for(const [key,file] of Object.entries(this.editor.files)) {
-          const [type, orderRaw] = key.split('_');
-          const uploaded = await this.uploadToR2(file, code, type);
-          this.mergeAsset(assets, uploaded, Number(orderRaw||1));
-          if(type === 'front') {
-            const thumb = await this.uploadToR2(file, code, 'thumb');
-            this.mergeAsset(assets, thumb, 1);
-          }
-        }
-        assets = assets.filter(a => a.image_path);
-        const primary = assets.find(a => a.asset_type==='thumb') || assets.find(a => a.asset_type==='front') || assets[0];
-        if(!primary) throw new Error('Cần có ảnh mặt chính/front hoặc giữ lại ảnh cũ.');
-
-        const saved = await this.rpcRow('app_upsert_part_metadata', {
-          p_session_token:this.session.token,
-          p_id:this.editor.form.id,
-          p_code:code,
-          p_part_id:this.editor.form.part_id || null,
-          p_usage_side:this.editor.form.usage_side || 'unknown',
-          p_view_mode:this.editor.form.view_mode || 'single_face',
-          p_is_symmetric:!!this.editor.form.is_symmetric,
-          p_identifying_features:this.editor.form.identifying_features || null,
-          p_confusing_note:this.editor.form.confusing_note || null,
-          p_primary_image_path:primary.image_path,
-          p_primary_image_name:primary.image_name || null
-        });
-        if(!saved?.ok) throw new Error(saved?.message || 'Không lưu được data vào Database.');
-
-        const rep = await this.rpcRow('app_replace_part_assets', { p_session_token:this.session.token, p_image_id:saved.id, p_assets:assets });
-        if(!rep?.ok) throw new Error(rep?.message || 'Không liên kết được hình ảnh.');
-
-        this.toast('success','Lưu dữ liệu thành công!');
-
-        // Ghi vào hàng đợi persisted để không mất job khi reload/tab đóng.
-        this.enqueueKimVectorJob(saved.id, assets, code);
-
-        this.toast(
-          'success',
-          'Lưu thành công. Vector hình ảnh đã được đưa vào hàng đợi xử lý.'
-        );
-
-        this.processKimVectorQueue()
-          .catch(error => console.warn('Kim vector queue failed', error));
-
-        this.closeEditor(); this.closeDetail(); await this.loadParts(true);
-      } catch(e) { this.toast('error', this.readError(e)); } finally { this.saving=false; }
-    },
-    async deleteCurrentPart() {
-      if(!this.detail.item || !confirm('Xác nhận xóa data của mã này? (Ảnh gốc trên Cloud sẽ không bị xóa để phòng ngừa lỗi rủi ro).')) return;
-      try {
-        const row = await this.rpcRow('app_delete_part', {p_session_token:this.session.token, p_image_id:this.detail.item.id});
-        if(!row?.ok) throw new Error(row?.message || 'Không xóa được.');
-        this.toast('success','Đã xóa thành công.'); this.closeDetail(); await this.loadParts(true);
-      } catch(e) { this.toast('error', this.readError(e)); }
-    },
-
-    // --- BULK IMPORT ---
-    openBulkImport() {
-      if(!this.canEdit) return this.toast('error','Tài khoản không có quyền.');
-      this.bulkImport = { open: true, files: [], groups: [], uploading: false, progress: 0, current: 0, total: 0, successCount: 0, errorCount: 0, statusText: '' };
-      this.renderIcons();
-    },
-    closeBulkImport() {
-      this.bulkImport.open = false;
-    },
-    onBulkFileSelect(e) {
-      const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
-      if(!files.length) return;
-      
-      const groupsMap = {};
-      for(let f of files) {
-        let name = f.name.replace(/\.[^.]+$/, '');
-        let type = 'front';
-        let code = name.toUpperCase();
-        
-        if (name.toLowerCase().endsWith('-back')) {
-          code = name.substring(0, name.length - 5).toUpperCase();
-          type = 'back';
-        }
-        
-        if(!groupsMap[code]) groupsMap[code] = { code, front: null, back: null };
-        groupsMap[code][type] = f;
-      }
-      
-      this.bulkImport.groups = Object.values(groupsMap).sort((a, b) => a.code.localeCompare(b.code));
-      this.renderIcons();
-    },
-
-    // ===============================================================
-    // DENIS — Client bridge to server-side Catalogue AI Harness
-    // ===============================================================
-    openDenis() {
-      this.denis.open = true;
-      this.$nextTick(() => {
-        this.renderIcons();
-        this.scrollDenisToBottom();
-      });
-    },
-
-    closeDenis() {
-      this.denis.open = false;
-    },
-
-    useDenisSuggestion(text) {
-      this.denis.input = text;
-      this.$nextTick(() => this.sendDenisMessage());
-    },
-
-    triggerDenisImage() {
-      this.$refs.denisImageInput?.click();
-    },
-
-    async onDenisImageSelect(event) {
-      const file = event?.target?.files?.[0];
-      if (!file) return;
-      try {
-        this.denis.status = 'Đang chuẩn bị ảnh...';
-        const dataUrl = await this.prepareDenisImage(file);
-        this.denis.imageDataUrl = dataUrl;
-        this.denis.imagePreview = dataUrl;
-        this.denis.imageName = file.name || 'query-image';
-        this.denis.imageFile = file;
-      } catch (e) {
-        this.toast('error', `Không chuẩn bị được ảnh cho Thư ký Kim: ${this.readError(e)}`);
-      } finally {
-        this.denis.status = '';
-        if (event?.target) event.target.value = '';
-        this.$nextTick(() => this.renderIcons());
-      }
-    },
-
-    async prepareDenisImage(file) {
-      if (!file?.type?.startsWith('image/')) throw new Error('Chỉ hỗ trợ file ảnh.');
-      const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent || '');
-      const maxEdge = isIOS ? 1280 : 1536;
-      const quality = isIOS ? .80 : .84;
-
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      try {
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = () => reject(new Error('Không đọc được ảnh.'));
-          img.src = url;
-        });
-
-        const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
-        const width = Math.max(1, Math.round(img.naturalWidth * scale));
-        const height = Math.max(1, Math.round(img.naturalHeight * scale));
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d', {alpha:false});
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0,0,width,height);
-        ctx.drawImage(img,0,0,width,height);
-
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
-        canvas.width = 1;
-        canvas.height = 1;
-        if (!blob) throw new Error('Không nén được ảnh.');
-
-        if (blob.size > 3 * 1024 * 1024) {
-          throw new Error('Ảnh sau tối ưu vẫn lớn hơn 3 MB.');
-        }
-
-        return await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || ''));
-          reader.onerror = () => reject(new Error('Không chuyển được ảnh.'));
-          reader.readAsDataURL(blob);
-        });
-      } finally {
-        URL.revokeObjectURL(url);
-      }
-    },
-
-    clearDenisImage() {
-      this.denis.imageDataUrl = '';
-      this.denis.imagePreview = '';
-      this.denis.imageName = '';
-      this.denis.imageFile = null;
-      this.$nextTick(() => this.renderIcons());
-    },
-
-    scrollDenisToBottom() {
-      this.$nextTick(() => {
-        const el = this.$refs.denisThread;
-        if (el) el.scrollTop = el.scrollHeight;
-      });
-    },
-
-    kimCandidatePercent(candidate) {
-      const match = Number(candidate?.match_score);
-      const vector = Number(candidate?.vector_similarity);
-      const final = Number(candidate?.compatibility_score ?? candidate?.final_score);
-
-      const score =
-        Number.isFinite(match) && match > 0
-          ? match
-          : (
-              Number.isFinite(final) && final > 0
-                ? final
-                : (
-                    Number.isFinite(vector) && vector > 0
-                      ? vector
-                      : null
-                  )
-            );
-
-      if (score == null) return null;
-      return Math.max(0, Math.min(100, Math.round(score * 100)));
-    },
-
-    isKimMobileDevice() {
-      return /iPad|iPhone|iPod|Android/i.test(navigator.userAgent || '')
-        || (navigator.maxTouchPoints || 0) > 1;
-    },
-
-    async loadKimBrowserVectorModule() {
-      if (!CONFIG.KIM_BROWSER_VECTOR_ENABLED) {
-        throw new Error('Browser vector đang tắt.');
-      }
-
-      if (!this._kimVectorModulePromise) {
-        this._kimVectorModulePromise = import(
-          CONFIG.KIM_BROWSER_VECTOR_MODULE_URL
-        );
-      }
-
-      try {
-        return await this._kimVectorModulePromise;
-      } catch (error) {
-        this._kimVectorModulePromise = null;
-        throw error;
-      }
-    },
-
-    async getKimVectorReadiness({force=false}={}) {
-      const now = Date.now();
-
-      if (
-        !force &&
-        this._kimVectorHealthCache &&
-        (
-          now - Number(this._kimVectorHealthCacheAt || 0)
-        ) < CONFIG.KIM_VECTOR_HEALTH_TTL_MS
-      ) {
-        return this._kimVectorHealthCache;
-      }
-
-      const res = await this.fetchWithTimeout(
-        '/api/kim/health',
-        {method:'GET'},
-        30000
-      );
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || data?.ok === false) {
-        throw new Error(
-          data?.error ||
-          `Kim health HTTP ${res.status}`
-        );
-      }
-
-      this._kimVectorHealthCache = data;
-      this._kimVectorHealthCacheAt = now;
-
-      return data;
-    },
-
-    async buildKimQueryVector(imageDataUrl) {
-      if (!CONFIG.KIM_QUERY_VECTOR_BRIDGE_ENABLED) {
-        const error = new Error('Query Vector Bridge đang tắt.');
-        error.code = 'KIM_QUERY_VECTOR_BRIDGE_DISABLED';
-        throw error;
-      }
-
-      const health = await this.getKimVectorReadiness();
-      const enabled =
-        health?.vector_search_enabled === true ||
-        health?.features?.vectorSearch === true;
-
-      if (!enabled) {
-        const error = new Error('KIM_VECTOR_SEARCH_ENABLED=false.');
-        error.code = 'KIM_VECTOR_SEARCH_DISABLED';
-        throw error;
-      }
-
-      const mod = await this.loadKimBrowserVectorModule();
-      const result = await mod.embedImageDinov2Variants(
-        imageDataUrl,
-        {includeGray:true}
-      );
-
-      const probes = Array.isArray(result?.probes)
-        ? result.probes
-        : [];
-
-      if (!probes.length) {
-        const error = new Error('Không tạo được query probes.');
-        error.code = 'KIM_QUERY_VECTOR_INVALID';
-        throw error;
-      }
-
-      for (const probe of probes) {
-        if (!Array.isArray(probe?.embedding) || probe.embedding.length !== 384) {
-          const error = new Error('Query embedding sai dimension.');
-          error.code = 'KIM_QUERY_VECTOR_INVALID';
-          throw error;
-        }
-      }
-
-      return {
-        embedding:probes[0].embedding,
-        profile:probes[0].profile,
-        probes,
-        diagnostics:result?.diagnostics || null
-      };
-    },
-
-    kimPublicImageSearchError(error) {
-      const code = String(error?.code || '');
-
-      if (code === 'KIM_VECTOR_SEARCH_DISABLED') {
-        return (
-          'Xin lỗi anh, tìm kiếm bằng hình ảnh chưa được bật trên hệ thống.'
-        );
-      }
-
-      if (
-        code === 'KIM_QUERY_VECTOR_BRIDGE_DISABLED' ||
-        code === 'KIM_QUERY_VECTOR_INVALID' ||
-        code === 'KIM_QUERY_VECTOR_PROFILE_INVALID'
-      ) {
-        return (
-          'Xin lỗi anh, em chưa tạo được vector phù hợp cho ảnh này. ' +
-          'Anh thử lại với ảnh rõ vật thể hơn giúp em nhé.'
-        );
-      }
-
-      return (
-        'Xin lỗi anh, em chưa thể xử lý tìm kiếm hình ảnh lúc này. ' +
-        'Anh thử lại giúp em nhé.'
-      );
-    },
-
-    async embedKimImage(image) {
-      const mod = await this.loadKimBrowserVectorModule();
-
-      let unsubscribe = () => {};
-      try {
-        unsubscribe = mod.onDinov2Progress?.(progress => {
-          if (
-            progress?.status === 'progress' &&
-            Number.isFinite(progress?.progress)
-          ) {
-            const pct = Math.max(
-              0,
-              Math.min(100, Math.round(Number(progress.progress)))
-            );
-            this.denis.status = `Đang tải mô hình nhận dạng ${pct}%...`;
-          }
-        }) || (() => {});
-
-        return await mod.embedImageDinov2(image);
-      } finally {
-        try { unsubscribe(); } catch {}
-      }
-    },
-
-    mediaUrlForVectorPath(path) {
-      if (!path) return '';
-      return `${CONFIG.R2_MEDIA_BASE_URL}/${String(path)
-        .replace(/^\/+/,'')
-        .split('/')
-        .map(encodeURIComponent)
-        .join('/')}`;
-    },
-
-    async upsertKimVectors(vectors) {
-      if (!Array.isArray(vectors) || !vectors.length) {
-        return {
-          ok:true,
-          accepted:0,
-          written:0,
-          failed:0,
-          chunks:0,
-          results:[]
-        };
-      }
-
-      if (!this._kimChunkedUpsertModulePromise) {
-        this._kimChunkedUpsertModulePromise = import(
-          CONFIG.KIM_VECTOR_UPSERT_MODULE_URL
-        );
-      }
-
-      let mod;
-      try {
-        mod = await this._kimChunkedUpsertModulePromise;
-      } catch (error) {
-        this._kimChunkedUpsertModulePromise = null;
-        throw error;
-      }
-
-      return mod.upsertVectorsChunked({
-        endpoint:'/api/kim/vector-upsert',
-        sessionToken:this.session.token,
-        vectors,
-        chunkSize:CONFIG.KIM_VECTOR_UPSERT_CHUNK_SIZE,
-        timeoutMs:180000,
-        strict:true,
-        onChunk:info => {
-          if (info?.phase === 'start' && info?.chunk_count > 1) {
-            console.info(
-              `Kim vector chunk ${info.chunk_number}/${info.chunk_count}`
-            );
-          }
-        }
-      });
-    },
-
-    readKimVectorQueue() {
-      try {
-        const rows = JSON.parse(
-          localStorage.getItem(CONFIG.KIM_VECTOR_QUEUE_KEY) || '[]'
-        );
-        return Array.isArray(rows) ? rows : [];
-      } catch {
-        return [];
-      }
-    },
-
-    writeKimVectorQueue(rows) {
-      localStorage.setItem(
-        CONFIG.KIM_VECTOR_QUEUE_KEY,
-        JSON.stringify(Array.isArray(rows) ? rows : [])
-      );
-    },
-
-    readKimVectorFailedQueue() {
-      try {
-        const rows = JSON.parse(
-          localStorage.getItem(
-            CONFIG.KIM_VECTOR_QUEUE_FAILED_KEY
-          ) || '[]'
-        );
-        return Array.isArray(rows) ? rows : [];
-      } catch {
-        return [];
-      }
-    },
-
-    moveKimVectorJobToFailed(job) {
-      const rows = this.readKimVectorFailedQueue();
-
-      rows.push({
-        ...job,
-        failed_at:new Date().toISOString()
-      });
-
-      localStorage.setItem(
-        CONFIG.KIM_VECTOR_QUEUE_FAILED_KEY,
-        JSON.stringify(rows.slice(-100))
-      );
-    },
-
-    enqueueKimVectorJob(recordId, assets, code='') {
-      const rows = this.readKimVectorQueue();
-
-      const normalizedAssets = (assets || [])
-        .filter(a => a?.image_path)
-        .map(a => ({
-          asset_type:a.asset_type,
-          image_path:a.image_path,
-          storage_provider:a.storage_provider || 'r2',
-          sort_order:Number(a.sort_order || 1)
-        }));
-
-      const key = String(recordId);
-      const next = rows.filter(row => String(row?.record_id) !== key);
-
-      next.push({
-        record_id:key,
-        code:String(code || ''),
-        assets:normalizedAssets,
-        retries:0,
-        created_at:new Date().toISOString()
-      });
-
-      this.writeKimVectorQueue(next);
-      return next.length;
-    },
-
-    async processKimVectorQueue() {
-      if (this._kimVectorQueueRunning) return;
-      if (!this.session.token || !this.canEdit) return;
-
-      const isMobile = this.isKimMobileDevice();
-      if (
-        (isMobile && !CONFIG.KIM_VECTOR_AUTO_ON_SAVE_MOBILE) ||
-        (!isMobile && !CONFIG.KIM_VECTOR_AUTO_ON_SAVE_DESKTOP)
-      ) return;
-
-      this._kimVectorQueueRunning = true;
-
-      try {
-        let rows = this.readKimVectorQueue();
-
-        while (rows.length) {
-          const job = rows[0];
-
-          try {
-            const result = await this.vectorizeSavedPart(
-              job.record_id,
-              job.assets
-            );
-
-            rows.shift();
-            this.writeKimVectorQueue(rows);
-
-            if (result?.written) {
-              this.toast(
-                'success',
-                `Vector AI: đã cập nhật ${result.written} vector cho ${job.code || job.record_id}.`
-              );
-            }
-          } catch (error) {
-            job.retries = Number(job.retries || 0) + 1;
-            job.last_error = error?.message || String(error);
-            job.updated_at = new Date().toISOString();
-
-            if (job.retries >= CONFIG.KIM_VECTOR_QUEUE_MAX_RETRIES) {
-              console.warn('Kim vector job exhausted', job);
-              this.moveKimVectorJobToFailed(job);
-              rows.shift();
-
-              this.toast(
-                'error',
-                `Vector AI chưa xử lý được ${job.code || job.record_id}. ` +
-                'Job đã chuyển sang danh sách lỗi.'
-              );
-            } else {
-              rows[0] = job;
-            }
-
-            this.writeKimVectorQueue(rows);
-            break;
-          }
-        }
-      } finally {
-        this._kimVectorQueueRunning = false;
-      }
-    },
-
-    async vectorizeCurrentEditorPart() {
-      if (!this.editor.form.id) return;
-
-      this.editor.vectorBusy = true;
-      this.editor.vectorStatus = 'Đang nạp model và tạo vector...';
-
-      try {
-        const result = await this.vectorizeSavedPart(
-          this.editor.form.id,
-          this.editor.assets
-        );
-
-        this.editor.vectorStatus =
-          result?.written
-            ? `Đã ghi ${result.written} vector vào Supabase.`
-            : 'Không có vector mới được ghi.';
-
-        this.toast('success', this.editor.vectorStatus);
-      } catch (error) {
-        this.editor.vectorStatus =
-          `Tạo vector thất bại: ${error?.message || error}`;
-
-        this.toast(
-          'error',
-          'Không tạo được vector. Mở Trung tâm Vector để kiểm tra.'
-        );
-      } finally {
-        this.editor.vectorBusy = false;
-      }
-    },
-
-    async vectorizeSavedPart(recordId, assets) {
-      const isMobile = this.isKimMobileDevice();
-
-      if (
-        (isMobile && !CONFIG.KIM_VECTOR_AUTO_ON_SAVE_MOBILE) ||
-        (!isMobile && !CONFIG.KIM_VECTOR_AUTO_ON_SAVE_DESKTOP)
-      ) return;
-
-      const seen = new Set();
-      const selected = [];
-
-      const priority = ['front','back','detail','compare'];
-
-      for (const type of priority) {
-        for (const asset of (assets || [])) {
-          if (asset?.asset_type !== type) continue;
-
-          const key = String(asset?.image_path || '').replace(/^\/+/,'');
-          if (!key || seen.has(key)) continue;
-
-          seen.add(key);
-          selected.push({
-            record_id:String(recordId),
-            asset_type:type,
-            object_key:key
-          });
-        }
-      }
-
-      if (!selected.length) {
-        const fallback = (assets || []).find(
-          a => ['thumb','front'].includes(a?.asset_type) && a?.image_path
-        );
-        if (fallback) {
-          selected.push({
-            record_id:String(recordId),
-            asset_type:String(fallback.asset_type || 'thumb'),
-            object_key:String(fallback.image_path).replace(/^\/+/,'')
-          });
-        }
-      }
-
-      if (!selected.length) {
-        const error = new Error(
-          'SKU không có asset image_path để tạo vector.'
-        );
-        error.code = 'KIM_VECTOR_NO_ASSET';
-        throw error;
-      }
-
-      const vectors = [];
-
-      for (const item of selected.slice(0,4)) {
-        const mod = await this.loadKimBrowserVectorModule();
-        const result = await mod.embedImageDinov2Variants(
-          new URL(
-            this.mediaUrlForVectorPath(item.object_key),
-            location.origin
-          ).href,
-          {includeGray:true}
-        );
-
-        for (const probe of (result.probes || [])) {
-          vectors.push({
-            ...item,
-            view_variant:probe.view_variant,
-            embedding:probe.embedding,
-            embedding_profile:probe.profile,
-            foreground_status:'browser_dinov2_v59_canonical'
-          });
-        }
-      }
-
-      return this.upsertKimVectors(vectors);
-    },
-
-    denisCandidateUrl(candidate) {
-      return this.partThumbUrl(candidate || {});
-    },
-
-    async openDenisCandidate(candidate) {
-      if (!candidate?.id) return;
-      await this.openDetail(candidate);
-    },
-
-    applyDenisSearchResults(data) {
-      const candidates = Array.isArray(data?.candidates)
-        ? data.candidates.slice(0, 5)
-        : [];
-
-      // Chỉ lọc giao diện khi thật sự có kết quả.
-      this.denisSearch.active = candidates.length > 0;
-      this.denisSearch.results = candidates;
-      this.denisSearch.ids = candidates.map(c => c.id).filter(Boolean);
-      this.denisSearch.summary = String(data?.user_message || '').trim();
-      this.denisSearch.observation = null;
-      this.denisSearch.updatedAt = Date.now();
-      this.denisSearch.mode = '';
-      this.denisSearch.trace = null;
-      this.denisSearch.imageHash = data?.image_hash || '';
-      this.denisSearch.candidatePoolHash = '';
-
-      const text = String(
-        data?.user_message ||
-        (candidates.length
-          ? `Em tìm thấy ${candidates.length} mã phù hợp.`
-          : 'Xin lỗi anh, em không tìm thấy kết quả phù hợp với yêu cầu này trong catalogue.')
-      );
-
-      this.denis.messages.push({
-        id:`a-${Date.now()}`,
-        role:'assistant',
-        text,
-        candidates
-      });
-    },
-
-    clearDenisSearch() {
-      this.denisSearch.active = false;
-      this.denisSearch.results = [];
-      this.denisSearch.ids = [];
-      this.denisSearch.summary = '';
-      this.denisSearch.observation = null;
-      this.denisSearch.updatedAt = null;
-      this.denisSearch.queryId = '';
-      this.denisSearch.mode = '';
-      this.denisSearch.trace = null;
-      this.denisSearch.imageHash = '';
-      this.denisSearch.candidatePoolHash = '';
-      this.$nextTick(() => this.renderIcons());
-    },
-
-    async sendDenisMessage() {
-      if (this.denis.busy) return;
-
-      const message = String(this.denis.input || '').trim();
-      const imageDataUrl = this.denis.imageDataUrl || '';
-
-      if (!message && !imageDataUrl) {
-        this.toast('info', 'Anh hãy nhập mô tả hoặc đính kèm ảnh.');
-        return;
-      }
-
-      const queryId = globalThis.crypto?.randomUUID?.()
-        || `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-
-      const userText = message ||
-        'Tìm linh kiện giống ảnh này. Ưu tiên hình dạng, số lỗ, vị trí lỗ và đặc điểm nhận dạng.';
-
-      // Xóa candidate cards cũ để không gây hiểu nhầm với query mới.
-      this.denis.messages = this.denis.messages.map(m =>
-        m?.candidates?.length ? {...m, candidates:[]} : m
-      );
-
-      this.denis.messages.push({
-        id:`u-${queryId}`,
-        role:'user',
-        text:userText
-      });
-
-      this.denis.input = '';
-      this.denis.busy = true;
-      this.denis.status = imageDataUrl
-        ? 'Em đang kiểm tra hình ảnh...'
-        : 'Em đang tìm trong catalogue...';
-
-      // Trigger wireframe scan animation for image queries
-      if (imageDataUrl) {
-        this.startKimScanAnimation(imageDataUrl);
-      }
-
-      this.clearDenisSearch();
-      this.denisSearch.queryId = queryId;
-      this.scrollDenisToBottom();
-
-      try {
-        // ── CHẾ ĐỘ 1: Chỉ text (không ảnh) → gọi /api/kim/chat (RAG hỏi đáp) ──
-        if (!imageDataUrl) {
-          this.denis.status = 'Thư ký Kim đang tra cứu dữ liệu...';
-
-          const history = this.denis.messages
-            .filter(m => m.role === 'user' || m.role === 'assistant')
-            .slice(-10)
-            .map(m => ({ role: m.role, content: m.text }));
-
-          const res = await this.fetchWithTimeout(
-            '/api/kim/chat',
-            {
-              method:'POST',
-              headers:{
-                'content-type':'application/json',
-                'x-session-token':this.session.token
-              },
-              body:JSON.stringify({
-                message: userText,
-                session_token: this.session.token,
-                history
-              })
-            },
-            120000
-          );
-
-          const chatData = await res.json().catch(() => ({}));
-          if (queryId !== this.denisSearch.queryId) return;
-
-          if (!res.ok || !chatData?.ok) {
-            // Fallback: thử /api/kim/search nếu chat endpoint chưa bật
-            this.denis.status = 'Em đang tìm trong catalogue...';
-            const fallbackRes = await this.fetchWithTimeout(
-              '/api/kim/search',
-              {
-                method:'POST',
-                headers:{
-                  'content-type':'application/json',
-                  'x-session-token':this.session.token
-                },
-                body:JSON.stringify({
-                  query_id:queryId,
-                  session_token:this.session.token,
-                  message:userText,
-                  image_data_url:null,
-                  query_embedding:null,
-                  query_embeddings:[],
-                  embedding_profile:null,
-                  hints:{ query_vector_source:null },
-                  filters:{ usage_side:this.filters.usage, view_mode:this.filters.viewMode }
-                })
-              },
-              180000
-            );
-            const fallbackData = await fallbackRes.json().catch(() => ({}));
-            if (queryId !== this.denisSearch.queryId) return;
-
-            if (!fallbackRes.ok || fallbackData?.ok === false) {
-              this.denis.messages.push({
-                id:`a-${queryId}`,
-                role:'assistant',
-                text:String(fallbackData?.user_message || 'Xin lỗi anh, em chưa thể xử lý yêu cầu này lúc này.')
-              });
-            } else {
-              this.applyDenisSearchResults(fallbackData);
-            }
-          } else {
-            // Chat thành công — hiển thị câu trả lời + candidates (nếu có)
-            if (Array.isArray(chatData.candidates) && chatData.candidates.length > 0) {
-              this.applyDenisSearchResults({
-                ok: true,
-                user_message: chatData.answer || `Em tìm thấy ${chatData.candidates.length} mã phù hợp.`,
-                candidates: chatData.candidates
-              });
-            } else if (Array.isArray(chatData.top5) && chatData.top5.length > 0) {
-              const mapped = chatData.top5.map(t => ({
-                id: t.record_id || t.id || '',
-                code: t.code || '',
-                part_id: t.part_id || null,
-                usage_side: t.usage_side || null,
-                match_reason: t.match_reason || t.reason || '',
-                final_score: t.similarity_score || t.score || 0,
-                thumb_path: t.thumb_path || null,
-                front_path: t.front_path || null
-              }));
-              this.applyDenisSearchResults({
-                ok: true,
-                user_message: chatData.answer || `Em tìm thấy ${mapped.length} mã phù hợp.`,
-                candidates: mapped
-              });
-            } else {
-              this.denis.messages.push({
-                id:`a-${queryId}`,
-                role:'assistant',
-                text: chatData.answer || 'Em chưa tìm được câu trả lời phù hợp.'
-              });
-            }
-          }
-          return;
-        }
-
-        // ── CHẾ ĐỘ 2: Có ảnh → pipeline vector search cũ ──
-        let queryEmbedding = null;
-        let queryEmbeddings = [];
-        let embeddingProfile = null;
-
-        if (CONFIG.KIM_BROWSER_VECTOR_ENABLED) {
-          this.denis.status = 'Đang khởi tạo nhận dạng hình ảnh...';
-
-          const vectorResult = await this.buildKimQueryVector(
-            imageDataUrl
-          );
-
-          queryEmbedding = vectorResult.embedding;
-          queryEmbeddings = (vectorResult.probes || []).map(probe => ({
-            probe_id:probe.probe_id,
-            embedding:probe.embedding,
-            embedding_profile:probe.profile
-          }));
-          embeddingProfile = vectorResult.profile;
-
-          this.denis.status = 'Em đang so khớp hình ảnh...';
-        }
-
-        const res = await this.fetchWithTimeout(
-          '/api/kim/search',
-          {
-            method:'POST',
-            headers:{
-              'content-type':'application/json',
-              'x-session-token':this.session.token
-            },
-            body:JSON.stringify({
-              query_id:queryId,
-              session_token:this.session.token,
-              message:userText,
-              image_data_url:imageDataUrl || null,
-              query_embedding:queryEmbedding,
-              query_embeddings:queryEmbeddings,
-              embedding_profile:embeddingProfile,
-              hints:{
-                query_vector_source:
-                  queryEmbedding
-                    ? 'browser_dinov2_v58'
-                    : null
-              },
-              filters:{
-                usage_side:this.filters.usage,
-                view_mode:this.filters.viewMode
-              }
-            })
-          },
-          180000
-        );
-
-        const data = await res.json().catch(() => ({}));
-
-        // Response cũ tuyệt đối không được ghi đè query mới.
-        if (data?.query_id && data.query_id !== this.denisSearch.queryId) return;
-
-        if (!res.ok || data?.ok === false) {
-          this.denis.messages.push({
-            id:`a-${queryId}`,
-            role:'assistant',
-            text:String(
-              data?.user_message ||
-              'Xin lỗi anh, em chưa thể xử lý yêu cầu này lúc này. Anh thử lại giúp em nhé.'
-            )
-          });
-          return;
-        }
-
-        this.endKimScanAnimation(); // Stop scan animation
-        this.applyDenisSearchResults(data);
-        this.clearDenisImage();
-
-        if (Array.isArray(data?.candidates) && data.candidates.length) {
-          this.toast('success', `Đã tìm thấy ${Math.min(5, data.candidates.length)} mã phù hợp.`);
-        }
-      } catch (e) {
-        if (queryId !== this.denisSearch.queryId) return;
-
-        console.error('Kim UI request failed', e);
-
-        this.endKimScanAnimation(); // Stop scan animation on error
-        this.denis.messages.push({
-          id:`a-${queryId}`,
-          role:'assistant',
-          text:imageDataUrl
-            ? this.kimPublicImageSearchError(e)
-            : 'Xin lỗi anh, em chưa thể xử lý yêu cầu này lúc này. Anh thử lại giúp em nhé.'
-        });
-      } finally {
-        if (queryId === this.denisSearch.queryId) {
-          this.denis.busy = false;
-          this.denis.status = '';
-        }
-
-        this.scrollDenisToBottom();
-        this.$nextTick(() => this.renderIcons());
-      }
-    },
-
-    // ─── Kim v6 Scan Animation ───────────────────────────────────────
-    startKimScanAnimation(imageDataUrl) {
-      this.kimScan = { active:true, phase:'boot', phaseLabel:'BOOT SEQUENCE', progress:0, statusText:'LOADING NEURAL MODULES...', imageUrl:imageDataUrl };
-      
-      const phases = [
-        { at:0,   label:'BOOT SEQUENCE',       text:'LOADING NEURAL MODULES...' },
-        { at:15,  label:'VECTOR ENCODING',      text:'DINOV2 EXTRACTING FEATURES...' },
-        { at:35,  label:'EMBEDDING COMPLETE',   text:'384-DIM VECTOR GENERATED' },
-        { at:45,  label:'DATABASE QUERY',       text:'SEARCHING PGVECTOR INDEX...' },
-        { at:65,  label:'CANDIDATE POOL',       text:'TOP-20 MATCHES RETRIEVED' },
-        { at:75,  label:'VISION ANALYSIS',      text:'MULTI-MODEL INFERENCE...' },
-        { at:85,  label:'SYNTHESIZING',         text:'REFINING FEATURES...' },
-        { at:92,  label:'RERANKING',            text:'ORCHESTRATOR SCORING...' },
-        { at:98,  label:'FINALIZING',           text:'PREPARING TOP-5 RESULTS...' }
-      ];
-      
-      let pct = 0;
-      const tick = () => {
-        if (!this.kimScan.active) return;
-        pct += 0.4 + Math.random() * 0.6;
-        if (pct > 99) pct = 99;
-        this.kimScan.progress = Math.round(pct);
-        
-        // Update phase label based on progress
-        for (let i = phases.length - 1; i >= 0; i--) {
-          if (pct >= phases[i].at) {
-            this.kimScan.phaseLabel = phases[i].label;
-            this.kimScan.statusText = phases[i].text;
-            break;
-          }
-        }
-        
-        this._kimScanTimer = requestAnimationFrame(tick);
-      };
-      this._kimScanTimer = requestAnimationFrame(tick);
-    },
-
-    // Cyberpunk animation is pure CSS — no WebGL needed
-
-
-
-    endKimScanAnimation() {
-      if (this._kimScanTimer) cancelAnimationFrame(this._kimScanTimer);
-      if (this._kimThreeRAF) cancelAnimationFrame(this._kimThreeRAF);
-      this.kimScan.active = false;
-      this.kimScan.phase = '';
-      this.kimScan.progress = 0;
-      this.kimScan.statusText = '';
-      // Cleanup Three.js
-      if (this._kimThree) {
-        this._kimThree.renderer.dispose();
-        this._kimThree = null;
-      }
-    },
-
-    async startBulkImport() {
-      this.bulkImport.uploading = true;
-      this.bulkImport.total = this.bulkImport.groups.length;
-      this.bulkImport.current = 0;
-      this.bulkImport.successCount = 0;
-      this.bulkImport.errorCount = 0;
-      
-      for(let group of this.bulkImport.groups) {
-        this.bulkImport.current++;
-        this.bulkImport.progress = (this.bulkImport.current / this.bulkImport.total) * 100;
-        this.bulkImport.statusText = `Đang tải mã: ${group.code}...`;
-        
-        try {
-          let assets = [];
-          
-          if(group.front) {
-            const frontAsset = await this.uploadToR2(group.front, group.code, 'front');
-            assets.push({...frontAsset, sort_order: 1});
-            const thumbAsset = await this.uploadToR2(group.front, group.code, 'thumb');
-            assets.push({...thumbAsset, sort_order: 1});
-          }
-          if(group.back) {
-            const backAsset = await this.uploadToR2(group.back, group.code, 'back');
-            assets.push({...backAsset, sort_order: 1});
-          }
-          
-          if(!assets.length) continue;
-          
-          const primary = assets.find(a => a.asset_type === 'thumb') || assets.find(a => a.asset_type === 'front') || assets[0];
-          const hasBack = !!group.back;
-          
-          const saved = await this.rpcRow('app_upsert_part_metadata', {
-            p_session_token: this.session.token,
-            p_id: null,
-            p_code: group.code,
-            p_part_id: null,
-            p_usage_side: 'unknown',
-            p_view_mode: hasBack ? 'dual_face' : 'single_face',
-            p_is_symmetric: !hasBack, // Mã 1 mặt mặc định gán đối xứng
-            p_identifying_features: null,
-            p_confusing_note: null,
-            p_primary_image_path: primary.image_path,
-            p_primary_image_name: primary.image_name || null
-          });
-          
-          if(!saved?.ok) throw new Error(saved?.message || 'Lỗi lưu metadata');
-          
-          const rep = await this.rpcRow('app_replace_part_assets', { 
-            p_session_token: this.session.token, 
-            p_image_id: saved.id, 
-            p_assets: assets 
-          });
-          
-          if(!rep?.ok) throw new Error(rep?.message || 'Lỗi liên kết ảnh');
-          
-          this.bulkImport.successCount++;
-        } catch(e) {
-          console.error(`Lỗi tải mã ${group.code}:`, e);
-          this.bulkImport.errorCount++;
-        }
-      }
-      
-      this.bulkImport.statusText = "Đã xử lý xong toàn bộ danh sách!";
-      this.renderIcons();
-    },
-    async finishBulkImport() {
-      this.closeBulkImport();
-      await this.loadParts(true);
-    }
-  }
-}).mount('#app');
-</script>
+<script src="/src/app.js"></script>
 </body>
 </html>

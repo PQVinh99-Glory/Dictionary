@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Thư ký Kim V5.5 — Vector Reindex</title>
+  <title>Moris V5.5 — Vector Reindex</title>
   <style>
-    :root{font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#0f172a;background:#f0fdf8}
+    :root{font-family:Calibri,Carlito,'Segoe UI',system-ui,sans-serif;color:#0f172a;background:#f0fdf8}
     *{box-sizing:border-box}
     body{margin:0;padding:24px}
     .wrap{max-width:820px;margin:auto}
@@ -30,7 +30,7 @@
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>Thư ký Kim V5.5 — Browser DINOv2 Reindex</h1>
+    <h1>Moris V5.5 — Browser DINOv2 Reindex</h1>
     <p>Vector hóa ảnh catalogue trực tiếp trên máy đang mở trình duyệt.</p>
 
     <div class="warn">
@@ -57,195 +57,8 @@
   </div>
 </div>
 
-<script type="module">
-import {
-  initDinov2,
-  embedImageDinov2,
-  onDinov2Progress
-} from "/src/kim/vector/browserDinov2.js";
-
-const TOKEN_KEY = "catalogue_app_session_token_v3_r2";
-const BATCH_LIMIT = 20;
-
-const state = {
-  running:false,
-  pause:false,
-  offset:Number(localStorage.getItem("kim_v55_reindex_offset") || 0),
-  processed:0,
-  written:0,
-  failed:0
-};
-
-const $ = id => document.getElementById(id);
-const logEl = $("log");
-
-function log(message) {
-  const line = `[${new Date().toLocaleTimeString()}] ${message}`;
-  logEl.textContent += line + "\n";
-  logEl.scrollTop = logEl.scrollHeight;
-}
-
-function setStatus(message) {
-  $("status").textContent = message;
-}
-
-function sync() {
-  $("processed").textContent = state.processed;
-  $("written").textContent = state.written;
-  $("failed").textContent = state.failed;
-  $("start").disabled = state.running;
-  $("pause").disabled = !state.running;
-}
-
-function sessionToken() {
-  const token = localStorage.getItem(TOKEN_KEY) || "";
-  if (!token) throw new Error(
-    "Chưa có session. Hãy đăng nhập app Catalogue trước."
-  );
-  return token;
-}
-
-function mediaUrl(key) {
-  return "/api/media/" + String(key || "")
-    .split("/")
-    .map(encodeURIComponent)
-    .join("/");
-}
-
-async function postJson(url, body) {
-  const res = await fetch(url,{
-    method:"POST",
-    headers:{"content-type":"application/json"},
-    body:JSON.stringify(body)
-  });
-
-  const data = await res.json().catch(()=>({}));
-  if (!res.ok || data?.ok === false) {
-    throw new Error(data?.error || data?.user_message || `HTTP ${res.status}`);
-  }
-  return data;
-}
-
-onDinov2Progress(progress => {
-  if (progress?.status === "progress" && Number.isFinite(progress?.progress)) {
-    const pct = Math.max(0,Math.min(100,Number(progress.progress)));
-    $("bar").firstElementChild.style.width = `${pct}%`;
-    setStatus(`Đang tải model ${Math.round(pct)}%...`);
-  }
-});
-
-async function run() {
-  state.running = true;
-  state.pause = false;
-  sync();
-
-  try {
-    setStatus("Đang khởi tạo DINOv2...");
-    const init = await initDinov2();
-    log(`Runtime: ${init?.runtime?.device || "?"}/${init?.runtime?.dtype || "?"}`);
-
-    while (!state.pause) {
-      const token = sessionToken();
-
-      setStatus(`Đang lấy batch tại offset ${state.offset}...`);
-      const batch = await postJson("/api/kim/reindex-batch",{
-        session_token:token,
-        offset:state.offset,
-        limit:BATCH_LIMIT
-      });
-
-      const items = Array.isArray(batch?.items) ? batch.items : [];
-      if (!items.length && !batch?.has_more) {
-        setStatus("Hoàn tất reindex.");
-        log("Hoàn tất.");
-        break;
-      }
-
-      const vectors = [];
-
-      for (const item of items) {
-        if (state.pause) break;
-
-        try {
-          setStatus(`Đang vector hóa ${item.code || item.record_id} / ${item.asset_type}...`);
-
-          const result = await embedImageDinov2(
-            new URL(mediaUrl(item.object_key), location.origin).href
-          );
-
-          vectors.push({
-            record_id:item.record_id,
-            asset_type:item.asset_type,
-            object_key:item.object_key,
-            view_variant:"canonical",
-            embedding:result.embedding,
-            embedding_profile:result.profile,
-            foreground_status:"browser_dinov2_v55"
-          });
-
-          state.processed += 1;
-          log(`OK embed ${item.code || item.record_id} ${item.asset_type}`);
-          sync();
-        } catch (error) {
-          state.processed += 1;
-          state.failed += 1;
-          log(`ERR embed ${item.code || item.record_id}: ${error?.message || error}`);
-          sync();
-        }
-      }
-
-      if (vectors.length) {
-        const upsert = await postJson("/api/kim/vector-upsert",{
-          session_token:token,
-          vectors
-        });
-
-        state.written += Number(upsert?.written || 0);
-        state.failed += Number(upsert?.failed || 0);
-        log(`Upsert: +${upsert?.written || 0}, lỗi ${upsert?.failed || 0}`);
-        sync();
-      }
-
-      state.offset = Number(batch?.next_offset || state.offset);
-      localStorage.setItem(
-        "kim_v55_reindex_offset",
-        String(state.offset)
-      );
-
-      if (!batch?.has_more) {
-        setStatus("Hoàn tất reindex.");
-        log("Hoàn tất.");
-        break;
-      }
-    }
-  } catch (error) {
-    setStatus("Đã dừng do lỗi.");
-    log(`FATAL: ${error?.message || error}`);
-  } finally {
-    state.running = false;
-    sync();
-  }
-}
-
-$("start").onclick = run;
-$("pause").onclick = () => {
-  state.pause = true;
-  setStatus("Đang tạm dừng sau tác vụ hiện tại...");
-};
-$("reset").onclick = () => {
-  if (state.running) return;
-  state.offset = 0;
-  state.processed = 0;
-  state.written = 0;
-  state.failed = 0;
-  localStorage.removeItem("kim_v55_reindex_offset");
-  logEl.textContent = "";
-  setStatus("Đã reset offset.");
-  sync();
-};
-
-sync();
-log(`Offset hiện tại: ${state.offset}`);
-</script>
+<script src="/config.js"></script>
+<script src="/src/authToken.js"></script>
+<script type="module" src="./moris-vector-reindex.js"></script>
 </body>
 </html>

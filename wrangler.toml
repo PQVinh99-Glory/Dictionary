@@ -1,0 +1,60 @@
+# ============================================================
+# Cloudflare Pages — Moris (vector search)
+# Dự án này là PAGES (không phải Workers): có thư mục functions/
+# theo chuẩn Pages Functions, không phải worker entrypoint.
+# ============================================================
+name = "dictionary"
+compatibility_date = "2026-10-05"
+
+# functions/_lib/**/*.js dùng ESM + import.meta => cần nodejs_compat
+compatibility_flags = ["nodejs_compat"]
+
+# Static assets nằm trong dist/ — KHÔNG dùng "./".
+# Lý do: "./" khiến .env + .dev.vars + sql/ + kim-harness/ thành static asset công khai.
+# Chạy `node tools/build-static.mjs` trước khi dev/deploy.
+# functions/ vẫn được wrangler đọc từ root theo chuẩn Pages Functions.
+pages_build_output_dir = "./dist"
+
+# ---------- Bindings ----------
+# Xác minh qua API: bucket tồn tại, location APAC.
+# ⚠️ Bucket hiện CÓ public dev URL (pub-*.r2.dev) trả 200 không cần auth.
+# Sau khi tắt public, mọi lượt đọc ảnh phải đi qua Pages Function /api/media
+# và cần bổ sung auth ở đó.
+[[r2_buckets]]
+binding = "CATALOGUE_BUCKET"
+bucket_name = "catalogue-images"
+# preview_bucket_id = "<paste id>"
+
+# ---------- Vars (KHÔNG nhạy cảm) ----------
+[vars]
+MORIS_ENABLED = "true"
+MORIS_VECTOR_SEARCH_ENABLED = "true"
+MORIS_V6_ENABLED = "false"
+MORIS_V4_ROLLBACK_ENABLED = "true"
+
+# Vector profile — phải khớp src/moris/vector/browserDinov2.js:5
+MORIS_VECTOR_MODEL = "onnx-community/dinov2-small"
+MORIS_VECTOR_MODEL_VERSION = "ef1fb10"
+MORIS_PREPROCESS_VERSION = "kim_canon_v2"
+MORIS_EMBEDDING_PROFILE = "cls_l2_v1"
+MORIS_VECTOR_DIMENSION = "384"
+MORIS_VECTOR_TOP_K = "60"
+MORIS_RESOLVER_TOP_K = "10"
+MORIS_VECTOR_MIN = "0.55"
+MORIS_MAX_SCAN_ROWS = "1500"
+
+MORIS_AMBIGUITY_GAP = "0.06"
+MORIS_GEMINI_VECTOR_FLOOR = "0.86"
+MORIS_JUDGE_GAP = "0.05"
+
+# ---------- Production overrides ----------
+[env.production.vars]
+MORIS_ALLOWED_ORIGINS = "https://dictionary.pages.dev"
+
+# ============================================================
+# SECRETS — đặt bằng CLI, KHÔNG ghi trong file này:
+#   wrangler pages secret put SUPABASE_SERVICE_ROLE_KEY --project-name dictionary-catalogue-ai
+#   wrangler pages secret put GEMINI_API_KEY            --project-name dictionary-catalogue-ai
+#   wrangler pages secret put OPENROUTER_API_KEY       --project-name dictionary-catalogue-ai
+#   wrangler pages secret put MORIS_ADMIN_TOKEN          --project-name dictionary-catalogue-ai
+# ============================================================

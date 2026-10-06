@@ -1,0 +1,389 @@
+import {
+  initDinov2,
+  embedImageDinov2,
+  embedImageDinov2Variants,
+  onDinov2Progress
+} from "/src/moris/vector/browserDinov2.js";
+
+import {
+  upsertVectorsChunked
+} from "/src/moris/vector/chunkedUpsert.js";
+const OFFSET_KEY = "kim_v56_vector_center_offset";
+const BATCH_LIMIT = 20;
+
+const state = {
+  running:false,
+  pause:false,
+  modelReady:false,
+  offset:Number(localStorage.getItem(OFFSET_KEY) || 0),
+  processed:0,
+  written:0,
+  failed:0,
+  batchNo:0
+};
+
+const $ = id => document.getElementById(id);
+
+// Render nội dung có định dạng (in đậm, xuống dòng) MÀ KHÔNG dùng innerHTML.
+// Mọi giá trị đều đi qua textContent => không thể bị XSS từ dữ liệu server.
+// parts: mảng phần tử dạng [text, {bold?:bool, br?:bool, class?:string}]
+function renderParts(el, parts) {
+  if (!el) return;
+  el.textContent = "";
+  for (const [text, opts = {}] of parts) {
+    if (opts.br) { el.appendChild(document.createElement("br")); continue; }
+    const span = document.createElement("span");
+    span.textContent = String(text ?? "");
+    if (opts.bold) span.style.fontWeight = "700";
+    if (opts.class) span.className = opts.class;
+    el.appendChild(span);
+  }
+}
+const logEl = $("log");
+
+function token(){
+  const value = CatalogueAuth.getAccessToken();
+  if(!value) throw new Error("Hãy đăng nhập Catalogue trước.");
+  return value;
+}
+
+function log(message){
+  const line = `[${new Date().toLocaleTimeString()}] ${message}`;
+  logEl.textContent += line + "\n";
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function sync(){
+  $("processed").textContent = state.processed;
+  $("written").textContent = state.written;
+  $("failed").textContent = state.failed;
+  $("batchNo").textContent = state.batchNo;
+  $("offset").textContent = state.offset;
+  $("start").disabled = state.running;
+  $("pause").disabled = !state.running;
+  $("testModel").disabled = !state.modelReady;
+}
+
+async function readJson(url, options={}){
+  const res = await fetch(url,options);
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok || data?.ok === false){
+    throw new Error(data?.error || data?.user_message || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+async function postJson(url, body){
+  return readJson(url,{
+    method:"POST",
+    headers:{"content-type":"application/json"},
+    body:JSON.stringify(body)
+  });
+}
+
+function mediaUrl(key){
+  return "/api/media/" + String(key || "")
+    .replace(/^\/+/,"")
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+}
+
+async function loadModel(){
+  $("runtime").textContent = "Đang khởi tạo DINOv2...";
+  const result = await initDinov2();
+  state.modelReady = true;
+  const rt = result?.runtime || {};
+  renderParts($("runtime"), [
+    "Sẵn sàng: ",
+    [rt.device || "?", { bold: true }],
+    "/",
+    [rt.dtype || "?", { bold: true }]
+  ]);
+  $("ready").textContent = "Có";
+  $("ready").className = "good";
+  sync();
+  return result;
+}
+
+async function refreshStatus(){
+  const data = await readJson(
+    `/api/moris/reindex-status?session_token=${encodeURIComponent(token())}`
+  );
+
+  const s = data?.status || {};
+  $("records").textContent = Number(s.distinct_records || 0);
+  $("vectors").textContent = Number(s.active_vectors || 0);
+
+  renderParts($("coverage"), [
+    "Profile: ", [data?.profile?.model || "?", { bold: true }], { br: true },
+    "SKU có vector: ", [Number(s.distinct_records || 0), { bold: true }], { br: true },
+    "Tổng vector ảnh: ", [Number(s.active_vectors || 0), { bold: true }], { br: true },
+    "Cập nhật gần nhất: ", [s.latest_updated_at || "chưa có", { bold: true }]
+  ]);
+}
+
+onDinov2Progress(progress=>{
+  if(progress?.status === "progress" && Number.isFinite(progress?.progress)){
+    const pct = Math.max(0,Math.min(100,Number(progress.progress)));
+    $("modelBar").style.width = `${pct}%`;
+    $("runtime").textContent = `Đang tải model ${Math.round(pct)}%...`;
+  }
+});
+
+async function run(){
+  state.running = true;
+  state.pause = false;
+  sync();
+
+  try{
+    if(!state.modelReady) await loadModel();
+
+    while(!state.pause){
+      const batch = await postJson("/api/moris/reindex-batch",{
+        session_token:token(),
+        offset:state.offset,
+        limit:BATCH_LIMIT
+      });
+
+      state.batchNo += 1;
+      sync();
+
+      const items = Array.isArray(batch?.items) ? batch.items : [];
+
+      renderParts($("batchDiag"), [
+        "Dòng catalogue: ", [Number(batch?.row_count || 0), { bold: true }], " · ",
+        "SKU có asset: ", [Number(batch?.rows_with_assets || 0), { bold: true }], " · ",
+        "Ảnh thật: ", [Number(batch?.asset_count || 0), { bold: true }], " · ",
+        "SKU thiếu ảnh: ", [Number(batch?.rows_without_assets?.length || 0), { bold: true }], " · ",
+        "Lỗi asset RPC: ", [Number(batch?.asset_errors?.length || 0), { bold: true }]
+      ]);
+
+      if(
+        Number(batch?.row_count || 0) > 0 &&
+        items.length === 0
+      ){
+        const firstAssetError =
+          batch?.asset_errors?.[0]?.error || "";
+
+        throw new Error(
+          firstAssetError
+            ? `Không lấy được asset thật: ${firstAssetError}`
+            : "Batch có SKU nhưng 0 ảnh thật. Cursor bị khóa để tránh false progress."
+        );
+      }
+
+      if(!items.length && !batch?.has_more){
+        $("jobStatus").textContent = "Hoàn tất toàn bộ catalogue.";
+        log("Hoàn tất reindex.");
+        break;
+      }
+
+      const vectors = [];
+      let itemIndex = 0;
+
+      for(const item of items){
+        if(state.pause) break;
+        itemIndex += 1;
+
+        $("jobBar").style.width =
+          `${Math.round((itemIndex / Math.max(1,items.length))*100)}%`;
+
+        $("jobStatus").textContent =
+          `Đang vector hóa ${item.code || item.record_id} (${item.asset_type})`;
+
+        try{
+          const result = await embedImageDinov2Variants(
+            new URL(mediaUrl(item.object_key), location.origin).href,
+            {includeGray:true}
+          );
+
+          for (const probe of (result.probes || [])) {
+            vectors.push({
+              record_id:item.record_id,
+              asset_type:item.asset_type,
+              object_key:item.object_key,
+              view_variant:probe.view_variant,
+              embedding:probe.embedding,
+              embedding_profile:probe.profile,
+              foreground_status:"browser_dinov2_v59_canonical"
+            });
+          }
+
+          state.processed += 1;
+          log(`EMBED OK ${item.code || item.record_id}/${item.asset_type}`);
+        }catch(error){
+          state.processed += 1;
+          state.failed += 1;
+          log(`EMBED ERR ${item.code || item.record_id}: ${error?.message || error}`);
+        }
+
+        sync();
+      }
+
+      if(items.length > 0 && vectors.length === 0){
+        throw new Error(
+          "Có ảnh thật nhưng không tạo được embedding nào. Cursor bị khóa."
+        );
+      }
+
+      let batchWritten = 0;
+      let batchFailed = 0;
+
+      if(vectors.length){
+        const upsert = await upsertVectorsChunked({
+          endpoint:"/api/moris/vector-upsert",
+          sessionToken:token(),
+          vectors,
+          chunkSize:20,
+          timeoutMs:180000,
+          strict:true,
+
+          onChunk:info => {
+            if(info?.phase === "start"){
+              $("jobStatus").textContent =
+                `Đang ghi vector chunk ` +
+                `${info.chunk_number}/${info.chunk_count}...`;
+            }
+
+            if(info?.phase === "done"){
+              log(
+                `UPSERT CHUNK ${info.chunk_number}/${info.chunk_count} ` +
+                `+${info.written}, lỗi ${info.failed}`
+              );
+            }
+          }
+        });
+
+        batchWritten = Number(upsert?.written || 0);
+        batchFailed = Number(upsert?.failed || 0);
+
+        state.written += batchWritten;
+        state.failed += batchFailed;
+
+        log(
+          `UPSERT BATCH hoàn tất +${batchWritten}, ` +
+          `lỗi ${batchFailed}, chunks ${upsert?.chunks || 0}`
+        );
+
+        sync();
+      }
+
+      // Integrity gate theo batch hiện tại, không dùng cumulative state.written.
+      if(
+        vectors.length > 0 &&
+        batchWritten !== vectors.length
+      ){
+        throw new Error(
+          `Batch write không toàn vẹn: ` +
+          `embed=${vectors.length}, written=${batchWritten}. ` +
+          `Cursor bị khóa.`
+        );
+      }
+
+      state.offset = Number(batch?.next_offset || state.offset);
+      localStorage.setItem(OFFSET_KEY,String(state.offset));
+      sync();
+
+      await refreshStatus().catch(()=>{});
+
+      if(!batch?.has_more){
+        $("jobStatus").textContent = "Hoàn tất toàn bộ catalogue.";
+        log("Hoàn tất.");
+        break;
+      }
+    }
+  }catch(error){
+    $("jobStatus").textContent = "Đã dừng do lỗi.";
+    log(`FATAL: ${error?.message || error}`);
+  }finally{
+    state.running = false;
+    sync();
+  }
+}
+
+$("loadModel").onclick = ()=>loadModel().catch(e=>{
+  renderParts($("runtime"), [[e?.message || e, { class: "bad" }]]);
+  log(`MODEL ERR: ${e?.message || e}`);
+});
+
+$("testModel").onclick = async ()=>{
+  try{
+    if(!state.modelReady) await loadModel();
+
+    $("runtime").textContent =
+      "Đang test embedding trên ảnh catalogue thật...";
+
+    const batch = await postJson("/api/moris/reindex-batch",{
+      session_token:token(),
+      offset:0,
+      limit:5
+    });
+
+    const first = (batch?.items || [])[0];
+
+    if(!first){
+      throw new Error(
+        "Batch không trả ảnh nào. Kiểm tra app_get_part_assets."
+      );
+    }
+
+    const result = await embedImageDinov2Variants(
+      new URL(mediaUrl(first.object_key), location.origin).href,
+      {includeGray:true}
+    );
+
+    const firstProbe = result?.probes?.[0];
+    if(
+      !Array.isArray(firstProbe?.embedding) ||
+      firstProbe.embedding.length !== 384
+    ){
+      throw new Error(
+        `Embedding test sai dimension: ${result?.embedding?.length || 0}`
+      );
+    }
+
+    renderParts($("runtime"), [
+      "Test thật thành công: ", ["384D", { bold: true }], " · ",
+      [firstProbe?.runtime?.device || "?", {}], "/",
+      [firstProbe?.runtime?.dtype || "?", {}]
+    ]);
+
+    log(
+      `MODEL TEST OK 384D trên ${first.code || first.record_id}/${first.asset_type}`
+    );
+  }catch(error){
+    renderParts($("runtime"), [
+      ["Test thật thất bại: ", {}],
+      [error?.message || error, { class: "bad" }]
+    ]);
+    log(`MODEL TEST ERR: ${error?.message || error}`);
+  }
+};
+
+$("refreshStatus").onclick = ()=>refreshStatus().catch(e=>{
+  renderParts($("coverage"), [[e?.message || e, { class: "bad" }]]);
+});
+
+$("start").onclick = run;
+$("pause").onclick = ()=>{
+  state.pause = true;
+  $("jobStatus").textContent = "Đang tạm dừng sau tác vụ hiện tại...";
+};
+
+$("reset").onclick = ()=>{
+  if(state.running) return;
+  state.offset = 0;
+  state.processed = 0;
+  state.written = 0;
+  state.failed = 0;
+  state.batchNo = 0;
+  localStorage.removeItem(OFFSET_KEY);
+  logEl.textContent = "";
+  $("jobStatus").textContent = "Đã reset offset.";
+  $("jobBar").style.width = "0%";
+  sync();
+};
+
+sync();
+refreshStatus().catch(e=>log(`STATUS: ${e?.message || e}`));

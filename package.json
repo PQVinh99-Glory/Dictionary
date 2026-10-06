@@ -1,0 +1,26 @@
+{
+    "name": "dictionary-catalogue-ai",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "description": "Catalogue AI — tra cứu linh kiện công nghiệp. Frontend static + Cloudflare Pages Functions + Supabase pgvector.",
+    "engines": {
+        "node": ">=22"
+    },
+    "scripts": {
+        "build": "node tools/build-static.mjs",
+        "dev": "npm run build && wrangler pages dev --port 8788 --ip 127.0.0.1",
+        "dev:hot": "wrangler pages dev --port 8788 --ip 127.0.0.1",
+        "deploy": "npm run build && wrangler pages deploy dist --project-name dictionary",
+        "logs": "wrangler pages deployment tail --project-name dictionary",
+        "r2:list": "wrangler r2 bucket list",
+        "supa:start": "supabase start",
+        "supa:stop": "supabase stop",
+        "supa:status": "supabase status",
+        "supa:link": "supabase link --project-ref vhsikdgkzecdfopkpzum",
+        "supa:migrate": "supabase migration list",
+        "supa:new": "supabase migration new",
+        "supa:diff": "supabase db diff",
+        "supa:reset": "supabase db reset"
+    }
+}

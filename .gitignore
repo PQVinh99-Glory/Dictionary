@@ -1,10 +1,24 @@
 
 # Environment files with secrets
 .env
+.env.*
+!/.env.example
+!/.env.*.example
 *.env.local
 kim-harness/.env
 deepseek-harness/
 
+# Wrangler / Supabase local state (chứa secrets + cache build)
+.dev.vars
+.dev.vars.*
+.wrangler/
+
 # Screenshots / local-only images
 Book.png
 Screenshot.png
+image.png
+*.zip
+assets/
+
+# Build output (Cloudflare Pages static assets)
+dist/
