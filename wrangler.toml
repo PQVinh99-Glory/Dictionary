@@ -15,9 +15,6 @@ compatibility_flags = ["nodejs_compat"]
 # functions/ vẫn được wrangler đọc từ root theo chuẩn Pages Functions.
 pages_build_output_dir = "dist"
 
-[build]
-command = "npm run build"
-
 # ---------- Bindings ----------
 # Xác minh qua API: bucket tồn tại, location APAC.
 # ⚠️ Bucket hiện CÓ public dev URL (pub-*.r2.dev) trả 200 không cần auth.
