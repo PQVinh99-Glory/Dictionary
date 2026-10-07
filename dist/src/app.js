@@ -58,6 +58,20 @@ const CONFIG = {
 
 const { createApp, nextTick } = Vue;
 
+// Bắt sự kiện beforeinstallprompt sớm nhất có thể ngay khi script load
+// để không bị lỡ sự kiện trong lúc Vue chờ async checkSession / Supabase.
+let _globalInstallPrompt = null;
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    _globalInstallPrompt = e;
+    if (window._catalogueApp && window._catalogueApp.pwa) {
+      window._catalogueApp.pwa.deferredPrompt = e;
+      window._catalogueApp.pwa.canInstall = true;
+    }
+  });
+}
+
 createApp({
   data() {
     return {
@@ -68,6 +82,9 @@ createApp({
         updateReady: false,
         canInstall: false,
         isIOS: false,
+        isStandalone: false,
+        isInApp: false,
+        guideOpen: false,
         panelOpen: false,
         clearing: false,
         registration: null,
@@ -306,12 +323,13 @@ createApp({
     }
   },
   async mounted() {
+    window._catalogueApp = this;
+    this.setupPwa();
     this.sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
     this.updateTime(); setInterval(this.updateTime, 30000);
     await this.checkSession();
     // Chốt phiên theo chu kỳ 07:00 sáng giờ VN (kiểm tra mỗi phút).
     setInterval(() => this.guardSession(), 60000);
-    this.setupPwa();
     this.renderIcons();
   },
   updated() { this.renderIcons(); },
@@ -2665,28 +2683,51 @@ createApp({
       this.bulkImport.statusText = "Đã xử lý xong toàn bộ danh sách!";
       this.renderIcons();
     },
+    openPwaModal() {
+      this.pwa.guideOpen = true;
+      this.renderIcons();
+    },
     togglePwaPanel() {
       this.pwa.panelOpen = !this.pwa.panelOpen;
       this.renderIcons();
     },
     async pwaInstall() {
+      if (this.pwa.isStandalone) {
+        this.toast('info', 'Ứng dụng đã được cài đặt và đang chạy ở chế độ App.');
+        return;
+      }
       if (this.pwa.deferredPrompt) {
-        this.pwa.deferredPrompt.prompt();
-        const choice = await this.pwa.deferredPrompt.userChoice;
-        if (choice && choice.outcome === 'accepted') {
-          this.toast('success', 'Đang cài đặt ứng dụng vào thiết bị...');
-          this.pwa.canInstall = false;
+        try {
+          this.pwa.deferredPrompt.prompt();
+          const choice = await this.pwa.deferredPrompt.userChoice;
+          if (choice && choice.outcome === 'accepted') {
+            this.toast('success', 'Đang cài đặt ứng dụng vào thiết bị...');
+            this.pwa.canInstall = false;
+            this.pwa.guideOpen = false;
+          } else {
+            this.toast('info', 'Đã hủy thao tác cài đặt. Bạn có thể cài lại bất cứ lúc nào.');
+          }
+          this.pwa.deferredPrompt = null;
+        } catch (err) {
+          console.warn('pwaInstall prompt error:', err);
+          this.pwa.guideOpen = true;
         }
-        this.pwa.deferredPrompt = null;
-      } else if (this.pwa.isIOS) {
-        this.toast('info', 'Trên iOS: Nhấn biểu tượng Chia sẻ rồi chọn "Thêm vào Màn hình chính"');
       } else {
-        this.toast('info', 'Ứng dụng đã được cài đặt hoặc trình duyệt không hỗ trợ cài trực tiếp.');
+        // Trình duyệt không hỗ trợ prompt trực tiếp (iOS Safari, hoặc Chrome đã cài / chặn prompt)
+        this.pwa.guideOpen = true;
+        this.toast('info', 'Xem hướng dẫn cài đặt ứng dụng trên thiết bị...');
+        this.renderIcons();
       }
     },
     async pwaClearCache() {
       this.pwa.clearing = true;
+      this.toast('info', 'Đang xóa sạch toàn bộ bộ nhớ đệm...');
       try {
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          try {
+            navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+          } catch (_) {}
+        }
         if ('caches' in window) {
           const keys = await caches.keys();
           await Promise.all(keys.map(k => caches.delete(k)));
@@ -2695,12 +2736,18 @@ createApp({
           const regs = await navigator.serviceWorker.getRegistrations();
           await Promise.all(regs.map(r => r.unregister()));
         }
-        this.toast('success', 'Đã xoá sạch bộ nhớ đệm. Đang tải lại ứng dụng...');
+        try {
+          sessionStorage.clear();
+        } catch (_) {}
+
+        this.toast('success', 'Đã xoá sạch bộ nhớ đệm! Đang tải lại ứng dụng...');
         setTimeout(() => {
-          window.location.reload(true);
-        }, 700);
+          const cleanUrl = new URL(window.location.origin + window.location.pathname);
+          cleanUrl.searchParams.set('_clear_cache', Date.now().toString());
+          window.location.replace(cleanUrl.toString());
+        }, 600);
       } catch (err) {
-        this.toast('error', 'Lỗi xoá cache: ' + (err?.message || err));
+        this.toast('error', 'Lỗi khi xoá cache: ' + (err?.message || err));
         this.pwa.clearing = false;
       }
     },
@@ -2715,10 +2762,12 @@ createApp({
         }
         this.toast('success', 'Đang cập nhật lên phiên bản mới...');
         setTimeout(() => {
-          window.location.reload(true);
+          const cleanUrl = new URL(window.location.origin + window.location.pathname);
+          cleanUrl.searchParams.set('_update', Date.now().toString());
+          window.location.replace(cleanUrl.toString());
         }, 500);
       } catch (_) {
-        window.location.reload(true);
+        window.location.reload();
       }
     },
     async pwaCheckVersion() {
@@ -2740,16 +2789,27 @@ createApp({
     setupPwa() {
       if (typeof window === 'undefined') return;
       this.pwa.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      this.pwa.isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      this.pwa.isInApp = /FBAN|FBAV|Instagram|Line|Zalo|MicroMessenger/i.test(navigator.userAgent);
+
+      if (_globalInstallPrompt) {
+        this.pwa.deferredPrompt = _globalInstallPrompt;
+        this.pwa.canInstall = true;
+      }
 
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
+        _globalInstallPrompt = e;
         this.pwa.deferredPrompt = e;
         this.pwa.canInstall = true;
+        this.renderIcons();
       });
 
       window.addEventListener('appinstalled', () => {
         this.pwa.canInstall = false;
         this.pwa.deferredPrompt = null;
+        this.pwa.isStandalone = true;
+        this.pwa.guideOpen = false;
         this.toast('success', 'Đã cài đặt Catalogue AI thành công!');
       });
 

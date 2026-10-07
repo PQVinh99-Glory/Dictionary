@@ -61,11 +61,18 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Nhận lệnh từ giao diện người dùng (ví dụ: bấm nút "Cập nhật ngay")
+// Nhận lệnh từ giao diện người dùng (ví dụ: bấm nút "Cập nhật ngay" hoặc "Xóa cache")
 self.addEventListener('message', (event) => {
   const data = event.data;
   if (data === 'SKIP_WAITING' || (data && data.type === 'SKIP_WAITING')) {
     self.skipWaiting();
+  }
+  if (data === 'CLEAR_CACHE' || (data && data.type === 'CLEAR_CACHE')) {
+    caches.keys().then((keys) => {
+      return Promise.all(keys.map((k) => caches.delete(k)));
+    }).then(() => {
+      console.log('[SW] Đã xóa sạch toàn bộ cache theo yêu cầu người dùng.');
+    });
   }
 });
 

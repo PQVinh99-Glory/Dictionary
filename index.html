@@ -396,6 +396,26 @@
 </head>
 <body>
 <div id="app" v-cloak>
+  <!-- TOAST NỔI TOÀN HỆ THỐNG (z-[9999]) -->
+  <Transition name="fade">
+    <div v-if="notice.text" class="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] max-w-[92vw] sm:max-w-md w-full px-2 pointer-events-none" role="alert" aria-live="assertive">
+      <div :class="[
+        'pointer-events-auto rounded-2xl px-4 py-3 text-xs sm:text-sm font-black shadow-2xl flex items-center justify-between gap-3 border backdrop-blur-xl transition-all',
+        notice.type === 'error' ? 'bg-red-950/95 text-red-100 border-red-700 shadow-red-950/50' :
+        notice.type === 'success' ? 'bg-emerald-950/95 text-emerald-100 border-emerald-700 shadow-emerald-950/50' :
+        'bg-slate-900/95 text-slate-100 border-slate-700 shadow-slate-950/50'
+      ]">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <i v-if="notice.type === 'error'" data-lucide="alert-circle" class="w-5 h-5 text-red-400 shrink-0"></i>
+          <i v-else-if="notice.type === 'success'" data-lucide="check-circle" class="w-5 h-5 text-emerald-400 shrink-0"></i>
+          <i v-else data-lucide="info" class="w-5 h-5 text-amber-400 shrink-0"></i>
+          <span class="break-words leading-snug">{{ notice.text }}</span>
+        </div>
+        <button @click="notice.text = ''" class="text-white/70 hover:text-white p-1 rounded-lg shrink-0" aria-label="Đóng"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+    </div>
+  </Transition>
+
   <!-- LOGIN -->
   <section v-if="!session.user" class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
     <!-- Trang trí nền (Wine Red #7F011F + Light Sand #F5EBD0) -->
@@ -440,6 +460,9 @@
           </div>
         </div>
         <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+          <button @click="openPwaModal()" class="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-black transition shadow-sm" title="Tải ứng dụng hoặc xóa cache">
+            <i data-lucide="smartphone" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">Tải App</span>
+          </button>
           <span class="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-rose-50 border border-rose-100 text-rose-800 text-xs font-black uppercase tracking-wider">
             <i data-lucide="shield-check" class="w-4 h-4"></i>{{ session.user.role_name }}
           </span>
@@ -1380,15 +1403,18 @@
             </span>
             <button @click="pwa.panelOpen = false" class="text-slate-400 hover:text-slate-600 p-0.5" aria-label="Đóng bảng"><i data-lucide="x" class="w-4 h-4"></i></button>
           </div>
-          <p class="text-[11px] text-slate-600 font-medium leading-tight">Cài đặt trực tiếp vào màn hình chính hoặc xoá nhanh bộ nhớ đệm nếu không hiện icon.</p>
+          <p class="text-[11px] text-slate-600 font-medium leading-tight">Cài đặt trực tiếp vào màn hình chính hoặc xoá nhanh bộ nhớ đệm nếu dính cache.</p>
           <div class="grid grid-cols-2 gap-2 pt-1">
             <button @click="pwaInstall()" class="btn py-2 px-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-sm">
               <i data-lucide="download-cloud" class="w-4 h-4"></i>Tải xuống
             </button>
             <button @click="pwaClearCache()" :disabled="pwa.clearing" class="btn py-2 px-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-sm">
-              <i data-lucide="refresh-cw" :class="{'animate-spin': pwa.clearing}" class="w-4 h-4"></i>Xóa cache
+              <i data-lucide="refresh-cw" :class="{'animate-spin': pwa.clearing}" class="w-4 h-4"></i>{{ pwa.clearing ? 'Đang xóa...' : 'Xóa cache' }}
             </button>
           </div>
+          <button @click="openPwaModal()" class="w-full text-center text-[11px] font-bold text-rose-700 hover:underline pt-1 block">
+            <i data-lucide="help-circle" class="w-3.5 h-3.5 inline mr-1"></i>Xem hướng dẫn cài đặt chi tiết
+          </button>
           <div v-if="pwa.isIOS" class="text-[10px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200 leading-tight">
             💡 <b>Trên iOS / Safari:</b> Nhấn nút <b>Chia sẻ</b> (<i data-lucide="share" class="w-3 h-3 inline align-[-2px]"></i>) rồi chọn <b>"Thêm vào MH chính"</b>.
           </div>
@@ -1746,6 +1772,113 @@
         <li>Giữ máy song song, tránh đổ bóng và lóa sáng; ảnh chụp sẽ tự cắt theo khung.</li>
         <li>Ảnh sau khi chụp nằm trong ô nhập Moris — bấm <b>Gửi</b> để tra cứu.</li>
       </ul>
+    </div>
+  </div>
+
+  <!-- ============== MODAL HƯỚNG DẪN CÀI ĐẶT PWA ============== -->
+  <div v-if="pwa.guideOpen" class="fixed inset-0 z-[95] bg-slate-900/70 backdrop-blur-md p-3 sm:p-6 flex items-center justify-center" @click.self="pwa.guideOpen = false" role="dialog" aria-modal="true" aria-label="Hướng dẫn cài đặt ứng dụng">
+    <div class="modal-shell glass w-full max-w-md rounded-[2rem] bg-white overflow-hidden flex flex-col shadow-2xl border border-rose-200 my-auto">
+      <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-rose-900 to-rose-800 text-white">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <i data-lucide="smartphone" class="w-5 h-5 text-amber-200"></i>
+          </div>
+          <div>
+            <h3 class="font-black text-sm sm:text-base">Cài Đặt Catalogue AI</h3>
+            <p class="text-[11px] text-white/80 font-medium">Sử dụng mượt mà như ứng dụng gốc</p>
+          </div>
+        </div>
+        <button @click="pwa.guideOpen = false" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center" aria-label="Đóng"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="p-5 space-y-4 text-slate-800 overflow-y-auto max-h-[75vh]">
+        <!-- Trường hợp 1: Đã cài đặt / Đang chạy standalone -->
+        <div v-if="pwa.isStandalone" class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-900 font-bold">
+          <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-700 shrink-0 mt-0.5"></i>
+          <span>Ứng dụng Catalogue AI đã được cài đặt và đang chạy ở chế độ App toàn màn hình.</span>
+        </div>
+
+        <!-- Trường hợp 2: iOS / Safari -->
+        <div v-else-if="pwa.isIOS" class="space-y-3">
+          <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-900 font-bold">
+            <i data-lucide="info" class="w-4 h-4 text-amber-700 shrink-0 mt-0.5"></i>
+            <span>Trên iPhone / iPad (Safari), Apple yêu cầu thêm vào màn hình chính qua nút Chia sẻ.</span>
+          </div>
+          <ol class="space-y-2.5 text-xs font-semibold text-slate-700">
+            <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span class="w-5 h-5 rounded-md bg-rose-800 text-white font-black text-[11px] flex items-center justify-center shrink-0">1</span>
+              <div>Nhấn biểu tượng <b>Chia sẻ</b> (<i data-lucide="share" class="w-3.5 h-3.5 inline align-[-2px] text-rose-800"></i>) ở thanh công cụ Safari.</div>
+            </li>
+            <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span class="w-5 h-5 rounded-md bg-rose-800 text-white font-black text-[11px] flex items-center justify-center shrink-0">2</span>
+              <div>Cuộn xuống và chọn dòng <b>"Thêm vào Màn hình chính" (Add to Home Screen)</b>.</div>
+            </li>
+            <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span class="w-5 h-5 rounded-md bg-rose-800 text-white font-black text-[11px] flex items-center justify-center shrink-0">3</span>
+              <div>Nhấn nút <b>"Thêm" (Add)</b> ở góc trên bên phải để hoàn tất.</div>
+            </li>
+          </ol>
+        </div>
+
+        <!-- Trường hợp 3: In-app browser (Zalo / FB / Messenger / Teams) -->
+        <div v-else-if="pwa.isInApp" class="space-y-3">
+          <div class="p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-xs text-red-900 font-bold">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-red-700 shrink-0 mt-0.5"></i>
+            <span>Bạn đang mở trong trình duyệt nội bộ của ứng dụng (Zalo/Facebook/Teams).</span>
+          </div>
+          <ol class="space-y-2.5 text-xs font-semibold text-slate-700">
+            <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span class="w-5 h-5 rounded-md bg-rose-800 text-white font-black text-[11px] flex items-center justify-center shrink-0">1</span>
+              <div>Nhấn vào biểu tượng <b>3 chấm (⋮)</b> ở góc trên trình duyệt.</div>
+            </li>
+            <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span class="w-5 h-5 rounded-md bg-rose-800 text-white font-black text-[11px] flex items-center justify-center shrink-0">2</span>
+              <div>Chọn <b>"Mở bằng trình duyệt" (Open in Chrome/Safari)</b>.</div>
+            </li>
+            <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span class="w-5 h-5 rounded-md bg-rose-800 text-white font-black text-[11px] flex items-center justify-center shrink-0">3</span>
+              <div>Sau khi mở trong Chrome/Safari, bạn bấm <b>Cài đặt ứng dụng</b>.</div>
+            </li>
+          </ol>
+        </div>
+
+        <!-- Trường hợp 4: Android / Chrome / Edge -->
+        <div v-else class="space-y-3">
+          <div class="p-3 rounded-xl bg-sky-50 border border-sky-200 flex items-start gap-2.5 text-xs text-sky-900 font-bold">
+            <i data-lucide="info" class="w-4 h-4 text-sky-700 shrink-0 mt-0.5"></i>
+            <span>Nếu nút tải tự động không phản hồi, cài đặt trực tiếp qua menu trình duyệt:</span>
+          </div>
+          <ol class="space-y-2.5 text-xs font-semibold text-slate-700">
+            <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span class="w-5 h-5 rounded-md bg-rose-800 text-white font-black text-[11px] flex items-center justify-center shrink-0">1</span>
+              <div>Nhấn vào menu <b>3 chấm (⋮)</b> ở góc trên bên phải trình duyệt Chrome.</div>
+            </li>
+            <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span class="w-5 h-5 rounded-md bg-rose-800 text-white font-black text-[11px] flex items-center justify-center shrink-0">2</span>
+              <div>Chọn dòng <b>"Cài đặt ứng dụng"</b> (hoặc <b>"Thêm vào Màn hình chính"</b>).</div>
+            </li>
+            <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span class="w-5 h-5 rounded-md bg-rose-800 text-white font-black text-[11px] flex items-center justify-center shrink-0">3</span>
+              <div>Xác nhận <b>"Cài đặt"</b>. Icon Catalogue AI sẽ xuất hiện trên màn hình điện thoại.</div>
+            </li>
+          </ol>
+        </div>
+
+        <!-- Nút thao tác nhanh trong modal -->
+        <div class="pt-3 border-t border-slate-200/80 space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <button @click="pwaInstall()" class="btn py-2.5 bg-rose-800 hover:bg-rose-900 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm">
+              <i data-lucide="download-cloud" class="w-4 h-4"></i>Cài đặt ngay
+            </button>
+            <button @click="pwaClearCache()" :disabled="pwa.clearing" class="btn py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm">
+              <i data-lucide="refresh-cw" :class="{'animate-spin': pwa.clearing}" class="w-4 h-4"></i>{{ pwa.clearing ? 'Đang xóa...' : 'Xóa sạch cache' }}
+            </button>
+          </div>
+          <button @click="pwa.guideOpen = false" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs rounded-xl text-center">
+            Đã hiểu & Đóng
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -146,7 +146,7 @@ const DENY = [
   ".env", ".dev.vars", ".git", ".wrangler", "node_modules",
   "functions", "sql", "kim-harness", "supabase",
   "package.json", "package-lock.json", "tsconfig.json",
-  "pipeline_implementation_plan.md", "report.md", "hdsd.md",
+  "pipeline_implementation_plan.md", "plan.md", "report.md", "hdsd.md",
 ];
 
 async function exists(p) {

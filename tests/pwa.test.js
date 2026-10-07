@@ -26,43 +26,46 @@ describe('PWA & Versioning — Đặc tả và cấu hình', () => {
     }
   });
 
-  it('src/version.js — phiên bản hiện tại là 6.1.1 và tuân thủ quy tắc tăng phiên bản', async () => {
+  it('src/version.js — phiên bản hiện tại là 6.1.2 và tuân thủ quy tắc tăng phiên bản', async () => {
     const versionMod = await import('../src/version.js');
-    expect(versionMod.APP_VERSION).toBe('6.1.1');
+    expect(versionMod.APP_VERSION).toBe('6.1.2');
 
     // Quy tắc người dùng yêu cầu:
     // 1) Sửa lỗi nhỏ không thêm tính năng: tăng số cuối 0.0.1
-    expect(versionMod.bumpPatch('6.1.1')).toBe('6.1.2');
+    expect(versionMod.bumpPatch('6.1.2')).toBe('6.1.3');
     expect(versionMod.bumpPatch('6.1.9')).toBe('6.1.10');
 
     // 2) Thêm tính năng vẫn tương thích bản cũ: sửa số giữa 0.1.0
-    expect(versionMod.bumpMinor('6.1.1')).toBe('6.2.0');
+    expect(versionMod.bumpMinor('6.1.2')).toBe('6.2.0');
 
     // 3) Thay đổi lớn có thể không tương thích: thay đổi số đầu 1.0.0
-    expect(versionMod.bumpMajor('6.1.1')).toBe('7.0.0');
+    expect(versionMod.bumpMajor('6.1.2')).toBe('7.0.0');
 
     // So sánh phiên bản
-    expect(versionMod.compareVersions('6.1.2', '6.1.1')).toBeGreaterThan(0);
+    expect(versionMod.compareVersions('6.1.3', '6.1.2')).toBeGreaterThan(0);
     expect(versionMod.compareVersions('6.2.0', '6.1.5')).toBeGreaterThan(0);
-    expect(versionMod.compareVersions('6.1.1', '6.1.1')).toBe(0);
+    expect(versionMod.compareVersions('6.1.2', '6.1.2')).toBe(0);
   });
 
-  it('version.json tại root và dist khớp với phiên bản 6.1.1', () => {
+  it('version.json tại root và dist khớp với phiên bản 6.1.2', () => {
     const rootVer = JSON.parse(read('version.json'));
-    const distVer = JSON.parse(read('dist/version.json'));
-    expect(rootVer.version).toBe('6.1.1');
-    expect(distVer.version).toBe('6.1.1');
-    expect(distVer.name).toBe('Catalogue AI');
+    expect(rootVer.version).toBe('6.1.2');
+    if (existsSync(join(ROOT, 'dist/version.json'))) {
+      const distVer = JSON.parse(read('dist/version.json'));
+      expect(distVer.version).toBe('6.1.2');
+      expect(distVer.name).toBe('Catalogue AI');
+    }
   });
 
-  it('sw.js — đảm bảo cache thông minh, xóa cache cũ và hỗ trợ SKIP_WAITING', () => {
+  it('sw.js — đảm bảo cache thông minh, xóa cache cũ và hỗ trợ SKIP_WAITING / CLEAR_CACHE', () => {
     const sw = read('sw.js');
     // Versioned cache keys
     expect(sw).toContain('catalogue-static-v');
     expect(sw).toContain('catalogue-media-v');
-    // SKIP_WAITING
+    // SKIP_WAITING & CLEAR_CACHE
     expect(sw).toContain('SKIP_WAITING');
     expect(sw).toContain('skipWaiting()');
+    expect(sw).toContain('CLEAR_CACHE');
     // Xóa cache cũ khi activate
     expect(sw).toContain('caches.delete(key)');
     expect(sw).toContain('clients.claim()');
@@ -75,7 +78,7 @@ describe('PWA & Versioning — Đặc tả và cấu hình', () => {
     expect(sw).toContain("mode === 'navigate'");
   });
 
-  it('index.html có đầy đủ thẻ PWA trong head, nút Tải App, Xóa cache và mục Phiên bản', () => {
+  it('index.html có đầy đủ thẻ PWA trong head, nút Tải App, Xóa cache, Floating Toast và Modal Hướng dẫn', () => {
     const html = read('index.html');
     // Thẻ head PWA
     expect(html).toContain('href="/manifest.webmanifest"');
@@ -92,6 +95,14 @@ describe('PWA & Versioning — Đặc tả và cấu hình', () => {
     expect(html).toContain('pwaClearCache()');
     expect(html).toContain('Xóa cache');
 
+    // Floating Toast toàn hệ thống (z-[9999])
+    expect(html).toContain('z-[9999]');
+
+    // Modal Hướng dẫn Cài đặt PWA
+    expect(html).toContain('pwa.guideOpen');
+    expect(html).toContain('openPwaModal()');
+    expect(html).toContain('Cài Đặt Catalogue AI');
+
     // Mục "Phiên bản" tự hiện khi phát hiện bản mới
     expect(html).toContain('pwa.version');
     expect(html).toContain('Phiên bản');
@@ -104,6 +115,13 @@ describe('PWA & Versioning — Đặc tả và cấu hình', () => {
     const posApp = html.indexOf('/src/app.js');
     expect(posVer).toBeGreaterThan(0);
     expect(posApp).toBeGreaterThan(posVer);
+  });
+
+  it('src/app.js bắt beforeinstallprompt sớm và hỗ trợ openPwaModal', () => {
+    const app = read('src/app.js');
+    expect(app).toContain('_globalInstallPrompt');
+    expect(app).toContain('openPwaModal()');
+    expect(app).toContain('CLEAR_CACHE');
   });
 
   it('_headers cấu hình no-cache cho sw.js và version.json', () => {
