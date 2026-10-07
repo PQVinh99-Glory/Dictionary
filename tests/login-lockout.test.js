@@ -272,4 +272,27 @@ describe('POST /api/auth/login — chống dò mật khẩu', () => {
     await postLogin({ username: '  Vinh@Example.com ', password: 'sai' });
     expect(state.sec?.failed_count).toBe(1);
   });
+
+  it('admin hệ thống (pquangvinh1999@gmail.com): sai >= 7 lần KHÔNG bị khóa vĩnh viễn (chống DoS)', async () => {
+    const sysAdminProfile = {
+      id: 'sys-admin-1',
+      email: 'pquangvinh1999@gmail.com',
+      role_name: 'admin',
+      is_active: true
+    };
+    const state = mockBackend({ profile: sysAdminProfile, grantOk: false });
+    state.sec = {
+      user_id: sysAdminProfile.id,
+      failed_count: 6,
+      locked_until: new Date(Date.now() + 30 * 60_000).toISOString(),
+      permanent_lock: false,
+      must_reset: false
+    };
+
+    const res = await postLogin({ email: sysAdminProfile.email, password: 'sai' });
+    expect(res.res.status).toBe(423);
+    expect(res.data.code).toBe('LOCKED_TEMP');
+    expect(res.data.error).toContain('admin hệ thống');
+    expect(state.sec.permanent_lock).toBe(false);
+  });
 });

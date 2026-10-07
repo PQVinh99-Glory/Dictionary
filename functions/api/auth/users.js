@@ -15,7 +15,7 @@ import { json, readJson, errorResponse } from "../../_lib/shared/http.js";
 import { rpc } from "../../_lib/moris/v5/connectors/supabase.js";
 import {
   bearer, requireAdmin, rest, adminSetPassword, tempPassword, configMissing,
-  serviceKey, baseUrl
+  serviceKey, baseUrl, isSystemAdminEmail
 } from "../../_lib/auth.js";
 
 const ROLES = new Set(["viewer", "converter", "admin"]);
@@ -26,9 +26,7 @@ const SYSTEM_ADMIN_EMAIL = "pquangvinh1999@gmail.com";
 const SYNTHETIC_EMAIL_DOMAIN = "users.catalogue.vn";
 const USERNAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{2,31}$/;
 
-function isSystemAdmin(email) {
-  return String(email || "").trim().toLowerCase() === SYSTEM_ADMIN_EMAIL;
-}
+const isSystemAdmin = isSystemAdminEmail;
 
 function systemAdminBlocked() {
   const e = new Error(

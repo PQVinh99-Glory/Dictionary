@@ -12,7 +12,7 @@ const MAX_VECTORS_PER_REQUEST = 20;
 function requireEditor(me) {
   const role = String(me?.role_name || "").toLowerCase();
 
-  if (!["admin","editor"].includes(role)) {
+  if (!["admin", "converter", "editor"].includes(role)) {
     const e = new Error("Tài khoản không có quyền ghi vector.");
     e.status = 403;
     throw e;

@@ -18,6 +18,30 @@ import { parseTextConstraints, buildSearchAnchors } from "../../_lib/moris/v5/re
 import { rankMetadata } from "../../_lib/moris/v5/retrieval/metadataFilter.js";
 import { json, readJson } from "../../_lib/shared/http.js";
 
+// Rate limiting bảo vệ tài nguyên DB (tối đa 30 request / phút / client)
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 30;
+const chatRateLimitMap = new Map();
+
+export function checkChatRateLimit(key) {
+  const now = Date.now();
+  const entry = chatRateLimitMap.get(key) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + RATE_LIMIT_WINDOW_MS;
+  }
+  entry.count++;
+  chatRateLimitMap.set(key, entry);
+
+  if (chatRateLimitMap.size > 500) {
+    for (const [k, v] of chatRateLimitMap.entries()) {
+      if (now > v.resetAt) chatRateLimitMap.delete(k);
+    }
+  }
+
+  return entry.count <= RATE_LIMIT_MAX_REQUESTS;
+}
+
 /**
  * Tách từ khóa + tìm kiếm đa anchor.
  * Trả về pool candidates đã dedupe.
@@ -51,10 +75,10 @@ async function retrieveTextPool(env, token, message) {
     if (dedupeRows(collected).length >= 60) break;
   }
 
-  // 3. Nếu quá ít kết quả → scan toàn bộ catalogue để không bỏ sót
+  // 3. Nếu quá ít kết quả → scan giới hạn 150 dòng để bảo vệ CPU/connection pool DB
   let pool = dedupeRows(collected);
   if (pool.length < 5) {
-    const scanned = await scanCatalogue(env, token, { maxRows: 500 }).catch(() => []);
+    const scanned = await scanCatalogue(env, token, { maxRows: 150 }).catch(() => []);
     pool = dedupeRows([...pool, ...scanned]);
   }
 
@@ -131,6 +155,15 @@ export async function onRequestPost({ request, env }) {
     await validateSession(env, token);
   } catch (e) {
     return json({ ok: false, user_message: e?.message || "Session không hợp lệ." }, 401);
+  }
+
+  // Rate limiting per token / client IP để chống DoS cạn kiệt tài nguyên
+  const clientKey = token.slice(-16) || request.headers.get("cf-connecting-ip") || "client";
+  if (!checkChatRateLimit(clientKey)) {
+    return json({
+      ok: false,
+      user_message: "Bạn đang gửi câu hỏi quá nhanh. Vui lòng đợi một lát rồi thử lại nhé."
+    }, 429);
   }
 
   const message = String(body?.message || "").trim().slice(0, 4000);

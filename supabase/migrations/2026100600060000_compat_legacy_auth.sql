@@ -41,16 +41,18 @@ create table if not exists public.app_users (
 create index if not exists app_users_username_lower_idx
   on public.app_users (lower(username));
 
+-- Lưu ý: Các hash mật khẩu cũ đã được xóa/che để bảo mật thông tin (tránh dictionary attack).
+-- Xác thực người dùng hiện tại chạy 100% qua Supabase Auth (GoTrue).
 insert into public.app_users (id, username, password_hash, display_name, role_name, is_active, must_change_password, failed_login_count, locked_until, last_login_at, created_at, updated_at) values
-('2ca59d1e-7b55-4e84-8f10-061e04bed196', 'Khoa', '$2a$12$EGRkXdbac5I6jWKwL48pfu51Y46QwPN0lpT5X.Ggt9K7gPl0e6WYO', 'Khoa', 'viewer', true, false, 0, null, '2026-07-01T12:26:07.981Z', '2026-06-30T02:02:29.897Z', '2026-07-01T12:26:07.981Z'),
-('74c8f168-b52a-48dd-a67d-532a1c4bda70', 'Nam', '$2a$12$Hoi2eStcQvCX5ub2gB0s8e0Q.iKzAk9OVlD5vHQiv4pE4SFRdujbK', 'Nam', 'viewer', true, false, 0, null, null, '2026-06-30T02:02:29.897Z', '2026-06-30T05:08:41.504Z'),
-('b6aa9967-f5b6-4389-b7ec-4d120d0bfd5e', 'Tra', '$2a$12$zCC.7WhSL6uTwd4ZL3utVeGEPEL2K5b1NMZagmoDdrBWX2iPM0w9a', 'Tra', 'viewer', true, false, 0, null, '2026-07-01T14:18:27.667Z', '2026-06-30T02:02:29.897Z', '2026-07-01T14:18:27.667Z'),
-('000fe86e-c685-4b28-b91f-1489043c0f1e', 'Thanh', '$2a$12$Q/19.Ovpn7bbwzLpxN6w7OnuUbUrEI3AUVuco7CchA2bzBfXGPX6i', 'Thanh', 'admin', true, false, 0, null, '2026-07-02T00:37:16.704Z', '2026-06-30T02:02:29.897Z', '2026-07-02T00:37:16.704Z'),
-('db6df15c-44fc-4ff8-96d8-30bce996b15c', 'Trinh', '$2a$12$U.9Om1E2PK/dBdKT264EYuZNYQcARCSFOt2aN8M3MdLx/lxcwVWTW', 'Trinh', 'admin', true, false, 0, null, '2026-09-25T01:48:24.353Z', '2026-06-30T02:02:29.897Z', '2026-09-25T01:48:24.353Z'),
-('49868fc6-db0a-4c49-9bea-86c6b427a6bb', 'Luu', '$2a$12$Q0BzPorLm7D9r1XNZVmuOu9bSjKk3zwv/Uf8PUTeE5mSTxvnJriu.', 'Luu', 'admin', true, false, 0, null, null, '2026-06-30T02:02:29.897Z', '2026-06-30T05:08:41.504Z'),
-('d39034ef-b159-4459-9b57-082d1a44e5ff', 'Vinh', '$2a$12$qj57hDRuPFphVyCSz48BgeveDmL0qASH9E6bB.lS9I3wBTDr2CQsa', 'Vinh', 'admin', true, false, 0, null, '2026-10-06T01:10:40.760Z', '2026-06-30T02:02:29.897Z', '2026-10-06T03:26:04.614Z'),
-('815903fb-b3db-4147-92aa-540940a196be', 'Chieu', '$2a$12$gXPvVyvlPvPKBS6ljlYGs.dzVNtelUaNioe9Zw9MbxiHCzhRzMRKS', 'Chieu', 'admin', true, false, 0, null, '2026-07-01T08:02:35.712Z', '2026-06-30T02:02:29.897Z', '2026-07-01T08:02:35.712Z'),
-('d64ed860-7cbf-4e7b-a0f1-eb40756fa64d', 'Na', '$2a$12$AAluHbrbR8c/PLSL0gv43OfqzGFcIQFIY4zIt5tuidUsnp.FateYC', 'Na', 'viewer', true, false, 0, null, '2026-08-18T04:16:22.978Z', '2026-06-30T02:02:29.897Z', '2026-08-18T04:16:22.978Z')
+('2ca59d1e-7b55-4e84-8f10-061e04bed196', 'Khoa', '$2a$12$REDACTED_LEGACY_HASH_MIGRATION_PLACEHOLDER_01', 'Khoa', 'viewer', true, false, 0, null, '2026-07-01T12:26:07.981Z', '2026-06-30T02:02:29.897Z', '2026-07-01T12:26:07.981Z'),
+('74c8f168-b52a-48dd-a67d-532a1c4bda70', 'Nam', '$2a$12$REDACTED_LEGACY_HASH_MIGRATION_PLACEHOLDER_02', 'Nam', 'viewer', true, false, 0, null, null, '2026-06-30T02:02:29.897Z', '2026-06-30T05:08:41.504Z'),
+('b6aa9967-f5b6-4389-b7ec-4d120d0bfd5e', 'Tra', '$2a$12$REDACTED_LEGACY_HASH_MIGRATION_PLACEHOLDER_03', 'Tra', 'viewer', true, false, 0, null, '2026-07-01T14:18:27.667Z', '2026-06-30T02:02:29.897Z', '2026-07-01T14:18:27.667Z'),
+('000fe86e-c685-4b28-b91f-1489043c0f1e', 'Thanh', '$2a$12$REDACTED_LEGACY_HASH_MIGRATION_PLACEHOLDER_04', 'Thanh', 'admin', true, false, 0, null, '2026-07-02T00:37:16.704Z', '2026-06-30T02:02:29.897Z', '2026-07-02T00:37:16.704Z'),
+('db6df15c-44fc-4ff8-96d8-30bce996b15c', 'Trinh', '$2a$12$REDACTED_LEGACY_HASH_MIGRATION_PLACEHOLDER_05', 'Trinh', 'admin', true, false, 0, null, '2026-09-25T01:48:24.353Z', '2026-06-30T02:02:29.897Z', '2026-09-25T01:48:24.353Z'),
+('49868fc6-db0a-4c49-9bea-86c6b427a6bb', 'Luu', '$2a$12$REDACTED_LEGACY_HASH_MIGRATION_PLACEHOLDER_06', 'Luu', 'admin', true, false, 0, null, null, '2026-06-30T02:02:29.897Z', '2026-06-30T05:08:41.504Z'),
+('d39034ef-b159-4459-9b57-082d1a44e5ff', 'Vinh', '$2a$12$REDACTED_LEGACY_HASH_MIGRATION_PLACEHOLDER_07', 'Vinh', 'admin', true, false, 0, null, '2026-10-06T01:10:40.760Z', '2026-06-30T02:02:29.897Z', '2026-10-06T03:26:04.614Z'),
+('815903fb-b3db-4147-92aa-540940a196be', 'Chieu', '$2a$12$REDACTED_LEGACY_HASH_MIGRATION_PLACEHOLDER_08', 'Chieu', 'admin', true, false, 0, null, '2026-07-01T08:02:35.712Z', '2026-06-30T02:02:29.897Z', '2026-07-01T08:02:35.712Z'),
+('d64ed860-7cbf-4e7b-a0f1-eb40756fa64d', 'Na', '$2a$12$REDACTED_LEGACY_HASH_MIGRATION_PLACEHOLDER_09', 'Na', 'viewer', true, false, 0, null, '2026-08-18T04:16:22.978Z', '2026-06-30T02:02:29.897Z', '2026-08-18T04:16:22.978Z')
 on conflict (id) do nothing;
 
 -- -----------------------------------------------------------------------------

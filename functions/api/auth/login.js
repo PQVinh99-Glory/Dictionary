@@ -13,7 +13,7 @@
 import { json, readJson, errorResponse } from "../../_lib/shared/http.js";
 import {
   configMissing, sessionExpiry, passwordGrant, resolveLoginProfile,
-  getSecurity, putSecurity, FAIL_WARN_AT, FAIL_PERMANENT_AT
+  getSecurity, putSecurity, FAIL_WARN_AT, FAIL_PERMANENT_AT, isSystemAdminEmail
 } from "../../_lib/auth.js";
 
 const LOCK_MS = 3600_000;
@@ -33,11 +33,13 @@ export async function onRequestPost({ request, env }) {
     }
 
     const profile = await resolveLoginProfile(env, loginInput);
+    const isSysAdmin = isSystemAdminEmail(profile?.email);
     let sec = profile ? await getSecurity(env, profile.id) : null;
     const now = Date.now();
 
     // ---- Chặn trước khi thử mật khẩu (không lộ mật khẩu cho người dò) ----
-    if (sec?.permanent_lock) {
+    // Admin hệ thống không bị permanent_lock để tránh DoS khóa vĩnh viễn từ bên ngoài.
+    if (sec?.permanent_lock && !isSysAdmin) {
       return json({
         ok: false,
         code: "LOCKED_PERMANENT",
@@ -47,9 +49,9 @@ export async function onRequestPost({ request, env }) {
 
     if (sec?.locked_until && new Date(sec.locked_until).getTime() > now) {
       // Vẫn khóa: mỗi lần thử nữa đều ĐƯỢC ĐẾM (không gọi GoTrue) để chạm
-      // ngưỡng 7 lần -> khóa vĩnh viễn. Hạn khóa giữ nguyên theo đúng "1 giờ".
+      // ngưỡng 7 lần -> khóa vĩnh viễn (trừ admin hệ thống chỉ khóa tạm).
       const count = Number(sec.failed_count || 0) + 1;
-      if (count >= FAIL_PERMANENT_AT) {
+      if (count >= FAIL_PERMANENT_AT && !isSysAdmin) {
         await putSecurity(env, profile.id, {
           failed_count: count,
           permanent_lock: true,
@@ -69,13 +71,15 @@ export async function onRequestPost({ request, env }) {
         code: "LOCKED_TEMP",
         locked_until: sec.locked_until,
         failed_count: count,
-        error: `Tài khoản đang bị khóa do nhập sai mật khẩu quá ${FAIL_WARN_AT} lần. Thử lại sau ${mins} phút, hoặc liên hệ admin để mở khóa.`
+        error: isSysAdmin
+          ? `Tài khoản admin hệ thống đang bị tạm khóa bảo vệ. Thử lại sau ${mins} phút.`
+          : `Tài khoản đang bị khóa do nhập sai mật khẩu quá ${FAIL_WARN_AT} lần. Thử lại sau ${mins} phút, hoặc liên hệ admin để mở khóa.`
       }, 423);
     }
 
     if (sec?.locked_until) {
-      // Hết hạn khóa 1 giờ -> reset bộ đếm (trừ khi đã đạt ngưỡng vĩnh viễn)
-      if (Number(sec.failed_count) >= FAIL_PERMANENT_AT) {
+      // Hết hạn khóa 1 giờ -> reset bộ đếm (trừ khi đã đạt ngưỡng vĩnh viễn với user thường)
+      if (Number(sec.failed_count) >= FAIL_PERMANENT_AT && !isSysAdmin) {
         sec = await putSecurity(env, profile.id, { permanent_lock: true, locked_until: null });
         return json({
           ok: false,
@@ -83,7 +87,7 @@ export async function onRequestPost({ request, env }) {
           error: "Tài khoản bị khóa vĩnh viễn do nhập sai mật khẩu nhiều lần. Liên hệ admin để cấp lại mật khẩu."
         }, 423);
       }
-      sec = await putSecurity(env, profile.id, { failed_count: 0, locked_until: null });
+      sec = await putSecurity(env, profile.id, { failed_count: 0, locked_until: null, permanent_lock: false });
     }
 
     // ---- Xác thực mật khẩu qua Supabase Auth ----
@@ -102,6 +106,19 @@ export async function onRequestPost({ request, env }) {
       const patch = { failed_count: count, last_failure_at: new Date().toISOString() };
 
       if (count >= FAIL_PERMANENT_AT) {
+        if (isSysAdmin) {
+          // Admin hệ thống không bị khóa vĩnh viễn để tránh DoS
+          patch.permanent_lock = false;
+          patch.locked_until = new Date(now + LOCK_MS).toISOString();
+          await putSecurity(env, profile.id, patch);
+          return json({
+            ok: false,
+            code: "LOCKED_TEMP",
+            locked_until: patch.locked_until,
+            error: `Tài khoản admin hệ thống bị tạm khóa 1 giờ do nhập sai mật khẩu ${FAIL_PERMANENT_AT} lần. Thử lại sau.`
+          }, 423);
+        }
+
         patch.permanent_lock = true;
         patch.locked_until = null;
         await putSecurity(env, profile.id, patch);

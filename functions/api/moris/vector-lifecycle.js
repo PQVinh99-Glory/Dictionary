@@ -4,8 +4,11 @@ import { json, errorResponse } from "../../_lib/shared/http.js";
 
 export async function onRequestGet({request,env}) {
   try {
-    const url = new URL(request.url);
-    const token = url.searchParams.get("session_token") || "";
+    const token = String(
+      request.headers.get("x-session-token") ||
+      (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "") ||
+      ""
+    ).trim();
     const me = await validateSession(env, token);
     const config = readMorisConfig(env);
 

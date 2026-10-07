@@ -92,7 +92,7 @@ async function validateAppSession(env, token) {
     return { ok:false, status:401, message:row?.message || "Session không hợp lệ hoặc đã hết hạn." };
   }
 
-  if (!["admin", "editor"].includes(row.role_name)) {
+  if (!["admin", "converter", "editor"].includes(String(row.role_name || "").toLowerCase())) {
     return { ok:false, status:403, message:"Tài khoản không có quyền upload." };
   }
 

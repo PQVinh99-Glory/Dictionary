@@ -14,6 +14,11 @@ const DAY_MS = 86400_000;          // chu kỳ 1 ngày
 const LOCK_MS = 3600_000;          // khóa 1 giờ sau lần sai thứ 5
 export const FAIL_WARN_AT = 5;     // 1..4 lần sai -> "còn X lần thử"
 export const FAIL_PERMANENT_AT = 7;// lần thứ 7 -> khóa vĩnh viễn
+export const SYSTEM_ADMIN_EMAIL = "pquangvinh1999@gmail.com";
+
+export function isSystemAdminEmail(email) {
+  return String(email || "").trim().toLowerCase() === SYSTEM_ADMIN_EMAIL.toLowerCase();
+}
 
 export function baseUrl(env) {
   return String(env.SUPABASE_URL || "").replace(/\/+$/, "");

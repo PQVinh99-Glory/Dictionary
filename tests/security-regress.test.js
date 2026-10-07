@@ -164,4 +164,64 @@ describe('/api/upload — app_me phải nhận JWT người dùng (gốc lỗi S
     expect(res.status).toBe(401);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('role converter được phép upload (không bị 403)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (String(url).includes('/rest/v1/rpc/app_me')) {
+        return json([{ ok: true, role_name: 'converter' }]);
+      }
+      throw new Error('fetch không mong đợi: ' + url);
+    }));
+
+    const { onRequestPost } = await import('../functions/api/upload.js');
+    const res = await onRequestPost({
+      request: new Request('https://example.com/api/upload', {
+        method: 'POST',
+        headers: { 'x-session-token': 'hdr.payload.sig' }
+      }),
+      env: { ...ENV, CATALOGUE_BUCKET: {} }
+    });
+    // Vượt qua bước auth (status 400 vì chưa gửi FormData, không phải 403)
+    expect(res.status).toBe(400);
+  });
+
+  it('role viewer bị chặn upload với 403', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (String(url).includes('/rest/v1/rpc/app_me')) {
+        return json([{ ok: true, role_name: 'viewer' }]);
+      }
+      throw new Error('fetch không mong đợi: ' + url);
+    }));
+
+    const { onRequestPost } = await import('../functions/api/upload.js');
+    const res = await onRequestPost({
+      request: new Request('https://example.com/api/upload', {
+        method: 'POST',
+        headers: { 'x-session-token': 'hdr.payload.sig' }
+      }),
+      env: { ...ENV, CATALOGUE_BUCKET: {} }
+    });
+    expect(res.status).toBe(403);
+    expect((await res.json()).message).toContain('không có quyền upload');
+  });
+});
+
+describe('/api/moris/health-admin & chat — tăng cường bảo mật', () => {
+  it('health-admin bỏ qua token ở URL query parameter -> 401 khi không có header', async () => {
+    const { onRequestGet } = await import('../functions/api/moris/health-admin.js');
+    const res = await onRequestGet({
+      request: new Request('https://example.com/api/moris/health-admin?session_token=hdr.payload.sig'),
+      env: ENV
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('chat rate limit: vượt ngưỡng 30 requests trả về 429', async () => {
+    const { checkChatRateLimit } = await import('../functions/api/moris/chat.js');
+    const testKey = 'rate-limit-test-key';
+    for (let i = 0; i < 30; i++) {
+      expect(checkChatRateLimit(testKey)).toBe(true);
+    }
+    expect(checkChatRateLimit(testKey)).toBe(false);
+  });
 });

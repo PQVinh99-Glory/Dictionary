@@ -22,7 +22,6 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev https://*.r2.dev; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://*.supabase.co https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co https://cdn.jsdelivr.net https://unpkg.com wss://*.supabase.co blob: data:; manifest-src 'self'; upgrade-insecure-requests
 
 # Trang chính — không cho trang khác nhúng (cũng không cache)
 /
