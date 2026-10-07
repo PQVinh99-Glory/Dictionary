@@ -4,6 +4,10 @@
 // Giá trị lấy từ /config.js (sinh lúc build từ .env/.dev.vars).
 // Nếu chạy index.html trực tiếp bằng file:// thì PC = {} => dùng fallback.
 const PC = window.MORIS_PUBLIC_CONFIG || {};
+
+// Email tài khoản admin hệ thống: không cho đổi role / bật-tắt / cấp lại mật khẩu
+// trong "Quản lý người dùng". Đổi mật khẩu làm qua modal ở menu trên header.
+const SYSTEM_ADMIN_EMAIL = 'pquangvinh1999@gmail.com';
 const CONFIG = {
   // ---- Đọc từ config.js (không hardcode) ----
   SUPABASE_URL: PC.PUBLIC_SUPABASE_URL || 'https://vhsikdgkzecdfopkpzum.supabase.co',
@@ -67,7 +71,9 @@ createApp({
       session:{ token:'', user:null },
       // Hạn phiên (ISO) — chu kỳ 24h bắt đầu 07:00 giờ VN.
       sessionExp: localStorage.getItem('kim_session_expires_at') || '',
-      users:{ open:false, loading:false, saving:false, list:[], tempPw:'', actionId:null },
+      users:{ open:false, loading:false, saving:false, list:[], tempPw:'', actionId:null,
+              creating:false, form:{ username:'', password:'', role:'viewer' } },
+      pwChange:{ open:false, saving:false, new:'', confirm:'', error:'' },
       loginForm:{ username:'', password:'' },
       filters:{ search:'', usage:'all', viewMode:'all' },
       parts:[], page:0, hasMore:false,
@@ -483,6 +489,36 @@ createApp({
     },
 
     // ================================================================
+    // ĐỔI MẬT KHẨU — modal mở từ menu trên header (không cần MK cũ)
+    // ================================================================
+    openPwChange() {
+      if (!this.session.token) return this.toast('error', 'Bạn chưa đăng nhập.');
+      this.pwChange = { open:true, saving:false, new:'', confirm:'', error:'' };
+      this.$nextTick(() => this.renderIcons());
+    },
+    closePwChange() {
+      if (this.pwChange.saving) return;
+      this.pwChange.open = false;
+    },
+    async submitPwChange() {
+      const p = this.pwChange;
+      if (p.saving) return;
+      p.error = '';
+      if (String(p.new || '').length < 6) { p.error = 'Mật khẩu mới tối thiểu 6 ký tự.'; return; }
+      if (p.new !== p.confirm) { p.error = 'Mật khẩu nhập lại không khớp.'; return; }
+
+      p.saving = true;
+      try {
+        const { error } = await this.sb.auth.updateUser({ password: p.new });
+        if (error) throw new Error(error.message || 'Đổi mật khẩu thất bại.');
+        this.pwChange = { open:false, saving:false, new:'', confirm:'', error:'' };
+        this.toast('success', 'Đã đổi mật khẩu — dùng mật khẩu mới ở lần đăng nhập sau.');
+      } catch(e) {
+        p.error = this.readError(e);
+      } finally { p.saving = false; }
+    },
+
+    // ================================================================
     // CÔNG CỤ QUY ĐỔI ĐỊNH LƯỢNG (PCS <-> KG)
     // Port từ weight-calculator.zip (useWeightCalculator.ts + Modal.vue)
     // sang Vue 3 Options API + lucide, không TypeScript.
@@ -650,8 +686,8 @@ createApp({
         const rows = await this.rpcRows('app_search_catalogue', {
           p_session_token:this.session.token,
           p_search:c,
-          p_usage_side:'',
-          p_view_mode:'',
+          p_usage_side:'all',
+          p_view_mode:'all',
           p_limit:CONFIG.PAGE_LIMIT,
           p_offset:0
         });
@@ -1235,8 +1271,8 @@ createApp({
           const existing = await this.rpcRows('app_search_catalogue', {
             p_session_token:this.session.token,
             p_search:code,
-            p_usage_side:'',
-            p_view_mode:'',
+            p_usage_side:'all',
+            p_view_mode:'all',
             p_limit:CONFIG.PAGE_LIMIT,
             p_offset:0
           });
@@ -1342,7 +1378,7 @@ createApp({
       if (f) { try { f.src = f.src; } catch(_) {} }   // dừng JS/animation trong iframe
     },
     openVectorCenterTab() {
-      try { window.open('/tools/moris-vector-center.html', '_blank', 'noopener'); }
+      try { window.open('/tools/moris-vector-center', '_blank', 'noopener'); }
       catch(_) { this.toast('error', 'Không mở được tab mới.'); }
     },
 
@@ -1353,12 +1389,57 @@ createApp({
       if (!this.isAdmin) return this.toast('error', 'Bạn chưa được cấp quyền, liên hệ admin.');
       this.users.open = true;
       this.users.tempPw = '';
+      this.users.creating = false;
+      this.resetUserForm();
       this.loadUsers();
       this.$nextTick(() => this.renderIcons());
     },
     closeUserManager() {
       this.users.open = false;
       this.users.tempPw = '';
+      this.users.creating = false;
+    },
+    /** Tài khoản admin hệ thống: khoá đổi role / bật-tắt / cấp lại MK. */
+    isSystemAdmin(u) {
+      return String(u?.email || '').trim().toLowerCase() === SYSTEM_ADMIN_EMAIL;
+    },
+    resetUserForm() {
+      this.users.form = { username:'', password:'', role:'viewer' };
+    },
+    toggleUserCreate() {
+      this.users.creating = !this.users.creating;
+      if (this.users.creating) this.resetUserForm();
+      this.$nextTick(() => this.renderIcons());
+    },
+    /** Thêm user trực tiếp: tên đăng nhập + mật khẩu + role (không cần email). */
+    async createUser() {
+      const u = this.users;
+      if (u.saving) return;
+      const username = String(u.form.username || '').trim();
+      const password = String(u.form.password || '');
+      if (!username) return this.toast('error', 'Cần nhập tên đăng nhập.');
+      if (!/^[A-Za-z0-9][A-Za-z0-9._-]{2,31}$/.test(username)) {
+        return this.toast('error', 'Tên đăng nhập 3–32 ký tự: chữ, số, dấu . _ - (không chứa @).');
+      }
+      if (password.length < 6) return this.toast('error', 'Mật khẩu tối thiểu 6 ký tự.');
+      if (!confirm(`Xác nhận: tạo user "${username}" với role ${u.form.role}?`)) return;
+
+      u.saving = true;
+      try {
+        const token = await this.freshToken();
+        const res = await fetch(CONFIG.USERS_URL, {
+          method: 'POST',
+          headers: { 'content-type':'application/json', authorization:`Bearer ${token}` },
+          body: JSON.stringify({ action:'create', username, password, role:u.form.role })
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Tạo user thất bại.');
+        this.toast('success', `Đã tạo user "${username}" (role ${data.role_name || u.form.role}).`);
+        this.resetUserForm();
+        this.users.creating = false;
+        await this.loadUsers();
+      } catch(e) { this.toast('error', this.readError(e)); }
+      finally { u.saving = false; }
     },
     async loadUsers() {
       const u = this.users;
@@ -1376,6 +1457,10 @@ createApp({
     async userAction(user, action, role = null) {
       const u = this.users;
       if (u.saving) return;
+      // Admin hệ thống: không đổi role / không bật-tắt / không cấp lại MK ở đây.
+      if (['set_role', 'set_active', 'set_inactive', 'reset_password'].includes(action) && this.isSystemAdmin(user)) {
+        return this.toast('error', 'Tài khoản admin hệ thống — không đổi role, không bật/tắt, không cấp lại mật khẩu ở đây. Đổi mật khẩu qua menu trên header.');
+      }
       const labels = {
         set_role: `đổi role của ${user.email} thành ${role}`,
         unlock: `mở khóa ${user.email}`,

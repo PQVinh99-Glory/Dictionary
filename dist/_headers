@@ -1,34 +1,61 @@
 # Cloudflare Pages _headers
 #
-# LƯU Ý QUAN TRỌNG: CSP chặn origin ngoài. Trước khi deploy production,
-# hãy mở trang bằng trình duyệt thật và kiểm tra Console — nếu model DINOv2
-# không tải được thì bổ sung host tương ứng vào connect-src.
+# ⚠️ CF Pages KHÔNG override header trùng giữa các rule — nó trả CẢ HAI giá trị
+# (vd: X-Frame-Options: DENY + SAMEORIGIN) => CSP frame-ancestors bị AND lại
+# nên trang vẫn bị chặn nhúng. Vì vậy mỗi đường dẫn CHỈ ĐƯỢC XUẤT HIỆN MỘT LẦN
+# trong các rule set X-Frame-Options / Content-Security-Policy.
+#
+#   * `/*`      : chỉ  header an toàn chung (KHÔNG có frame-ancestors/XFO)
+#   * `/`       : trang chính — CẤM bị nhúng (clickjacking)
+#   * /tools/moris-vector-center : CHO PHÉP nhúng same-origin (modal Vector AI)
+#   * /tools/kim-vector-reindex  : giữ nguyên cấm nhúng
 #
 # Nguồn ngoài đã xác minh từ code (không đoán):
 #   script  : cdn.tailwindcss.com, unpkg.com, cdn.jsdelivr.net
-#   style   : fonts.googleapis.com, fonts.gstatic.com, cdnjs.cloudflare.com (font-awesome)
-#   connect : *.supabase.co, huggingface.co (model weights), cdn.jsdelivr.net + unpkg.com
-#             (module @huggingface/transformers + wasm/config), pub-*.r2.dev (ảnh)
+#   style   : fonts.googleapis.com, fonts.gstatic.com, cdnjs.cloudflare.com
+#   connect : *.supabase.co, huggingface.co, cdn.jsdelivr.net + unpkg.com,
+#             pub-*.r2.dev
 #   img     : data:, blob:, pub-*.r2.dev
-#   GHI CHÚ : app KHÔNG dùng script inline nữa (đã tách ra src/app.js,
-#             src/moris-admin.js, tools/*.js) nên KHÔNG cần 'unsafe-inline' cho script-src.
 
 /*
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  X-Frame-Options: DENY
   Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev https://*.r2.dev; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://*.supabase.co https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co https://cdn.jsdelivr.net https://unpkg.com wss://*.supabase.co blob: data:; manifest-src 'self'; upgrade-insecure-requests
+
+# Trang chính — không cho trang khác nhúng (cũng không cache)
+/
+  Cache-Control: no-store
+  X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev https://*.r2.dev; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://*.supabase.co https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co https://cdn.jsdelivr.net https://unpkg.com wss://*.supabase.co blob: data:; manifest-src 'self'; upgrade-insecure-requests
 
-# API không bao giờ được cache
+/index.html
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev https://*.r2.dev; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://*.supabase.co https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co https://cdn.jsdelivr.net https://unpkg.com wss://*.supabase.co blob: data:; manifest-src 'self'; upgrade-insecure-requests
+
+# API trả JSON — không bao giờ bị nhúng
 /api/*
   Cache-Control: no-store
+  X-Frame-Options: DENY
 
 # Cấu hình runtime chứa biến public — không cache để deploy đổi config có hiệu lực
 /config.js
   Cache-Control: no-store
 
-# Trang chính
-/
-  Cache-Control: no-store
+# Trang Tools nhúng trong modal "Trung tâm Vector AI" (cùng origin).
+# Phải có rule riêng vì /* không còn XFO/CSP frame-ancestors.
+/tools/moris-vector-center
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev https://*.r2.dev; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://*.supabase.co https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co https://cdn.jsdelivr.net https://unpkg.com wss://*.supabase.co blob: data:; manifest-src 'self'; upgrade-insecure-requests
+/tools/moris-vector-center.html
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev https://*.r2.dev; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://*.supabase.co https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co https://cdn.jsdelivr.net https://unpkg.com wss://*.supabase.co blob: data:; manifest-src 'self'; upgrade-insecure-requests
+
+# Trang tools khác vẫn cấm nhúng
+/tools/kim-vector-reindex
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev https://*.r2.dev; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://*.supabase.co https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co https://cdn.jsdelivr.net https://unpkg.com wss://*.supabase.co blob: data:; manifest-src 'self'; upgrade-insecure-requests
+/tools/kim-vector-reindex.html
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev https://*.r2.dev; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self' https://*.supabase.co https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co https://cdn.jsdelivr.net https://unpkg.com wss://*.supabase.co blob: data:; manifest-src 'self'; upgrade-insecure-requests

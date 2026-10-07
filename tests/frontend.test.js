@@ -159,3 +159,86 @@ describe('migration — 3 role + user_security', () => {
     expect(sql).toContain("public.app_session_role(p_session_token) = 'admin'");
   });
 });
+
+describe('yêu cầu mới — icon, tab Quy đổi, Vector AI, quản lý user', () => {
+  const html = read('index.html');
+  const js = read('src/app.js');
+  const headers = read('_headers');
+
+  it('icon sách đỏ: file nguồn assets/icon-book.png tồn tại (anh thay ảnh mới)', () => {
+    expect(existsSync(join(ROOT, 'assets/icon-book.png'))).toBe(true);
+    expect(html).toMatch(/<link rel="icon" href="assets\/icon-book\.png"/);
+  });
+
+  it('block "Ảnh Catalogue Linh Kiện" CHỈ hiện ở tab Quy đổi, ẩn ở tab Danh sách', () => {
+    expect(html).toContain(`<div v-show="weightCalc.tab==='calc'" class="mt-6 bg-white/90`);
+    // không còn block ảnh trần (không v-show) nằm ngoài 2 tab
+    expect(html).not.toMatch(/<!-- =+ ẢNH CATALOGUE CỦA MÃ ĐANG QUY ĐỔI =+ -->\s*\n\s*<div class="mt-6/);
+  });
+
+  it('đã gỡ 3 dòng chữ theo yêu cầu', () => {
+    expect(html).not.toContain('thư viện ảnh &amp; tra cứu');
+    expect(html).not.toContain('Admin không tạo user mới');
+    expect(html).not.toContain('Trợ lý nhận diện &amp; vector — chạy trong Catalogue');
+  });
+
+  it('Vector AI nhúng được: _headers cho phép same-origin, iframe bỏ hậu tố .html', () => {
+    const starIdx = headers.indexOf('/*\n');
+    const toolIdx = headers.indexOf('\n/tools/moris-vector-center\n');
+    expect(starIdx).toBeGreaterThan(-1);
+    expect(toolIdx).toBeGreaterThan(starIdx);          // rule cụ thể phải SAU rule /*
+    const toolBlock = headers.slice(toolIdx);
+    expect(toolBlock).toContain('X-Frame-Options: SAMEORIGIN');
+    expect(toolBlock).toContain("frame-ancestors 'self'");
+    expect(headers).toContain('/tools/moris-vector-center.html\n');
+
+    expect(html).toContain('src="/tools/moris-vector-center"');
+    expect(html).not.toContain('src="/tools/moris-vector-center.html"');
+    expect(js).not.toContain("'/tools/moris-vector-center.html'");
+  });
+
+  it('Quy đổi + check trùng mã: gửi all/all, không còn p_usage_side rỗng', () => {
+    expect(js).not.toContain("p_usage_side:''");
+    expect(js).not.toContain("p_view_mode:''");
+    expect((js.match(/p_usage_side:'all'/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect((js.match(/p_view_mode:'all'/g) || []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('migration mới: profiles.username + app_search_catalogue coi "" = "all"', () => {
+    const sql = read('supabase/migrations/2026100700020000_username_login_and_search_filters.sql');
+    expect(sql).toContain('add column if not exists username text');
+    expect(sql).toContain('profiles_username_uniq');
+    expect(sql).toContain("nullif(trim(coalesce(p_usage_side, '')), '')");
+    expect(sql).toContain("nullif(trim(coalesce(p_view_mode, '')), '')");
+    expect(sql).toContain("v_usage = 'all' or i.usage_side = v_usage");
+  });
+
+  it('quản lý user: form thêm user + chặn admin hệ thống + modal đổi mật khẩu ở menu header', () => {
+    expect(html).toContain('toggleUserCreate()');
+    expect(html).toContain('createUser()');
+    expect(html).toContain('isSystemAdmin(u)');
+    expect(html).toContain('pwChange.open');
+    expect(html).toContain('openPwChange()');
+
+    expect(js).toContain("const SYSTEM_ADMIN_EMAIL = 'pquangvinh1999@gmail.com';");
+    expect(js).toContain('async submitPwChange()');
+    expect(js).toContain('sb.auth.updateUser({ password: p.new })');
+    // Admin hệ thống: chặn đủ 3 nhóm thao tác
+    for (const a of ["set_role", "set_active", "set_inactive", "reset_password"]) {
+      expect(js, `thiếu chặn ${a}`).toContain(a);
+    }
+
+    const be = read('functions/api/auth/users.js');
+    expect(be).toContain('const SYSTEM_ADMIN_EMAIL = "pquangvinh1999@gmail.com";');
+    expect(be).toContain('if (action === "create")');
+    expect(be).toContain('SYNTHETIC_EMAIL_DOMAIN');
+  });
+
+  it('login nhận cả email lẫn tên đăng nhập (resolveLoginProfile)', () => {
+    const authLib = read('functions/_lib/auth.js');
+    const login = read('functions/api/auth/login.js');
+    expect(authLib).toContain('export async function resolveLoginProfile');
+    expect(login).toContain('resolveLoginProfile(env, loginInput)');
+    expect(login).toContain('profile?.email || loginInput');
+  });
+});

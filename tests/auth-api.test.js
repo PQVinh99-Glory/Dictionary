@@ -29,6 +29,11 @@ function mockSupabase({ me, profile, users = [] }) {
     if (u.includes('/rest/v1/rpc/app_admin_unlock_profile')) {
       return json({ ok: true, message: 'Đã mở khóa tài khoản.' });
     }
+    // Tạo user mới (GoTrue admin) — PHẢI đặt trước nhánh có trailing slash.
+    if (method === 'POST' && /\/auth\/v1\/admin\/users\/?$/.test(u)) {
+      const args = JSON.parse(opts.body || '{}');
+      return json({ id: 'new-user-1', email: args.email, aud: 'authenticated' }, 201);
+    }
     if (u.includes('/auth/v1/admin/users/')) return json({ id: 'x', aud: 'authenticated' });
     if (u.includes('/rest/v1/profiles')) return json(profile ? [profile] : []);
     if (u.includes('/rest/v1/user_security')) return json([]);
@@ -221,6 +226,112 @@ describe('/api/auth/users — phân quyền admin', () => {
       body: { user_id: 'u1', action: 'delete_user' }
     }));
     expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /api/auth/users — action create (thêm user bằng tên đăng nhập)', () => {
+  const ADMIN_ME = { ok: true, user_id: 'admin-1', username: 'a@x.c', display_name: 'a', role_name: 'admin' };
+
+  async function post(body, opts = {}) {
+    const state = mockSupabase({ me: ADMIN_ME, profile: ADMIN_PROFILE, ...opts });
+    const { onRequestPost } = await import('../functions/api/auth/users.js');
+    const out = await read(onRequestPost, req('/api/auth/users', {
+      method: 'POST', token: 'jwt', body
+    }));
+    return { state, ...out };
+  }
+
+  it('thiếu username -> 400', async () => {
+    const { res, data } = await post({ action: 'create', password: 'abcdef', role: 'viewer' });
+    expect(res.status).toBe(400);
+    expect(data.error).toMatch(/Tên đăng nhập/);
+  });
+
+  it('username chứa @ -> 400 (phải là tên đăng nhập thuần)', async () => {
+    const { res, data } = await post({ action: 'create', username: 'a@b.c', password: 'abcdef', role: 'viewer' });
+    expect(res.status).toBe(400);
+    expect(data.error).toMatch(/không chứa @/);
+  });
+
+  it('mật khẩu < 6 ký tự -> 400', async () => {
+    const { res, data } = await post({ action: 'create', username: 'khoatest', password: 'abc', role: 'viewer' });
+    expect(res.status).toBe(400);
+    expect(data.error).toMatch(/6 ký tự/);
+  });
+
+  it('role lạ -> 400', async () => {
+    const { res, data } = await post({ action: 'create', username: 'khoatest', password: 'abcdef', role: 'superuser' });
+    expect(res.status).toBe(400);
+    expect(data.error).toMatch(/viewer \| converter \| admin/);
+  });
+
+  it('hợp lệ -> gọi GoTrue create + set role, trả email ảo định danh', async () => {
+    const { state, res, data } = await post({ action: 'create', username: 'khoaTest', password: 'abcdef', role: 'converter' });
+    expect(res.status).toBe(200);
+    expect(data.ok).toBe(true);
+    expect(data.username).toBe('khoaTest');
+    expect(data.role_name).toBe('converter');
+    // Email ảo chỉ để Supabase Auth định danh — KHÔNG dùng để đăng nhập
+    expect(data.email).toBe('khoatest@users.catalogue.vn');
+    expect(state.calls.some((c) => c.includes('/auth/v1/admin/users'))).toBe(true);
+    expect(state.calls.some((c) => c.includes('PATCH') && c.includes('/rest/v1/profiles'))).toBe(true);
+  });
+
+  it('trùng tên đăng nhập -> 409, không tạo auth user', async () => {
+    const { state, res, data } = await post(
+      { action: 'create', username: 'khoaa', password: 'abcdef', role: 'viewer' },
+      { profile: { id: 'x', email: 'khoaa@users.catalogue.vn', username: 'khoaa', role_name: 'admin', is_active: true } }
+    );
+    expect(res.status).toBe(409);
+    expect(data.error).toMatch(/đã tồn tại/);
+    expect(state.calls.some((c) => c.includes('/auth/v1/admin/users'))).toBe(false);
+  });
+});
+
+describe('POST /api/auth/users — chặn tài khoản admin hệ thống', () => {
+  const SYSTEM_EMAIL = 'pquangvinh1999@gmail.com';
+  const SYSTEM_PROFILE = { id: 'sys-1', email: SYSTEM_EMAIL, username: 'pquangvinh1999', role_name: 'admin', is_active: true };
+  const ADMIN_ME = { ok: true, user_id: 'sys-1', username: SYSTEM_EMAIL, display_name: 'pquangvinh1999', role_name: 'admin' };
+
+  for (const action of ['set_role', 'set_active', 'set_inactive', 'reset_password']) {
+    it(`${action} với admin hệ thống -> 403, không đụng GoTrue/RPC`, async () => {
+      const state = mockSupabase({ me: ADMIN_ME, profile: SYSTEM_PROFILE });
+      const { onRequestPost } = await import('../functions/api/auth/users.js');
+      const { res, data } = await read(onRequestPost, req('/api/auth/users', {
+        method: 'POST', token: 'jwt',
+        body: { user_id: 'sys-1', action, role: 'viewer' }
+      }));
+      expect(res.status).toBe(403);
+      expect(data.error).toMatch(/admin hệ thống/);
+      expect(state.calls.some((c) => c.includes('app_admin_set_profile_role'))).toBe(false);
+      expect(state.calls.some((c) => c.includes('/auth/v1/admin/users/'))).toBe(false);
+      expect(state.calls.some((c) => c.includes('PATCH') && c.includes('/rest/v1/profiles'))).toBe(false);
+    });
+  }
+
+  it('unlock vẫn được phép với admin hệ thống', async () => {
+    mockSupabase({ me: ADMIN_ME, profile: SYSTEM_PROFILE });
+    const { onRequestPost } = await import('../functions/api/auth/users.js');
+    const { res, data } = await read(onRequestPost, req('/api/auth/users', {
+      method: 'POST', token: 'jwt',
+      body: { user_id: 'sys-1', action: 'unlock' }
+    }));
+    expect(res.status).toBe(200);
+    expect(data.ok).toBe(true);
+  });
+
+  it('user thường KHÔNG bị chặn (chỉ admin hệ thống mới bị)', async () => {
+    const state = mockSupabase({
+      me: ADMIN_ME,
+      profile: { id: 'u1', email: 'vinh@example.com', username: 'vinh', role_name: 'admin', is_active: true }
+    });
+    const { onRequestPost } = await import('../functions/api/auth/users.js');
+    const { res } = await read(onRequestPost, req('/api/auth/users', {
+      method: 'POST', token: 'jwt',
+      body: { user_id: 'u1', action: 'set_role', role: 'viewer' }
+    }));
+    expect(res.status).toBe(200);
+    expect(state.calls.some((c) => c.includes('app_admin_set_profile_role'))).toBe(true);
   });
 });
 

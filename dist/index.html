@@ -1028,7 +1028,8 @@
       </div>
 
       <!-- ================= ẢNH CATALOGUE CỦA MÃ ĐANG QUY ĐỔI ================= -->
-      <div class="mt-6 bg-white/90 border border-slate-200/80 rounded-2xl p-4">
+      <!-- Chỉ hiện khi đang ở tab Quy đổi — ẩn hoàn toàn ở tab Danh sách đơn trọng -->
+      <div v-show="weightCalc.tab==='calc'" class="mt-6 bg-white/90 border border-slate-200/80 rounded-2xl p-4">
         <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
           <h4 class="text-xs font-bold text-slate-500 tracking-wider uppercase flex items-center">
             <i data-lucide="image" class="w-4 h-4 text-emerald-600 mr-2"></i>Ảnh Catalogue Linh Kiện
@@ -1398,6 +1399,11 @@
           </button>
 
           <p class="nav-label mt-4">Tài khoản</p>
+          <button @click="closeNav(); openPwChange()" class="nav-item text-sky-700 hover:bg-sky-50">
+            <span class="nav-ico bg-sky-50 border-sky-100"><i data-lucide="key-round" class="w-[18px] h-[18px]"></i></span>
+            <span class="min-w-0"><b class="block text-[13px] font-black truncate">Đổi mật khẩu</b><span class="block text-[11px] font-bold text-slate-500 truncate">Đổi mật khẩu đăng nhập của bạn</span></span>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
+          </button>
           <button @click="closeNav(); logout()" class="nav-item text-rose-700 hover:bg-rose-50">
             <span class="nav-ico bg-rose-50 border-rose-100"><i data-lucide="log-out" class="w-[18px] h-[18px]"></i></span>
             <span class="min-w-0"><b class="block text-[13px] font-black truncate">Thoát</b><span class="block text-[11px] font-bold text-slate-500 truncate">Đăng xuất khỏi hệ thống</span></span>
@@ -1407,7 +1413,7 @@
 
         <div class="shrink-0 px-4 py-3 border-t border-slate-200/80 bg-slate-50/80 text-[11px] font-bold text-slate-500 flex items-center gap-2">
           <i data-lucide="book-open" class="w-4 h-4 text-rose-800 shrink-0"></i>
-          <span class="truncate">Catalogue Linh Kiện · thư viện ảnh &amp; tra cứu</span>
+          <span class="truncate">Catalogue Linh Kiện</span>
         </div>
       </nav>
     </div>
@@ -1424,10 +1430,16 @@
           </div>
           <div class="min-w-0">
             <h3 class="text-base sm:text-lg font-black text-slate-800 truncate">Quản lý người dùng</h3>
-            <p class="text-[11px] font-bold text-slate-500">Đổi role (viewer / converter / admin) · mở khóa · cấp lại mật khẩu</p>
+            <p class="text-[11px] font-bold text-slate-500">Thêm user · đổi role (viewer / converter / admin) · mở khóa · cấp lại mật khẩu</p>
           </div>
         </div>
-        <button @click="closeUserManager()" class="btn w-10 h-10 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500 shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <div class="flex items-center gap-2 shrink-0">
+          <button @click="toggleUserCreate()"
+            class="btn h-10 px-3 bg-sky-600 hover:bg-sky-700 text-white text-xs uppercase tracking-wider font-black shrink-0">
+            <i data-lucide="user-plus" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Thêm user
+          </button>
+          <button @click="closeUserManager()" class="btn w-10 h-10 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500 shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
       </div>
 
       <div v-if="users.tempPw" class="mx-4 mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 flex flex-wrap items-center gap-3 shrink-0">
@@ -1441,6 +1453,46 @@
       </div>
 
       <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-soft px-4 py-3 space-y-2">
+
+        <!-- ============ THÊM USER MỚI (admin) ============ -->
+        <div v-if="users.creating" class="rounded-2xl border border-sky-200 bg-sky-50/70 p-3 space-y-3">
+          <p class="text-[11px] font-black uppercase tracking-wider text-sky-700 flex items-center gap-2">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>Thêm người dùng mới
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Tên đăng nhập</label>
+              <input v-model.trim="users.form.username" type="text" maxlength="32" autocomplete="off" spellcheck="false"
+                placeholder="vd: khoaa"
+                class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Mật khẩu</label>
+              <input v-model="users.form.password" type="password" autocomplete="new-password"
+                placeholder="tối thiểu 6 ký tự"
+                class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Role</label>
+              <select v-model="users.form.role" class="w-full input h-[34px] px-2 text-xs cursor-pointer bg-white">
+                <option value="viewer">viewer</option>
+                <option value="converter">converter</option>
+                <option value="admin">admin</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button @click="createUser()" :disabled="users.saving"
+              class="btn h-9 px-4 bg-sky-600 hover:bg-sky-700 text-white text-xs uppercase tracking-wider font-black disabled:opacity-50">
+              <span v-if="users.saving" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block align-[-2px] mr-1"></span>
+              Tạo user
+            </button>
+            <button @click="users.creating = false" :disabled="users.saving"
+              class="btn h-9 px-4 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs uppercase tracking-wider font-black disabled:opacity-50">Hủy</button>
+            <p class="text-[11px] font-bold text-slate-500">Tên đăng nhập cũng dùng để đăng nhập thay cho email.</p>
+          </div>
+        </div>
+
         <div v-if="users.loading" class="py-10 text-center">
           <span class="w-7 h-7 border-4 border-slate-200 border-t-sky-600 rounded-full animate-spin inline-block mb-2"></span>
           <p class="text-sm font-bold text-slate-500">Đang tải danh sách người dùng...</p>
@@ -1452,6 +1504,7 @@
             <p class="text-sm font-black text-slate-800 truncate">{{ u.email }}</p>
             <p class="text-[11px] font-bold text-slate-500 truncate">
               <span class="uppercase tracking-wider text-slate-700">{{ u.role_name }}</span>
+              <template v-if="isSystemAdmin(u)"> · <span class="text-violet-700 font-black">admin hệ thống</span></template>
               <template v-if="u.is_active === false"> · <span class="text-rose-600 font-black">vô hiệu hóa</span></template>
               <template v-if="u.permanent_lock"> · <span class="text-rose-700 font-black">khóa vĩnh viễn</span></template>
               <template v-else-if="u.locked_until"> · <span class="text-amber-600">khóa tới {{ fmtStamp(u.locked_until) }}</span></template>
@@ -1460,8 +1513,10 @@
             </p>
           </div>
 
-          <select :value="u.role_name" @change="userAction(u, 'set_role', $event.target.value)" :disabled="users.saving"
-            class="input h-9 px-2 text-xs w-auto cursor-pointer" title="Đổi role">
+          <select :value="u.role_name" @change="userAction(u, 'set_role', $event.target.value)"
+            :disabled="users.saving || isSystemAdmin(u)"
+            :title="isSystemAdmin(u) ? 'Tài khoản admin hệ thống — không đổi role ở đây' : 'Đổi role'"
+            class="input h-9 px-2 text-xs w-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             <option value="viewer">viewer</option>
             <option value="converter">converter</option>
             <option value="admin">admin</option>
@@ -1471,22 +1526,61 @@
             :disabled="users.saving || users.actionId === u.user_id"
             class="btn h-9 px-3 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 text-xs font-black uppercase tracking-wider shrink-0">Mở khóa</button>
 
-          <button @click="userAction(u, 'reset_password')"
+          <button v-if="!isSystemAdmin(u)" @click="userAction(u, 'reset_password')"
             :disabled="users.saving || users.actionId === u.user_id"
             class="btn h-9 px-3 bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 text-xs font-black uppercase tracking-wider shrink-0">
             <i data-lucide="key-round" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Cấp lại MK
           </button>
 
-          <button @click="userAction(u, u.is_active === false ? 'set_active' : 'set_inactive')"
+          <button v-if="!isSystemAdmin(u)" @click="userAction(u, u.is_active === false ? 'set_active' : 'set_inactive')"
             :disabled="users.saving || users.actionId === u.user_id"
             :class="['btn h-9 px-3 text-xs font-black uppercase tracking-wider shrink-0', u.is_active === false ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100']">
             {{ u.is_active === false ? 'Bật' : 'Tắt' }}
           </button>
         </div>
       </div>
+    </div>
+  </div>
 
-      <div class="shrink-0 px-4 py-3 border-t border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-500">
-        Admin không tạo user mới — tạo tài khoản trong Supabase Dashboard → <b>Authentication</b>. Sau khi tạo, quay lại đây đặt role.
+  <!-- ============== ĐỔI MẬT KHẨU (nguồn: menu trên header) ============== -->
+  <div v-if="pwChange.open" class="fixed inset-0 z-[87] bg-slate-900/70 backdrop-blur-md p-3 sm:p-6 flex items-center justify-center" @click.self="closePwChange()">
+    <div class="modal-shell glass w-full max-w-md rounded-[2rem] bg-white overflow-hidden flex flex-col my-auto" style="max-height:min(92dvh, calc(100dvh - 1rem));">
+      <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-slate-200 shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center shrink-0">
+            <i data-lucide="key-round" class="w-5 h-5 text-sky-600"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 class="text-base sm:text-lg font-black text-slate-800 truncate">Đổi mật khẩu</h3>
+            <p class="text-[11px] font-bold text-slate-500">Áp dụng cho tài khoản đang đăng nhập · không cần mật khẩu cũ</p>
+          </div>
+        </div>
+        <button @click="closePwChange()" class="btn w-10 h-10 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500 shrink-0" aria-label="Đóng"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="px-4 py-4 space-y-3">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Mật khẩu mới</label>
+          <input v-model="pwChange.new" type="password" autocomplete="new-password" @keydown.enter="submitPwChange()"
+            placeholder="tối thiểu 6 ký tự"
+            class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Xác nhận mật khẩu mới</label>
+          <input v-model="pwChange.confirm" type="password" autocomplete="new-password" @keydown.enter="submitPwChange()"
+            placeholder="nhập lại mật khẩu mới"
+            class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold">
+        </div>
+        <p v-if="pwChange.error" class="text-[12px] font-bold text-rose-600">{{ pwChange.error }}</p>
+      </div>
+
+      <div class="shrink-0 px-4 py-3 border-t border-slate-200 bg-slate-50/80 flex items-center justify-end gap-2">
+        <button @click="closePwChange()" :disabled="pwChange.saving" class="btn h-10 px-4 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs uppercase tracking-wider font-black disabled:opacity-50">Hủy</button>
+        <button @click="submitPwChange()" :disabled="pwChange.saving"
+          class="btn h-10 px-4 bg-sky-600 hover:bg-sky-700 text-white text-xs uppercase tracking-wider font-black disabled:opacity-50">
+          <span v-if="pwChange.saving" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block align-[-2px] mr-1"></span>
+          Lưu mật khẩu mới
+        </button>
       </div>
     </div>
   </div>
@@ -1502,7 +1596,6 @@
           </div>
           <div class="min-w-0">
             <h3 class="text-sm sm:text-base font-black text-slate-800 truncate">Trung tâm Vector AI</h3>
-            <p class="text-[11px] font-bold text-slate-500 truncate">Trợ lý nhận diện &amp; vector — chạy trong Catalogue</p>
           </div>
         </div>
         <div class="flex items-center gap-2 shrink-0">
@@ -1514,7 +1607,7 @@
       </div>
 
       <div class="relative flex-1 min-h-0 bg-slate-100">
-        <iframe ref="vectorFrame" src="/tools/moris-vector-center.html" title="Trung tâm Vector AI"
+        <iframe ref="vectorFrame" src="/tools/moris-vector-center" title="Trung tâm Vector AI"
           class="w-full h-full border-0 bg-white" allow="clipboard-write; camera; microphone"
           @load="vectorCenter.loading = false"></iframe>
         <div v-if="vectorCenter.loading" class="absolute inset-0 flex items-center justify-center bg-white pointer-events-none">

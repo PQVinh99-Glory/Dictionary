@@ -119,6 +119,30 @@ export async function getProfileByEmail(env, email) {
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
+/**
+ * Tìm profile theo ĐẦU VÀO ĐĂNG NHẬP — nhận cả email lẫn tên đăng nhập.
+ *   - có '@'  -> tra theo email (giữ nguyên hành vi cũ)
+ *   - không '@' -> tra theo profiles.username (không phân biệt hoa/thường),
+ *     sau đó fallback phần trước '@' của email (user cũ).
+ * Số user rất ít -> tải một lần rồi so trong JS, tránh so khớp sai
+ * do ký tự '_' / '%' trong username bị PostgREST ilike coi là wildcard.
+ */
+export async function resolveLoginProfile(env, input) {
+  const v = String(input || "").trim();
+  if (!v) return null;
+  if (v.includes("@")) return getProfileByEmail(env, v);
+
+  const rows = await rest(env, "profiles?select=id,email,role_name,is_active,username&limit=1000");
+  if (!Array.isArray(rows) || !rows.length) return null;
+
+  const key = v.toLowerCase();
+  return (
+    rows.find((r) => String(r.username || "").trim().toLowerCase() === key) ||
+    rows.find((r) => String(r.email || "").split("@")[0].trim().toLowerCase() === key) ||
+    null
+  );
+}
+
 export async function getProfileById(env, userId) {
   const rows = await rest(
     env,

@@ -12,7 +12,7 @@
 // =============================================================================
 import { json, readJson, errorResponse } from "../../_lib/shared/http.js";
 import {
-  configMissing, sessionExpiry, passwordGrant, getProfileByEmail,
+  configMissing, sessionExpiry, passwordGrant, resolveLoginProfile,
   getSecurity, putSecurity, FAIL_WARN_AT, FAIL_PERMANENT_AT
 } from "../../_lib/auth.js";
 
@@ -24,14 +24,15 @@ export async function onRequestPost({ request, env }) {
     if (missing) return json({ ok: false, error: missing }, 503);
 
     const body = await readJson(request, { maxBytes: 8_000 });
-    const email = String(body.email || body.username || "").trim();
+    // Nhận cả email lẫn TÊN ĐĂNG NHẬP (user do admin tạo không có email thật).
+    const loginInput = String(body.email || body.username || "").trim();
     const password = String(body.password || "");
 
-    if (!email || !password) {
+    if (!loginInput || !password) {
       return json({ ok: false, error: "Thiếu email/tên đăng nhập hoặc mật khẩu." }, 400);
     }
 
-    const profile = await getProfileByEmail(env, email);
+    const profile = await resolveLoginProfile(env, loginInput);
     let sec = profile ? await getSecurity(env, profile.id) : null;
     const now = Date.now();
 
@@ -86,7 +87,10 @@ export async function onRequestPost({ request, env }) {
     }
 
     // ---- Xác thực mật khẩu qua Supabase Auth ----
-    const grant = await passwordGrant(env, email, password);
+    // Gõ tên đăng nhập -> dùng email thật của profile; không thấy profile
+    // thì vẫn gọi với input gốc để trả INVALID_CREDENTIALS chung (không lộ
+    // user nào tồn tại).
+    const grant = await passwordGrant(env, profile?.email || loginInput, password);
 
     if (!grant.ok) {
       if (!profile) {
