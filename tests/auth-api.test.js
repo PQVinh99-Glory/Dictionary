@@ -360,3 +360,20 @@ describe('POST /api/auth/logout', () => {
     expect(res.status).toBe(503);
   });
 });
+
+describe('Admin Login & Display Name - Vinh', () => {
+  it('resolveLoginProfile maps "Vinh" / "vinh" to SYSTEM_ADMIN_EMAIL', async () => {
+    const { resolveLoginProfile, SYSTEM_ADMIN_EMAIL } = await import('../functions/_lib/auth.js');
+    mockSupabase({
+      profile: { id: 'sys-1', email: SYSTEM_ADMIN_EMAIL, role_name: 'admin', is_active: true }
+    });
+    const profile = await resolveLoginProfile(ENV, 'Vinh');
+    expect(profile).not.toBeNull();
+    expect(profile.email).toBe(SYSTEM_ADMIN_EMAIL);
+
+    const profileLower = await resolveLoginProfile(ENV, 'vinh');
+    expect(profileLower).not.toBeNull();
+    expect(profileLower.email).toBe(SYSTEM_ADMIN_EMAIL);
+  });
+});
+

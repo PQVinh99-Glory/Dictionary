@@ -182,7 +182,8 @@ export async function onRequestPost({ request, env }) {
         id: profile.id,
         email: profile.email,
         role_name: profile.role_name,
-        display_name: String(profile.email || "").split("@")[0]
+        username: isSysAdmin ? "Vinh" : (profile.username || String(profile.email || "").split("@")[0]),
+        display_name: isSysAdmin ? "Vinh" : (profile.username || String(profile.email || "").split("@")[0])
       },
       session: {
         access_token: s.access_token,

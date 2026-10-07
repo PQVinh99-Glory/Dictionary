@@ -93,6 +93,15 @@ createApp({
       sb:null, loading:false, loadingImages:false, saving:false,
       catalogueRequestSeq:0,
       notice:{type:'', text:''}, nowText:'',
+      confirmModal: {
+        open: false,
+        title: 'Xác nhận',
+        message: '',
+        confirmText: 'Đồng ý',
+        cancelText: 'Hủy',
+        danger: false,
+        resolve: null
+      },
       // Token chỉ nằm trong RAM. KHÔNG ghi localStorage/sessionStorage/cookie:
       // reload trang hoặc đóng tab => mất phiên => bắt buộc đăng nhập lại.
       // localStorage chỉ còn dùng cho hàng đợi vector (không chứa bí mật).
@@ -343,8 +352,35 @@ createApp({
     renderIcons() { nextTick(() => lucide?.createIcons?.()); },
     toast(type,text) { 
       this.notice={type,text}; 
+      this.renderIcons();
       // Auto close toast unless it's a processing state
       if(text && !text.includes('Đang')) setTimeout(()=>{ if(this.notice.text===text) this.notice={type:'',text:''}; }, 5500); 
+    },
+    showConfirm(message, { title = 'Xác nhận thao tác', confirmText = 'Xác nhận', cancelText = 'Hủy bỏ', danger = false } = {}) {
+      return new Promise((resolve) => {
+        this.confirmModal = {
+          open: true,
+          title,
+          message,
+          confirmText,
+          cancelText,
+          danger,
+          resolve
+        };
+        this.renderIcons();
+      });
+    },
+    confirmYes() {
+      const fn = this.confirmModal.resolve;
+      this.confirmModal.open = false;
+      this.confirmModal.resolve = null;
+      if (fn) fn(true);
+    },
+    confirmNo() {
+      const fn = this.confirmModal.resolve;
+      this.confirmModal.open = false;
+      this.confirmModal.resolve = null;
+      if (fn) fn(false);
     },
     readError(err) {
       const raw = err?.message || String(err) || 'Có lỗi xảy ra';
@@ -386,7 +422,11 @@ createApp({
     // Đăng nhập qua Supabase Auth (password). Rate-limit/do sai mật khẩu do
     // GoTrue xử lý. app_users KHÔNG còn là nguồn danh tính.
     async loginRow(username,password) {
-      const { data, error } = await this.sb.auth.signInWithPassword({ email: username, password });
+      let email = String(username || '').trim();
+      if (email.toLowerCase() === 'vinh') {
+        email = SYSTEM_ADMIN_EMAIL;
+      }
+      const { data, error } = await this.sb.auth.signInWithPassword({ email, password });
       if (error) {
         const e = new Error(
           error.message === 'Invalid login credentials'
@@ -461,6 +501,10 @@ createApp({
       try {
         const me = await this.rpcRow('app_me', {p_session_token: token});
         if (!me?.ok) throw new Error(me?.message || 'Session hết hạn');
+        if (this.isSystemAdmin(me) || String(me?.email || me?.username || '').toLowerCase() === SYSTEM_ADMIN_EMAIL.toLowerCase()) {
+          me.display_name = 'Vinh';
+          me.username = 'Vinh';
+        }
         this.session.user = me;
         await this.loadParts(true);
 
@@ -475,10 +519,11 @@ createApp({
     async login() {
       this.loading=true;
       try {
+        let inputUser = String(this.loginForm.username || '').trim();
         const res = await fetch(CONFIG.LOGIN_URL, {
           method:'POST',
           headers:{ 'content-type':'application/json' },
-          body: JSON.stringify({ email: this.loginForm.username, password: this.loginForm.password })
+          body: JSON.stringify({ email: inputUser, password: this.loginForm.password })
         });
         const data = await res.json().catch(() => null);
         if (!res.ok || !data?.ok) throw new Error(data?.error || 'Đăng nhập thất bại.');
@@ -495,7 +540,7 @@ createApp({
         this.setSessionExpiry(data.expires_at);
         this.session.token = s.access_token || '';
         await this.checkSession();
-        this.toast('success', `Đăng nhập thành công. Phiên tự hết hạn lúc ${this.sessionExpLabel()}.`);
+        this.toast('success', `Đăng nhập thành công. Chào mừng ${this.session.user?.display_name || 'Vinh'}!`);
       } catch(e) { this.toast('error', this.readError(e)); } finally { this.loading=false; }
     },
     async autoLogin() {
@@ -954,7 +999,12 @@ createApp({
     },
     async wcDelete(row) {
       if (!this.canConvert) return this.toast('error', 'Bạn chưa được cấp quyền, liên hệ admin.');
-      if (!confirm(`Xoá ${row.code} (${Number(row.kg).toFixed(4)} kg/pcs) khỏi danh sách đơn trọng?`)) return;
+      const ok = await this.showConfirm(`Xoá ${row.code} (${Number(row.kg).toFixed(4)} kg/pcs) khỏi danh sách đơn trọng?`, {
+        title: 'Xóa đơn trọng',
+        confirmText: 'Xóa ngay',
+        danger: true
+      });
+      if (!ok) return;
       const w = this.weightCalc;
       w.saving = true;
       try {
@@ -1397,7 +1447,13 @@ createApp({
       } catch(e) { this.toast('error', this.readError(e)); } finally { this.saving=false; }
     },
     async deleteCurrentPart() {
-      if(!this.detail.item || !confirm('Xác nhận xóa data của mã này? (Ảnh gốc trên Cloud sẽ không bị xóa để phòng ngừa lỗi rủi ro).')) return;
+      if(!this.detail.item) return;
+      const ok = await this.showConfirm('Xác nhận xóa data của mã này? (Ảnh gốc trên Cloud sẽ không bị xóa để phòng ngừa lỗi rủi ro).', {
+        title: 'Xóa mã linh kiện',
+        confirmText: 'Xác nhận xóa',
+        danger: true
+      });
+      if (!ok) return;
       try {
         const row = await this.rpcRow('app_delete_part', {p_session_token:this.session.token, p_image_id:this.detail.item.id});
         if(!row?.ok) throw new Error(row?.message || 'Không xóa được.');
@@ -1468,7 +1524,8 @@ createApp({
     },
     /** Tài khoản admin hệ thống: khoá đổi role / bật-tắt / cấp lại MK. */
     isSystemAdmin(u) {
-      return String(u?.email || '').trim().toLowerCase() === SYSTEM_ADMIN_EMAIL;
+      const raw = String(u?.email || u?.username || '').trim().toLowerCase();
+      return raw === SYSTEM_ADMIN_EMAIL.toLowerCase() || raw === 'vinh';
     },
     resetUserForm() {
       this.users.form = { username:'', password:'', role:'viewer' };
@@ -1489,7 +1546,11 @@ createApp({
         return this.toast('error', 'Tên đăng nhập 3–32 ký tự: chữ, số, dấu . _ - (không chứa @).');
       }
       if (password.length < 6) return this.toast('error', 'Mật khẩu tối thiểu 6 ký tự.');
-      if (!confirm(`Xác nhận: tạo user "${username}" với role ${u.form.role}?`)) return;
+      const ok = await this.showConfirm(`Xác nhận: tạo user "${username}" với role ${u.form.role}?`, {
+        title: 'Tạo tài khoản người dùng',
+        confirmText: 'Tạo tài khoản'
+      });
+      if (!ok) return;
 
       u.saving = true;
       try {
@@ -1535,7 +1596,12 @@ createApp({
         set_inactive: `vô hiệu hóa ${user.email}`,
         reset_password: `cấp lại mật khẩu mới cho ${user.email}`
       };
-      if (!confirm(`Xác nhận: ${labels[action] || action}?`)) return;
+      const ok = await this.showConfirm(`Xác nhận: ${labels[action] || action}?`, {
+        title: 'Thao tác tài khoản',
+        confirmText: 'Đồng ý',
+        danger: ['set_inactive', 'reset_password'].includes(action)
+      });
+      if (!ok) return;
 
       u.saving = true;
       u.actionId = user.user_id;

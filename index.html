@@ -431,8 +431,8 @@
 
       <form @submit.prevent="login" class="mt-8 space-y-4">
         <div>
-          <label class="block text-xs font-black tracking-widest text-slate-400 uppercase mb-1 ml-2">Email đăng nhập</label>
-          <input class="input h-14" v-model.trim="loginForm.username" placeholder="ten@email.com" autocomplete="username" inputmode="email" />
+          <label class="block text-xs font-black tracking-widest text-slate-400 uppercase mb-1 ml-2">Tên đăng nhập</label>
+          <input class="input h-14" v-model.trim="loginForm.username" placeholder="Vinh hoặc tên đăng nhập..." autocomplete="username" />
         </div>
         <div>
           <label class="block text-xs font-black tracking-widest text-slate-400 uppercase mb-1 ml-2">Mật khẩu</label>
@@ -442,7 +442,6 @@
           <i data-lucide="log-in" class="w-5 h-5"></i>{{ loading ? 'Đang xác thực...' : 'Vào hệ thống' }}
         </button>
       </form>
-      <p v-if="notice.text" :class="['mt-6 rounded-2xl p-4 text-sm font-bold text-center', notice.type==='error' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-emerald-50 text-emerald-600 border border-emerald-200']">{{ notice.text }}</p>
     </div>
   </section>
 
@@ -496,8 +495,6 @@
           <span class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center gap-1.5"><i data-lucide="clock" class="w-3.5 h-3.5 text-blue-500"></i> {{ nowText }}</span>
         </div>
       </div>
-
-      <p v-if="notice.text" :class="['mb-6 rounded-2xl px-5 py-4 text-sm font-bold shadow-sm', notice.type==='error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200']">{{ notice.text }}</p>
 
       <div v-if="loadingImages" class="glass rounded-[2.5rem] p-12 text-center">
         <div class="w-12 h-12 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4"></div>
@@ -1881,6 +1878,29 @@
       </div>
     </div>
   </div>
+
+  <!-- ============== MODAL XÁC NHẬN NỔI TOÀN HỆ THỐNG (z-[9998]) ============== -->
+  <Transition name="fade">
+    <div v-if="confirmModal.open" class="fixed inset-0 z-[98] bg-slate-900/70 backdrop-blur-md p-4 flex items-center justify-center" @click.self="confirmNo()" role="dialog" aria-modal="true" aria-label="Xác nhận thao tác">
+      <div class="modal-shell glass w-full max-w-sm rounded-[2rem] bg-white overflow-hidden flex flex-col shadow-2xl border border-rose-200 my-auto animate-in fade-in zoom-in-95 duration-200">
+        <div class="p-6 text-center">
+          <div :class="['w-14 h-14 rounded-2xl mx-auto flex items-center justify-center mb-3.5', confirmModal.danger ? 'bg-red-100 text-red-600' : 'bg-rose-100 text-rose-700']">
+            <i :data-lucide="confirmModal.danger ? 'alert-triangle' : 'help-circle'" class="w-7 h-7"></i>
+          </div>
+          <h3 class="text-base font-black text-slate-800">{{ confirmModal.title }}</h3>
+          <p class="mt-2 text-xs sm:text-sm font-semibold text-slate-600 leading-relaxed">{{ confirmModal.message }}</p>
+        </div>
+        <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center gap-2.5">
+          <button @click="confirmNo()" class="btn flex-1 py-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-black text-xs rounded-xl shadow-sm">
+            {{ confirmModal.cancelText }}
+          </button>
+          <button @click="confirmYes()" :class="['btn flex-1 py-2.5 text-white font-black text-xs rounded-xl shadow-sm flex items-center justify-center gap-1.5', confirmModal.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-rose-800 hover:bg-rose-900']">
+            {{ confirmModal.confirmText }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Transition>
 
 </div>
 

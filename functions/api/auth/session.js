@@ -3,7 +3,7 @@
 // Trả profile + role. Hạn phiên do client giữ (đặt lúc đăng nhập) — xem login.js.
 // =============================================================================
 import { json, errorResponse } from "../../_lib/shared/http.js";
-import { bearer, requireUser } from "../../_lib/auth.js";
+import { bearer, requireUser, isSystemAdminEmail } from "../../_lib/auth.js";
 
 export async function onRequestGet({ request, env }) {
   try {
@@ -16,13 +16,14 @@ export async function onRequestGet({ request, env }) {
       return json({ ok: false, code: "INACTIVE", error: "Tài khoản đã bị vô hiệu hóa." }, 403);
     }
 
+    const isSysAdmin = isSystemAdminEmail(profile?.email || me?.username);
     return json({
       ok: true,
       user: {
         id: me.user_id,
         email: profile?.email || me.username || "",
-        username: me.username || "",
-        display_name: me.display_name || profile?.email || "",
+        username: isSysAdmin ? "Vinh" : (me.username || ""),
+        display_name: isSysAdmin ? "Vinh" : (me.display_name || profile?.username || String(profile?.email || "").split("@")[0] || ""),
         role_name: String(profile?.role_name || me.role_name || "").toLowerCase(),
         must_change_password: !!me.must_change_password
       }

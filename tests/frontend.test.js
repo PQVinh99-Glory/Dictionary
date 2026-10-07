@@ -255,4 +255,23 @@ describe('yêu cầu mới — icon, tab Quy đổi, Vector AI, quản lý user'
     expect(wcTypeUrlIdx).toBeGreaterThan(methodsIdx);
     expect(wcFindIdx).toBeGreaterThan(methodsIdx);
   });
+
+  it('100% thông báo và xác nhận là UI nổi: không dùng native confirm(), có confirmModal và floating toast', () => {
+    // Không dùng native confirm trong app.js
+    expect(js).not.toMatch(/\bconfirm\(/);
+    expect(js).toContain('showConfirm(');
+    expect(js).toContain('confirmModal');
+
+    // index.html có modal xác nhận nổi và floating toast
+    expect(html).toContain('confirmModal.open');
+    expect(html).toContain('confirmYes()');
+    expect(html).toContain('confirmNo()');
+    expect(html).toContain('z-[9999]');
+  });
+
+  it('form đăng nhập hỗ trợ đăng nhập bằng "Vinh" và admin display_name là "Vinh"', () => {
+    expect(html).toContain('Vinh hoặc tên đăng nhập...');
+    expect(js).toContain("me.display_name = 'Vinh'");
+    expect(js).toContain("SYSTEM_ADMIN_EMAIL");
+  });
 });

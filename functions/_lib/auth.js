@@ -17,7 +17,8 @@ export const FAIL_PERMANENT_AT = 7;// lần thứ 7 -> khóa vĩnh viễn
 export const SYSTEM_ADMIN_EMAIL = "pquangvinh1999@gmail.com";
 
 export function isSystemAdminEmail(email) {
-  return String(email || "").trim().toLowerCase() === SYSTEM_ADMIN_EMAIL.toLowerCase();
+  const e = String(email || "").trim().toLowerCase();
+  return e === SYSTEM_ADMIN_EMAIL.toLowerCase() || e === "vinh";
 }
 
 export function baseUrl(env) {
@@ -135,6 +136,13 @@ export async function getProfileByEmail(env, email) {
 export async function resolveLoginProfile(env, input) {
   const v = String(input || "").trim();
   if (!v) return null;
+
+  // Hỗ trợ đăng nhập trực tiếp bằng "Vinh" cho tài khoản admin hệ thống
+  if (v.toLowerCase() === "vinh") {
+    const adminProfile = await getProfileByEmail(env, SYSTEM_ADMIN_EMAIL);
+    if (adminProfile) return adminProfile;
+  }
+
   if (v.includes("@")) return getProfileByEmail(env, v);
 
   const rows = await rest(env, "profiles?select=id,email,role_name,is_active,username&limit=1000");
