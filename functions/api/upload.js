@@ -45,6 +45,11 @@ function extensionForMime(mime) {
 async function validateAppSession(env, token) {
   if (!token) return { ok:false, status:401, message:"Thiếu x-session-token." };
 
+  // Chặn token không phải JWT trước khi gửi xuống PostgREST.
+  if (String(token).split(".").length !== 3) {
+    return { ok:false, status:401, message:"Session không hợp lệ hoặc đã hết hạn." };
+  }
+
   const supabaseUrl = cleanBaseUrl(env.SUPABASE_URL);
   const anonKey = String(env.SUPABASE_ANON_KEY || "");
 
@@ -63,7 +68,9 @@ async function validateAppSession(env, token) {
       headers:{
         "content-type":"application/json",
         "apikey":anonKey,
-        "authorization":`Bearer ${anonKey}`
+        // app_me đọc identity từ header Authorization (auth.jwt()->>'sub'),
+        // KHÔNG đọc tham số p_session_token -> phải gửi chính JWT người dùng.
+        "authorization":`Bearer ${token}`
       },
       body:JSON.stringify({ p_session_token:token })
     });

@@ -17,11 +17,17 @@ deepseek-harness/
 Book.png
 Screenshot.png
 image.png
+image copy.png
+session-*.md
 *.zip
 
-# Thư mục assets: chỉ giữ icon sách đỏ dùng chung (logo/favicon/drawer)
+# Thư mục assets: giữ icon sách đỏ và icon PWA
 assets/*
 !assets/icon-book.png
+!assets/icon-192.png
+!assets/icon-512.png
+!assets/icon-512-maskable.png
+!assets/apple-touch-icon.png
 
 # Dependencies (cài lại bằng `npm install`)
 node_modules/

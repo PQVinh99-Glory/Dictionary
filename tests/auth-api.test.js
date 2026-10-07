@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
+// Token hợp lệ về mặt cấu trúc JWT (3 phần) — backend từ chối token không phải
+// JWT với 401 ngay trước khi gửi xuống PostgREST (tránh 500 / error code 1101).
+const JWT = 'hdr.payload.sig';
+
 afterEach(() => { vi.unstubAllGlobals(); });
 
 function json(data, status = 200) {
@@ -85,7 +89,7 @@ describe('GET /api/auth/session', () => {
       profile: { ...ADMIN_PROFILE, role_name: 'ADMIN' }
     });
     const { onRequestGet } = await import('../functions/api/auth/session.js');
-    const { res, data } = await read(onRequestGet, req('/api/auth/session', { token: 'jwt' }));
+    const { res, data } = await read(onRequestGet, req('/api/auth/session', { token: JWT }));
     expect(res.status).toBe(200);
     expect(data.ok).toBe(true);
     expect(data.user.role_name).toBe('admin');
@@ -98,14 +102,14 @@ describe('GET /api/auth/session', () => {
       profile: { ...ADMIN_PROFILE, is_active: false }
     });
     const { onRequestGet } = await import('../functions/api/auth/session.js');
-    const { res } = await read(onRequestGet, req('/api/auth/session', { token: 'jwt' }));
+    const { res } = await read(onRequestGet, req('/api/auth/session', { token: JWT }));
     expect(res.status).toBe(403);
   });
 
   it('session hết hạn (app_me ok:false) -> 401', async () => {
     mockSupabase({ me: { ok: false, message: 'Session hết hạn' }, profile: ADMIN_PROFILE });
     const { onRequestGet } = await import('../functions/api/auth/session.js');
-    const { res } = await read(onRequestGet, req('/api/auth/session', { token: 'jwt' }));
+    const { res } = await read(onRequestGet, req('/api/auth/session', { token: JWT }));
     expect(res.status).toBe(401);
   });
 });
@@ -124,7 +128,7 @@ describe('/api/auth/users — phân quyền admin', () => {
       profile: { id: 'u1', email: 'v@x.c', role_name: 'viewer', is_active: true }
     });
     const { onRequestGet } = await import('../functions/api/auth/users.js');
-    const { res, data } = await read(onRequestGet, req('/api/auth/users', { token: 'jwt' }));
+    const { res, data } = await read(onRequestGet, req('/api/auth/users', { token: JWT }));
     expect(res.status).toBe(403);
     expect(data.error).toBe('Bạn chưa được cấp quyền, liên hệ admin.');
   });
@@ -136,7 +140,7 @@ describe('/api/auth/users — phân quyền admin', () => {
       users: LISTED
     });
     const { onRequestGet } = await import('../functions/api/auth/users.js');
-    const { res, data } = await read(onRequestGet, req('/api/auth/users', { token: 'jwt' }));
+    const { res, data } = await read(onRequestGet, req('/api/auth/users', { token: JWT }));
     expect(res.status).toBe(200);
     expect(data.users).toHaveLength(1);
     expect(data.users[0].failed_count).toBe(5);
@@ -150,7 +154,7 @@ describe('/api/auth/users — phân quyền admin', () => {
     });
     const { onRequestPost } = await import('../functions/api/auth/users.js');
     const { res } = await read(onRequestPost, req('/api/auth/users', {
-      method: 'POST', token: 'jwt',
+      method: 'POST', token: JWT,
       body: { user_id: 'u1', action: 'set_role', role: 'admin' }
     }));
     expect(res.status).toBe(403);
@@ -164,7 +168,7 @@ describe('/api/auth/users — phân quyền admin', () => {
     });
     const { onRequestPost } = await import('../functions/api/auth/users.js');
     const { res, data } = await read(onRequestPost, req('/api/auth/users', {
-      method: 'POST', token: 'jwt',
+      method: 'POST', token: JWT,
       body: { user_id: 'u1', action: 'set_role', role: 'superuser' }
     }));
     expect(res.status).toBe(400);
@@ -178,7 +182,7 @@ describe('/api/auth/users — phân quyền admin', () => {
     });
     const { onRequestPost } = await import('../functions/api/auth/users.js');
     const { res, data } = await read(onRequestPost, req('/api/auth/users', {
-      method: 'POST', token: 'jwt',
+      method: 'POST', token: JWT,
       body: { user_id: 'u1', action: 'set_role', role: 'converter' }
     }));
     expect(res.status).toBe(200);
@@ -192,7 +196,7 @@ describe('/api/auth/users — phân quyền admin', () => {
     });
     const { onRequestPost } = await import('../functions/api/auth/users.js');
     const { res, data } = await read(onRequestPost, req('/api/auth/users', {
-      method: 'POST', token: 'jwt',
+      method: 'POST', token: JWT,
       body: { user_id: 'u1', action: 'unlock' }
     }));
     expect(res.status).toBe(200);
@@ -206,7 +210,7 @@ describe('/api/auth/users — phân quyền admin', () => {
     });
     const { onRequestPost } = await import('../functions/api/auth/users.js');
     const { res, data } = await read(onRequestPost, req('/api/auth/users', {
-      method: 'POST', token: 'jwt',
+      method: 'POST', token: JWT,
       body: { user_id: 'u1', action: 'reset_password' }
     }));
     expect(res.status).toBe(200);
@@ -222,7 +226,7 @@ describe('/api/auth/users — phân quyền admin', () => {
     });
     const { onRequestPost } = await import('../functions/api/auth/users.js');
     const { res } = await read(onRequestPost, req('/api/auth/users', {
-      method: 'POST', token: 'jwt',
+      method: 'POST', token: JWT,
       body: { user_id: 'u1', action: 'delete_user' }
     }));
     expect(res.status).toBe(400);
@@ -236,7 +240,7 @@ describe('POST /api/auth/users — action create (thêm user bằng tên đăng 
     const state = mockSupabase({ me: ADMIN_ME, profile: ADMIN_PROFILE, ...opts });
     const { onRequestPost } = await import('../functions/api/auth/users.js');
     const out = await read(onRequestPost, req('/api/auth/users', {
-      method: 'POST', token: 'jwt', body
+      method: 'POST', token: JWT, body
     }));
     return { state, ...out };
   }
@@ -298,7 +302,7 @@ describe('POST /api/auth/users — chặn tài khoản admin hệ thống', () =
       const state = mockSupabase({ me: ADMIN_ME, profile: SYSTEM_PROFILE });
       const { onRequestPost } = await import('../functions/api/auth/users.js');
       const { res, data } = await read(onRequestPost, req('/api/auth/users', {
-        method: 'POST', token: 'jwt',
+        method: 'POST', token: JWT,
         body: { user_id: 'sys-1', action, role: 'viewer' }
       }));
       expect(res.status).toBe(403);
@@ -313,7 +317,7 @@ describe('POST /api/auth/users — chặn tài khoản admin hệ thống', () =
     mockSupabase({ me: ADMIN_ME, profile: SYSTEM_PROFILE });
     const { onRequestPost } = await import('../functions/api/auth/users.js');
     const { res, data } = await read(onRequestPost, req('/api/auth/users', {
-      method: 'POST', token: 'jwt',
+      method: 'POST', token: JWT,
       body: { user_id: 'sys-1', action: 'unlock' }
     }));
     expect(res.status).toBe(200);
@@ -327,7 +331,7 @@ describe('POST /api/auth/users — chặn tài khoản admin hệ thống', () =
     });
     const { onRequestPost } = await import('../functions/api/auth/users.js');
     const { res } = await read(onRequestPost, req('/api/auth/users', {
-      method: 'POST', token: 'jwt',
+      method: 'POST', token: JWT,
       body: { user_id: 'u1', action: 'set_role', role: 'viewer' }
     }));
     expect(res.status).toBe(200);

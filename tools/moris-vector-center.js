@@ -8,6 +8,8 @@ import {
 import {
   upsertVectorsChunked
 } from "/src/moris/vector/chunkedUpsert.js";
+
+import { renderParts } from "./render-parts.js";
 const OFFSET_KEY = "kim_v56_vector_center_offset";
 const BATCH_LIMIT = 20;
 
@@ -24,21 +26,6 @@ const state = {
 
 const $ = id => document.getElementById(id);
 
-// Render nội dung có định dạng (in đậm, xuống dòng) MÀ KHÔNG dùng innerHTML.
-// Mọi giá trị đều đi qua textContent => không thể bị XSS từ dữ liệu server.
-// parts: mảng phần tử dạng [text, {bold?:bool, br?:bool, class?:string}]
-function renderParts(el, parts) {
-  if (!el) return;
-  el.textContent = "";
-  for (const [text, opts = {}] of parts) {
-    if (opts.br) { el.appendChild(document.createElement("br")); continue; }
-    const span = document.createElement("span");
-    span.textContent = String(text ?? "");
-    if (opts.bold) span.style.fontWeight = "700";
-    if (opts.class) span.className = opts.class;
-    el.appendChild(span);
-  }
-}
 const logEl = $("log");
 
 function token(){

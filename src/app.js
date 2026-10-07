@@ -62,6 +62,17 @@ createApp({
   data() {
     return {
       CONFIG,
+      pwa: {
+        version: (typeof window !== 'undefined' && window.APP_VERSION) || (typeof self !== 'undefined' && self.APP_VERSION) || '6.1.1',
+        latestVersion: '',
+        updateReady: false,
+        canInstall: false,
+        isIOS: false,
+        panelOpen: false,
+        clearing: false,
+        registration: null,
+        deferredPrompt: null
+      },
       sb:null, loading:false, loadingImages:false, saving:false,
       catalogueRequestSeq:0,
       notice:{type:'', text:''}, nowText:'',
@@ -307,6 +318,7 @@ createApp({
     await this.checkSession();
     // Chốt phiên theo chu kỳ 07:00 sáng giờ VN (kiểm tra mỗi phút).
     setInterval(() => this.guardSession(), 60000);
+    this.setupPwa();
     this.renderIcons();
   },
   updated() { this.renderIcons(); },
@@ -338,12 +350,23 @@ createApp({
         return data?.session?.access_token || '';
       } catch (_) { return ''; }
     },
+    /**
+     * Token mới nhất cho request sắp tới (header x-session-token / body session_token).
+     * Không có session -> ném lỗi 401 rõ ràng thay vì gửi token cũ hết hạn
+     * (nguyên nhân lỗi "Session không hợp lệ hoặc đã hết hạn." khi thêm ảnh/mã mới).
+     */
+    async freshAuth() {
+      const t = await this.freshToken();
+      if (t) { this.session.token = t; return t; }
+      const e = new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      e.status = 401;
+      throw e;
+    },
     // Tự thay p_session_token bằng JWT hiện tại nếu tham số có mặt.
     async withAuth(args) {
       const a = { ...(args || {}) };
       if (a && Object.prototype.hasOwnProperty.call(a, 'p_session_token')) {
-        a.p_session_token = await this.freshToken();
-        this.session.token = a.p_session_token;
+        a.p_session_token = await this.freshAuth();
       }
       return a;
     },
@@ -681,7 +704,7 @@ createApp({
       const seq = (this._wcImgSeq = (this._wcImgSeq || 0) + 1);
       this.wcResetImage('loading');
       const c = String(code || '').trim();
-      if (!c || !this.session.token) return;
+      if (!c) return;
       try {
         const rows = await this.rpcRows('app_search_catalogue', {
           p_session_token:this.session.token,
@@ -706,6 +729,9 @@ createApp({
         if (seq !== this._wcImgSeq) return;
         this.wcResetImage('error');
         console.error('Không tải được ảnh mã quy đổi:', e);
+        const msg = this.readError(e);
+        // Phiên hết hạn / token sai -> báo rõ, đừng để người dùng đoán.
+        if (/hết hạn|session|phiên/i.test(msg)) this.toast('error', msg);
       }
     },
     // ---- viewer ảnh (zoom / kéo / pinch — hoạt động độc biệt với modal Chi tiết) ----
@@ -1223,7 +1249,7 @@ createApp({
           {
             method:'POST',
             headers:{
-              'x-session-token':this.session.token,
+              'x-session-token':await this.freshAuth(),
               'x-upload-id':uploadId
             },
             body:form
@@ -1935,7 +1961,7 @@ createApp({
 
       return mod.upsertVectorsChunked({
         endpoint:'/api/moris/vector-upsert',
-        sessionToken:this.session.token,
+        sessionToken:await this.freshAuth(),
         vectors,
         chunkSize:CONFIG.MORIS_VECTOR_UPSERT_CHUNK_SIZE,
         timeoutMs:180000,
@@ -2299,17 +2325,18 @@ createApp({
             .slice(-10)
             .map(m => ({ role: m.role, content: m.text }));
 
+          const chatToken = await this.freshAuth();
           const res = await this.fetchWithTimeout(
             '/api/moris/chat',
             {
               method:'POST',
               headers:{
                 'content-type':'application/json',
-                'x-session-token':this.session.token
+                'x-session-token':chatToken
               },
               body:JSON.stringify({
                 message: userText,
-                session_token: this.session.token,
+                session_token: chatToken,
                 history
               })
             },
@@ -2322,17 +2349,18 @@ createApp({
           if (!res.ok || !chatData?.ok) {
             // Fallback: thử /api/moris/search nếu chat endpoint chưa bật
             this.moris.status = 'Em đang tìm trong catalogue...';
+            const searchToken = await this.freshAuth();
             const fallbackRes = await this.fetchWithTimeout(
               '/api/moris/search',
               {
                 method:'POST',
                 headers:{
                   'content-type':'application/json',
-                  'x-session-token':this.session.token
+                  'x-session-token':searchToken
                 },
                 body:JSON.stringify({
                   query_id:queryId,
-                  session_token:this.session.token,
+                  session_token:searchToken,
                   message:userText,
                   image_data_url:null,
                   query_embedding:null,
@@ -2414,17 +2442,18 @@ createApp({
           this.moris.status = 'Em đang so khớp hình ảnh...';
         }
 
+        const mainSearchToken = await this.freshAuth();
         const res = await this.fetchWithTimeout(
           '/api/moris/search',
           {
             method:'POST',
             headers:{
               'content-type':'application/json',
-              'x-session-token':this.session.token
+              'x-session-token':mainSearchToken
             },
             body:JSON.stringify({
               query_id:queryId,
-              session_token:this.session.token,
+              session_token:mainSearchToken,
               message:userText,
               image_data_url:imageDataUrl || null,
               query_embedding:queryEmbedding,
@@ -2612,6 +2641,121 @@ createApp({
       
       this.bulkImport.statusText = "Đã xử lý xong toàn bộ danh sách!";
       this.renderIcons();
+    },
+    togglePwaPanel() {
+      this.pwa.panelOpen = !this.pwa.panelOpen;
+      this.renderIcons();
+    },
+    async pwaInstall() {
+      if (this.pwa.deferredPrompt) {
+        this.pwa.deferredPrompt.prompt();
+        const choice = await this.pwa.deferredPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          this.toast('success', 'Đang cài đặt ứng dụng vào thiết bị...');
+          this.pwa.canInstall = false;
+        }
+        this.pwa.deferredPrompt = null;
+      } else if (this.pwa.isIOS) {
+        this.toast('info', 'Trên iOS: Nhấn biểu tượng Chia sẻ rồi chọn "Thêm vào Màn hình chính"');
+      } else {
+        this.toast('info', 'Ứng dụng đã được cài đặt hoặc trình duyệt không hỗ trợ cài trực tiếp.');
+      }
+    },
+    async pwaClearCache() {
+      this.pwa.clearing = true;
+      try {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+        }
+        this.toast('success', 'Đã xoá sạch bộ nhớ đệm. Đang tải lại ứng dụng...');
+        setTimeout(() => {
+          window.location.reload(true);
+        }, 700);
+      } catch (err) {
+        this.toast('error', 'Lỗi xoá cache: ' + (err?.message || err));
+        this.pwa.clearing = false;
+      }
+    },
+    async pwaApplyUpdate() {
+      try {
+        if (this.pwa.registration && this.pwa.registration.waiting) {
+          this.pwa.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        this.toast('success', 'Đang cập nhật lên phiên bản mới...');
+        setTimeout(() => {
+          window.location.reload(true);
+        }, 500);
+      } catch (_) {
+        window.location.reload(true);
+      }
+    },
+    async pwaCheckVersion() {
+      try {
+        if ('serviceWorker' in navigator && this.pwa.registration) {
+          await this.pwa.registration.update();
+        }
+        const res = await fetch('/version.json?_t=' + Date.now(), { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.version && data.version !== this.pwa.version) {
+            this.pwa.latestVersion = data.version;
+            this.pwa.updateReady = true;
+            this.renderIcons();
+          }
+        }
+      } catch (_) {}
+    },
+    setupPwa() {
+      if (typeof window === 'undefined') return;
+      this.pwa.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        this.pwa.deferredPrompt = e;
+        this.pwa.canInstall = true;
+      });
+
+      window.addEventListener('appinstalled', () => {
+        this.pwa.canInstall = false;
+        this.pwa.deferredPrompt = null;
+        this.toast('success', 'Đã cài đặt Catalogue AI thành công!');
+      });
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').then((reg) => {
+          this.pwa.registration = reg;
+
+          if (reg.waiting) {
+            this.pwa.updateReady = true;
+            this.renderIcons();
+          }
+
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                this.pwa.updateReady = true;
+                this.pwaCheckVersion();
+                this.renderIcons();
+              }
+            });
+          });
+        }).catch(err => console.warn('SW registration warning:', err));
+
+        // Kiểm tra phiên bản định kỳ mỗi 5 phút
+        this.pwaCheckVersion();
+        setInterval(() => this.pwaCheckVersion(), 5 * 60 * 1000);
+      }
     },
     async finishBulkImport() {
       this.closeBulkImport();

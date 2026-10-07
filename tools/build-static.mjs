@@ -113,6 +113,21 @@ async function generateConfig(env) {
   return Object.keys(config).length;
 }
 
+// Sinh dist/version.json đồng bộ từ src/version.js
+async function generateVersion() {
+  const versionFile = join(ROOT, "src", "version.js");
+  const raw = await readFile(versionFile, "utf8").catch(() => "");
+  const m = raw.match(/APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
+  const version = m ? m[1] : "6.1.1";
+  const data = {
+    version,
+    name: "Catalogue AI",
+    builtAt: new Date().toISOString()
+  };
+  await writeFile(join(OUT, "version.json"), JSON.stringify(data, null, 2) + "\n", "utf8");
+  return version;
+}
+
 // Thư mục/file được phép đưa lên Pages.
 const STATIC_ENTRIES = [
   "index.html",
@@ -121,6 +136,9 @@ const STATIC_ENTRIES = [
   "assets",
   "_headers",
   "_redirects",
+  "manifest.webmanifest",
+  "sw.js",
+  "version.json",
 ];
 
 // Thư mục/file KHÔNG BAO GIỜ được copy (phòng thủ kép).
@@ -184,7 +202,8 @@ async function main() {
   }
 
   const configKeys = await generateConfig(env);
-  files += 1;
+  const version = await generateVersion();
+  files += 2;
 
   // Kiểm tra chốt chặn: không file nào tên dotfile lọt vào dist/
   const leaked = [];

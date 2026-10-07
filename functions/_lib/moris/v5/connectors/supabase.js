@@ -52,6 +52,14 @@ export async function validateSession(env, token) {
     throw e;
   }
 
+  // Token không phải JWT (thiếu 2 dấu chấm) -> chặn TRƯỚC khi gửi xuống
+  // PostgREST: Bearer rác sẽ làm Supabase trả lỗi 400 và thành 500/1101.
+  if (String(token).split(".").length !== 3) {
+    const e = new Error("Session không hợp lệ hoặc đã hết hạn.");
+    e.status = 401;
+    throw e;
+  }
+
   const data = await rpc(env, "app_me", {p_session_token:token});
   const row = Array.isArray(data) ? data[0] : data;
 
