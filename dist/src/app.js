@@ -242,13 +242,6 @@ createApp({
 
     // ---------------- Ảnh Catalogue trong modal Quy đổi ----------------
     wcImgDetailAssets() { return this.weightCalc.image.assets.filter(a => a.asset_type === 'detail'); },
-    wcImgFind(type, order=1) {
-      return this.weightCalc.image.assets.find(a => a.asset_type===type && Number(a.sort_order||1)===order) || null;
-    },
-    wcImgTypeUrl(type) {
-      const a = type === 'detail' ? (this.weightCalc.image.activeAsset || this.wcImgDetailAssets[0] || null) : this.wcImgFind(type, 1);
-      return a ? this.assetUrl(a) : '';
-    },
     wcImgBackUrl() {
       const back = this.wcImgTypeUrl('back');
       if (!back) return '';
@@ -690,6 +683,29 @@ createApp({
     },
 
     // -------------------------------------------------- Ảnh Catalogue của mã quy đổi
+    /** Tìm asset theo loại và thứ tự */
+    wcImgFind(type, order=1) {
+      return this.weightCalc.image.assets.find(a => a.asset_type===type && Number(a.sort_order||1)===order) || null;
+    },
+    /** Lấy URL ảnh theo loại mặt, có fallback trực tiếp từ item Catalogue nếu thiếu row assets */
+    wcImgTypeUrl(type) {
+      const a = type === 'detail'
+        ? (this.weightCalc.image.activeAsset || this.wcImgDetailAssets[0] || null)
+        : this.wcImgFind(type, 1);
+      if (a) return this.assetUrl(a);
+
+      const it = this.weightCalc.image.item;
+      if (!it) return '';
+      if (type === 'front') {
+        const path = it.front_path || it.thumb_path || it.fallback_path;
+        return path ? this.assetPathUrl(path, it.front_provider || it.thumb_provider || it.fallback_provider || 'r2') : '';
+      }
+      if (type === 'back') {
+        const path = it.back_path;
+        return path ? this.assetPathUrl(path, it.back_provider || 'r2') : '';
+      }
+      return '';
+    },
     /** Xoá ảnh hiện tại (bỏ chọn / đổi mã / chưa chọn) */
     wcResetImage(status='idle') {
       const i = this.weightCalc.image;
@@ -719,9 +735,16 @@ createApp({
         if (!hit) { this.wcResetImage('empty'); return; }
         const img = this.weightCalc.image;
         img.item = hit;
-        const assets = await this.rpcRows('app_get_part_assets', { p_session_token:this.session.token, p_image_id:hit.id });
+
+        let assets = [];
+        try {
+          assets = await this.rpcRows('app_get_part_assets', { p_session_token:this.session.token, p_image_id:hit.id });
+        } catch (_) {
+          assets = [];
+        }
         if (seq !== this._wcImgSeq) return;
-        img.assets = assets;
+        img.assets = Array.isArray(assets) ? assets : [];
+
         if (!this.wcImgTypeUrl('front') && this.wcImgTypeUrl('back')) img.tab = 'back';
         img.status = 'ready';
         this.renderIcons();
@@ -2227,7 +2250,7 @@ createApp({
 
     applyMorisSearchResults(data) {
       const candidates = Array.isArray(data?.candidates)
-        ? data.candidates.slice(0, 5)
+        ? data.candidates.slice(0, 10)
         : [];
 
       // Chỉ lọc giao diện khi thật sự có kết quả.

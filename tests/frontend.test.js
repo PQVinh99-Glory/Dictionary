@@ -241,4 +241,18 @@ describe('yêu cầu mới — icon, tab Quy đổi, Vector AI, quản lý user'
     expect(login).toContain('resolveLoginProfile(env, loginInput)');
     expect(login).toContain('profile?.email || loginInput');
   });
+
+  it('đã xóa dòng nhắc cuộn bảng khỏi DOM trong tab Danh sách quy đổi', () => {
+    expect(html).not.toContain('Cuộn bảng để tải thêm mã, cuộn ngược để gỡ bớt khỏi DOM.');
+    expect(html).toContain('Đang render {{ wcVisibleRows.length }} / {{ weightRows.length }} mã');
+  });
+
+  it('ảnh Catalogue trong modal Quy đổi: wcImgTypeUrl và wcImgFind là methods (không nằm trong computed)', () => {
+    const methodsIdx = js.indexOf('methods:{');
+    const wcTypeUrlIdx = js.indexOf('wcImgTypeUrl(type)');
+    const wcFindIdx = js.indexOf('wcImgFind(type, order=1)');
+    expect(methodsIdx).toBeGreaterThan(-1);
+    expect(wcTypeUrlIdx).toBeGreaterThan(methodsIdx);
+    expect(wcFindIdx).toBeGreaterThan(methodsIdx);
+  });
 });

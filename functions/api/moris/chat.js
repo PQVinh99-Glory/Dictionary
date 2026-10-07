@@ -182,8 +182,8 @@ export async function onRequestPost({ request, env }) {
 
     const top = ranked.length >= 3 ? ranked : pool.slice(0, 15);
 
-    // ── PRESENT: top 5 + câu trả lời liệt kê ────────────────────────
-    const candidates = top.slice(0, 5).map((row, i) => toCandidate(row, i + 1));
+    // ── PRESENT: top 10 + câu trả lời liệt kê ───────────────────────
+    const candidates = top.slice(0, 10).map((row, i) => toCandidate(row, i + 1));
     const answer = buildAnswer(candidates, message);
 
     return json({

@@ -224,4 +224,11 @@ describe('/api/moris/health-admin & chat — tăng cường bảo mật', () => 
     }
     expect(checkChatRateLimit(testKey)).toBe(false);
   });
+
+  it('chat trả về top 10 mã hàng (thay vì top 5) để tăng độ sàng lọc', async () => {
+    const chatSrc = (await import('fs')).readFileSync('functions/api/moris/chat.js', 'utf8');
+    const appSrc = (await import('fs')).readFileSync('src/app.js', 'utf8');
+    expect(chatSrc).toContain('top.slice(0, 10)');
+    expect(appSrc).toContain('data.candidates.slice(0, 10)');
+  });
 });
