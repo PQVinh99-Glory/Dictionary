@@ -8,9 +8,27 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Font màn hình LED của công cụ quy đổi (Orbitron + Share Tech Mono) -->
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23059669'/%3E%3Cpath d='M18 38h12v8H18zM34 18h12v8H34zM21 18h9v9h-9zM36 35h10v10H36z' fill='white' opacity='.95'/%3E%3Cpath d='M30 31h7M32 27v8M25 38l10-12' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="icon" href="assets/icon-book.png" type="image/png" />
 
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- ===== BỘ MÀU HỆ THỐNG: Wine Red #7F011F + Light Sand #F5EBD0 =====
+       Đè các họ màu nhấn (emerald/green/teal/indigo/violet/cyan) sang tông đỏ mận,
+       họ lime sang tông cát. Màn LED giữ nguyên (dùng giá trị literal trong HTML). -->
+  <script>
+    (function () {
+      var wine = {
+        50:'#FDF2F4', 100:'#FBE3E8', 200:'#F6C3CD', 300:'#EE97AB', 400:'#DE5A7C',
+        500:'#C21341', 600:'#7F011F', 700:'#690119', 800:'#520114', 900:'#3B010E', 950:'#260009'
+      };
+      var sand = {
+        50:'#FDFBF6', 100:'#FAF4E8', 200:'#F5EBD0', 300:'#EEDFB6', 400:'#E3CB8E',
+        500:'#D6B463', 600:'#C7971B', 700:'#A67A12', 800:'#855E10', 900:'#6B4A13'
+      };
+      tailwind.config = { theme: { extend: { colors: {
+        emerald: wine, green: wine, teal: wine, indigo: wine, violet: wine, cyan: wine, lime: sand
+      } } } };
+    })();
+  </script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -19,8 +37,8 @@
 
   <style>
     :root {
-      --green:#059669;
-      --lime:#84cc16;
+      --green:#7F011F;
+      --lime:#C7971B;
       --ink:#0f172a;
       --muted:#64748b;
       --glass:rgba(255,255,255,.85);
@@ -29,12 +47,12 @@
     body {
       margin:0;
       min-height:100dvh;
-      font-family: Calibri, Carlito, 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-family: 'Aptos Narrow', Calibri, Carlito, 'Segoe UI', system-ui, -apple-system, sans-serif;
       color:var(--ink);
       background:
-        radial-gradient(circle at top left, rgba(16,185,129,.15), transparent 40%),
-        radial-gradient(circle at top right, rgba(132,204,22,.15), transparent 35%),
-        linear-gradient(135deg,#f8fafc,#f1f5f9 48%,#e2e8f0);
+        radial-gradient(circle at top left, rgba(127,1,31,.12), transparent 40%),
+        radial-gradient(circle at top right, rgba(199,151,27,.14), transparent 35%),
+        linear-gradient(135deg,#FDFBF6,#F9F3E7 48%,#F5EBD0);
       overflow-x:hidden;
     }
     [v-cloak] { display:none; }
@@ -56,7 +74,7 @@
       padding:.78rem 1rem; outline:none; transition:all .2s ease;
       font-weight:600; color:#1e293b;
     }
-    .input:focus { border-color:#059669; box-shadow:0 0 0 4px rgba(5,150,105,.15); background:#fff; }
+    .input:focus { border-color:#7F011F; box-shadow:0 0 0 4px rgba(127,1,31,.15); background:#fff; }
     .soft-card { background:rgba(255,255,255,.9); border:1px solid #e2e8f0; }
     
     /* Scrollbar xịn */
@@ -89,7 +107,7 @@
     .catalog-card:hover {
       transform:translateY(-4px);
       box-shadow:0 24px 45px -12px rgba(15,23,42,.12);
-      border-color:rgba(16,185,129,.3);
+      border-color:rgba(127,1,31,.3);
     }
     .catalog-code {
       font-size:1.45rem;
@@ -111,7 +129,7 @@
       text-transform:uppercase;
       letter-spacing:.12em;
       font-weight:800;
-      color:#0f766e;
+      color:#7F011F;
       margin-bottom:.3rem;
     }
     .meta-value {
@@ -142,7 +160,7 @@
       -webkit-backdrop-filter: blur(12px);
     }
     .viewer-stage {
-      height:clamp(360px, 68dvh, 690px);
+      height:var(--viewer-h, clamp(360px, 68dvh, 690px));
       min-height:360px;
       background:
         radial-gradient(circle at 30% 15%, rgba(255,255,255,1), rgba(255,255,255,.8) 40%, transparent 70%),
@@ -165,6 +183,8 @@
     .detail-side {
       contain:layout paint style;
     }
+    /* Chiều cao chung: viewer và card phải thẳng hàng (không còn lệch đáy) */
+    .detail-grid { --viewer-h: clamp(360px, 68dvh, 690px); margin-top:auto; margin-bottom:auto; }
     .viewer-stage.dragging { cursor:grabbing; }
     .viewer-object {
       transform-origin:center center;
@@ -172,12 +192,35 @@
       -webkit-user-drag:none;
       user-select:none;
     }
-    .detail-side { max-height:86dvh; }
-    
+    .detail-side { height:var(--viewer-h, auto); }
+
+    /* Danh sách đơn trọng — bảng cuộn với cửa sổ ảo (tối đa 10 hàng trong DOM) */
+    .wc-table thead th { position:sticky; top:0; z-index:2; background:#f8fafc; }
+    .wc-table tbody tr.wc-row td { border-top:1px solid #f1f5f9; }
+    .wc-table tbody tr.wc-pad td { border:0; padding:0; height:0; }
+    .wc-table tbody tr.wc-pad { pointer-events:none; }
+    /* Viewer ảnh trong modal Quy đổi — độc lập .viewer-stage (khách media query của chi tiết) */
+    .wc-viewer {
+      height:clamp(240px,36dvh,420px);
+      min-height:240px;
+      background:
+        radial-gradient(circle at 30% 15%, rgba(255,255,255,1), rgba(255,255,255,.8) 40%, transparent 70%),
+        linear-gradient(135deg, #f8fafc, #f1f5f9 48%, #e2e8f0);
+      border:1px solid rgba(255,255,255,.8);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,1), 0 20px 50px -10px rgba(15,23,42,.15);
+      touch-action:none;
+      user-select:none;
+      cursor:grab;
+      overscroll-behavior:contain;
+      contain:layout paint style;
+    }
+    .wc-viewer.dragging { cursor:grabbing; }
+    @media (max-width:760px) { .wc-viewer { height:38dvh; min-height:200px; } }
+
     @media (max-width: 1024px) {
-      .detail-grid { max-width:760px; }
+      .detail-grid { max-width:760px; --viewer-h:48dvh; }
       .viewer-stage { height:48dvh; min-height:290px; }
-      .detail-side { max-height:none; }
+      .detail-side { height:auto; max-height:none; }
     }
     @media (max-width: 760px) {
       .modal-shell { max-height:100dvh; border-radius:1.5rem 1.5rem 0 0 !important; }
@@ -186,11 +229,28 @@
       .hide-mobile { display:none !important; }
       .detail-overlay { padding:0 !important; align-items:flex-start !important; }
       .detail-grid { gap:0 !important; margin:0 !important; width:100%; height:100dvh; display:flex !important; flex-direction:column; overflow:hidden; }
-      .viewer-stage { height:45dvh; min-height:250px; border-radius:0 0 1.5rem 1.5rem !important; padding:.5rem !important; flex:0 0 45dvh; box-shadow:0 10px 25px rgba(15,23,42,.12) !important; z-index:10; }
-      .detail-side { border-radius:1.5rem 1.5rem 0 0 !important; width:100%; max-height:none !important; flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; background:rgba(255,255,255,0.95); z-index:5; padding-top:2rem !important; margin-top:-1rem !important; }
+      .viewer-stage { height:44dvh; min-height:240px; border-radius:0 0 1.5rem 1.5rem !important; padding:.5rem !important; flex:0 0 44dvh; box-shadow:0 10px 25px rgba(15,23,42,.12) !important; z-index:6; }
+      .detail-side { border-radius:1.5rem 1.5rem 0 0 !important; width:100%; height:auto !important; max-height:none !important; flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; background:rgba(255,255,255,0.97); z-index:5; padding-top:1.25rem !important; margin-top:0 !important; }
       .detail-overlay { overflow:hidden !important; }
     }
   
+  /* ================================================================
+     SLIDE MENU — nút sách đỏ mở bảng thao tác (trượt từ trái)
+  ================================================================= */
+  .nav-label{ font-size:10px; font-weight:900; letter-spacing:.14em; text-transform:uppercase; color:#94a3b8; padding:0 8px 6px; }
+  .nav-item{ display:flex; align-items:center; gap:10px; width:100%; padding:10px; border-radius:.9rem; text-align:left; color:#334155; transition:background-color .15s ease, transform .12s ease; }
+  .nav-item:hover{ transform:translateX(2px); }
+  .nav-item:active{ transform:scale(.985); }
+  .nav-item:disabled{ opacity:.45; pointer-events:none; }
+  .nav-ico{ display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:.75rem; border:1px solid; flex-shrink:0; }
+  .nav-backdrop{ transition:opacity .25s ease; }
+  .nav-panel{ transition:transform .3s cubic-bezier(.4, 0, .2, 1); }
+  .nav-enter-from .nav-backdrop, .nav-leave-to .nav-backdrop{ opacity:0; }
+  .nav-enter-from .nav-panel, .nav-leave-to .nav-panel{ transform:translateX(-102%); }
+  .nav-leave-active .nav-panel{ transition-duration:.22s; }
+  .nav-book:active img{ transform:scale(.94); transition:transform .12s ease; }
+  @media (prefers-reduced-motion: reduce){ .nav-panel, .nav-backdrop{ transition:none !important; } }
+
   /* ================================================================
      THƯ KÝ KIM — Trợ lý tra cứu linh kiện
      Giữ UI app hiện tại; chỉ thêm assistant layer.
@@ -199,14 +259,14 @@
     position:fixed;right:18px;bottom:max(18px,env(safe-area-inset-bottom));
     z-index:70;display:flex;align-items:center;gap:10px;
     padding:10px 14px 10px 10px;border-radius:999px;
-    color:#fff;background:linear-gradient(135deg,#0f766e,#059669 58%,#10b981);
-    box-shadow:0 18px 50px rgba(5,150,105,.28),0 2px 10px rgba(15,23,42,.16);
+    color:#fff;background:linear-gradient(135deg,#520114,#7F011F 58%,#C21341);
+    box-shadow:0 18px 50px rgba(127,1,31,.28),0 2px 10px rgba(15,23,42,.16);
     border:1px solid rgba(255,255,255,.3);font-weight:900;letter-spacing:.01em;
     transition:transform .2s ease,box-shadow .2s ease;
   }
-  .moris-launcher:hover{transform:translateY(-2px);box-shadow:0 22px 56px rgba(5,150,105,.34),0 4px 14px rgba(15,23,42,.18)}
+  .moris-launcher:hover{transform:translateY(-2px);box-shadow:0 22px 56px rgba(127,1,31,.34),0 4px 14px rgba(15,23,42,.18)}
   .moris-orb{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.18);backdrop-filter:blur(10px)}
-  .moris-live-dot{width:8px;height:8px;border-radius:50%;background:#a7f3d0;box-shadow:0 0 0 5px rgba(167,243,208,.13)}
+  .moris-live-dot{width:8px;height:8px;border-radius:50%;background:#F6C3CD;box-shadow:0 0 0 5px rgba(238,151,171,.18)}
   .moris-backdrop{position:fixed;inset:0;z-index:79;background:rgba(15,23,42,.22);backdrop-filter:blur(3px)}
   .moris-panel{
     position:fixed;z-index:80;right:14px;top:14px;bottom:14px;width:min(440px,calc(100vw - 28px));
@@ -215,10 +275,10 @@
     border:1px solid rgba(148,163,184,.25);
     box-shadow:0 30px 90px rgba(15,23,42,.25);
   }
-  .moris-head{padding:16px 18px;border-bottom:1px solid rgba(226,232,240,.9);background:linear-gradient(135deg,rgba(236,253,245,.98),rgba(240,253,250,.98))}
+  .moris-head{padding:16px 18px;border-bottom:1px solid rgba(226,232,240,.9);background:linear-gradient(135deg,rgba(253,242,244,.98),rgba(253,251,246,.98))}
   .moris-thread{flex:1;overflow:auto;padding:16px;background:
-    radial-gradient(circle at 15% 10%,rgba(16,185,129,.06),transparent 24%),
-    linear-gradient(180deg,#f8fafc,#fff)}
+    radial-gradient(circle at 15% 10%,rgba(127,1,31,.06),transparent 24%),
+    linear-gradient(180deg,#FDFBF6,#fff)}
   .moris-msg{max-width:92%;margin-bottom:12px}
   .moris-msg.user{margin-left:auto}
   .moris-bubble{padding:12px 14px;border-radius:18px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
@@ -226,7 +286,7 @@
   .moris-msg.assistant .moris-bubble{background:#fff;color:#334155;border:1px solid #e2e8f0;border-bottom-left-radius:6px;box-shadow:0 6px 18px rgba(15,23,42,.05)}
   .moris-candidates{display:grid;gap:8px;margin-top:10px}
   .moris-candidate{width:100%;display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border-radius:15px;background:#fff;border:1px solid #e2e8f0;text-align:left;transition:.18s ease}
-  .moris-candidate:hover{border-color:#6ee7b7;transform:translateY(-1px);box-shadow:0 8px 24px rgba(15,23,42,.07)}
+  .moris-candidate:hover{border-color:#EE97AB;transform:translateY(-1px);box-shadow:0 8px 24px rgba(15,23,42,.07)}
   .moris-candidate img{width:58px;height:58px;object-fit:contain;border-radius:11px;background:
     linear-gradient(45deg,#f1f5f9 25%,transparent 25%),linear-gradient(-45deg,#f1f5f9 25%,transparent 25%),
     linear-gradient(45deg,transparent 75%,#f1f5f9 75%),linear-gradient(-45deg,transparent 75%,#f1f5f9 75%);
@@ -236,9 +296,9 @@
   .moris-textarea{width:100%;min-height:52px;max-height:132px;resize:none;border:0;outline:0;padding:13px 14px 8px;background:transparent;font-size:14px}
   .moris-compose-actions{display:flex;align-items:center;justify-content:space-between;padding:7px 8px 8px}
   .moris-icon-btn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;border:1px solid #e2e8f0;background:#fff;color:#475569}
-  .moris-send{height:38px;padding:0 14px;border-radius:12px;background:#059669;color:#fff;font-weight:900;display:flex;gap:7px;align-items:center}
+  .moris-send{height:38px;padding:0 14px;border-radius:12px;background:#7F011F;color:#fff;font-weight:900;display:flex;gap:7px;align-items:center}
   .moris-send:disabled{opacity:.5;cursor:not-allowed}
-  .moris-preview{margin:0 8px 8px;display:flex;align-items:center;gap:10px;padding:8px;border-radius:13px;background:#f0fdfa;border:1px solid #99f6e4}
+  .moris-preview{margin:0 8px 8px;display:flex;align-items:center;gap:10px;padding:8px;border-radius:13px;background:#FDF2F4;border:1px solid #F6C3CD}
   .moris-preview img{width:46px;height:46px;object-fit:cover;border-radius:10px}
 
   /* ============================================
@@ -332,13 +392,13 @@
 <div id="app" v-cloak>
   <!-- LOGIN -->
   <section v-if="!session.user" class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-    <!-- Trang trí nền -->
-    <div class="absolute -top-40 -right-40 w-96 h-96 bg-emerald-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
-    <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
+    <!-- Trang trí nền (Wine Red #7F011F + Light Sand #F5EBD0) -->
+    <div class="absolute -top-40 -right-40 w-96 h-96 bg-rose-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
+    <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-amber-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
     
-    <div class="glass w-full max-w-md rounded-[2.5rem] p-8 sm:p-10 relative z-10">
-      <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white flex items-center justify-center shadow-xl shadow-emerald-200 mb-8 mx-auto">
-        <i data-lucide="layers" class="w-10 h-10"></i>
+    <div class="glass w-full max-w-md rounded-[2.5rem] p-6 sm:p-10 relative z-10">
+      <div class="w-20 h-20 rounded-3xl bg-white border border-rose-100 shadow-xl shadow-rose-100 mb-8 mx-auto overflow-hidden p-1.5">
+        <img src="assets/icon-book.png" alt="Catalogue" class="w-full h-full object-contain" draggable="false" />
       </div>
       <h1 class="text-3xl font-black tracking-tight text-center text-slate-800">Catalogue AI</h1>
       <p class="mt-2 text-slate-500 font-semibold text-center">Hệ thống quản lý tra cứu thông minh.</p>
@@ -364,37 +424,20 @@
   <main v-else class="pb-12">
     <header class="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-white shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-        <div class="flex items-center gap-4 min-w-0">
-          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-100">
-            <i data-lucide="layers" class="w-6 h-6"></i>
-          </div>
+        <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+          <button @click="openNav()" class="nav-book shrink-0 w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-rose-200 active:scale-95 transition overflow-hidden flex items-center justify-center p-1" title="Menu thao tác" aria-label="Mở menu thao tác" aria-haspopup="true" :aria-expanded="nav.open ? 'true' : 'false'">
+            <img src="assets/icon-book.png" alt="" class="w-full h-full object-contain" draggable="false" />
+          </button>
           <div class="min-w-0">
             <h1 class="text-xl sm:text-2xl font-black truncate text-slate-800">Catalogue Linh Kiện</h1>
             <p class="text-xs sm:text-sm text-slate-500 font-bold truncate">Xin chào, <span class="text-emerald-700">{{ session.user.display_name || session.user.username }}</span> <span class="mx-1">•</span> Role: <span class="bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">{{ session.user.role_name }}</span></p>
           </div>
         </div>
-        <div class="flex gap-2 sm:gap-3 shrink-0">
-          <a
-            v-if="session.user?.role_name === 'admin'"
-            href="/tools/moris-vector-center.html"
-            class="btn h-11 px-4 sm:px-5 bg-violet-600 text-white hover:bg-violet-700 shadow-md shadow-violet-100"
-            title="Trung tâm Vector AI"
-          >
-            <i data-lucide="orbit" class="w-5 h-5"></i>
-            <span class="hide-mobile">Vector AI</span>
-          </a>
-          <button @click="openBulkImport()" v-if="canEdit" class="btn h-11 px-4 sm:px-5 bg-teal-600 text-white hover:bg-teal-700 shadow-md shadow-teal-100">
-            <i data-lucide="folder-up" class="w-5 h-5"></i><span class="hide-mobile">Thêm ảnh tự động</span>
-          </button>
-          <button @click="openEditor()" v-if="canEdit" class="btn h-11 px-4 sm:px-5 bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-100">
-            <i data-lucide="plus" class="w-5 h-5"></i><span class="hide-mobile">Thêm mã mới</span>
-          </button>
-
-          <button @click="openWeightCalc()" class="btn h-11 px-4 sm:px-5 bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-100">
-            <i data-lucide="calculator" class="w-5 h-5"></i><span class="hide-mobile">Quy đổi</span>
-          </button>
-
-          <button @click="logout" class="btn h-11 w-11 sm:w-auto sm:px-4 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+          <span class="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-rose-50 border border-rose-100 text-rose-800 text-xs font-black uppercase tracking-wider">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>{{ session.user.role_name }}
+          </span>
+          <button @click="logout" class="btn h-11 w-11 sm:w-auto sm:px-4 bg-white text-slate-600 border border-slate-200 hover:bg-slate-50" title="Thoát">
             <i data-lucide="log-out" class="w-5 h-5"></i><span class="hide-mobile">Thoát</span>
           </button>
         </div>
@@ -579,21 +622,19 @@
             <span>Mã này chưa có ảnh mặt sau. Hệ thống không tạo mặt sau giả để tránh hiểu lầm trái/phải.</span>
           </div>
           
-          <div class="pt-4 border-t border-slate-200/60 mt-4">
-            <div class="grid grid-cols-2 gap-2.5">
-              <button @click="setDetailTab('front')" :class="tabBtnClass('front')"><i data-lucide="panel-top" class="w-4 h-4"></i> Mặt chính</button>
-              <button @click="setDetailTab('back')" :class="tabBtnClass('back')" :disabled="!hasBackView"><i data-lucide="panel-bottom" class="w-4 h-4"></i> Mặt sau</button>
-              <button @click="setDetailTab('detail')" :class="tabBtnClass('detail')" :disabled="!detailAssets.length"><i data-lucide="scan-search" class="w-4 h-4"></i> Chi tiết</button>
-              
+            <div class="pt-4 border-t border-slate-200/60 mt-4">
+              <div class="grid grid-cols-3 gap-2.5">
+                <button @click="setDetailTab('front')" :class="tabBtnClass('front')"><i data-lucide="panel-top" class="w-4 h-4"></i> Mặt chính</button>
+                <button @click="setDetailTab('back')" :class="tabBtnClass('back')" :disabled="!hasBackView"><i data-lucide="panel-bottom" class="w-4 h-4"></i> Mặt sau</button>
+                <button @click="setDetailTab('detail')" :class="tabBtnClass('detail')" :disabled="!detailAssets.length"><i data-lucide="scan-search" class="w-4 h-4"></i> Chi tiết</button>
+              </div>
             </div>
-          </div>
-          
-          <div class="mt-3 grid grid-cols-4 gap-2.5">
-            <button @click="zoomOut" class="btn h-11 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Thu nhỏ"><i data-lucide="zoom-out" class="w-5 h-5"></i></button>
-            <button @click="resetViewer" class="btn h-11 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Khôi phục"><i data-lucide="rotate-ccw" class="w-5 h-5"></i></button>
-            <button @click="zoomIn" class="btn h-11 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Phóng to"><i data-lucide="zoom-in" class="w-5 h-5"></i></button>
-            
-          </div>
+
+            <div class="mt-3 grid grid-cols-3 gap-2.5">
+              <button @click="zoomOut" class="btn h-11 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Thu nhỏ"><i data-lucide="zoom-out" class="w-5 h-5"></i></button>
+              <button @click="resetViewer" class="btn h-11 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Khôi phục"><i data-lucide="rotate-ccw" class="w-5 h-5"></i></button>
+              <button @click="zoomIn" class="btn h-11 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Phóng to"><i data-lucide="zoom-in" class="w-5 h-5"></i></button>
+            </div>
           
           <div v-if="detailAssets.length" class="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-soft">
             <button v-for="a in detailAssets" :key="a.id || a.image_path" @click="detail.activeAsset=a" class="checker rounded-xl overflow-hidden h-16 min-w-[4rem] border-2 transition-colors shrink-0" :class="detail.activeAsset===a ? 'border-emerald-500' : 'border-slate-200'">
@@ -839,7 +880,7 @@
        public.material_weights (Supabase, RLS authenticated).
   =============================================================== -->
   <div v-if="weightCalc.open" class="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-md p-3 sm:p-5 overflow-y-auto flex items-center justify-center mobile-bottom" @click.self="closeWeightCalc">
-    <div class="modal-shell glass w-full max-w-5xl rounded-[2.5rem] p-5 sm:p-8 bg-white/95 my-auto">
+    <div class="modal-shell glass w-full max-w-5xl rounded-[2.5rem] p-5 sm:p-8 overflow-y-auto overscroll-contain scrollbar-soft bg-white/95 my-auto">
 
       <!-- Header -->
       <div class="flex items-start justify-between gap-4 mb-5 border-b border-slate-200/60 pb-5">
@@ -860,7 +901,7 @@
         <button @click="weightCalc.tab='calc'" :class="['btn h-10 px-4 text-xs uppercase tracking-wider font-black', weightCalc.tab==='calc' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']">
           <i data-lucide="arrow-right-left" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Quy đổi
         </button>
-        <button @click="weightCalc.tab='list'" :class="['btn h-10 px-4 text-xs uppercase tracking-wider font-black', weightCalc.tab==='list' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']">
+        <button v-if="canConvert" @click="wcOpenList()" :class="['btn h-10 px-4 text-xs uppercase tracking-wider font-black', weightCalc.tab==='list' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']">
           <i data-lucide="list" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Danh sách đơn trọng
           <span class="ml-1 px-1.5 py-0.5 rounded-md text-[10px] bg-white/20">{{ weightCalc.list.length }}</span>
         </button>
@@ -944,15 +985,15 @@
 
             <div class="flex justify-between items-center text-[10px] text-slate-500 tracking-widest uppercase font-bold border-b border-slate-800/60 pb-2">
               <span><i data-lucide="cpu" class="w-3.5 h-3.5 text-indigo-400 inline-block align-[-2px] mr-1"></i> DIGITAL WEIGHT CONVERTER</span>
-              <span class="animate-pulse text-emerald-500 font-mono flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></span> ONLINE</span>
+              <span class="animate-pulse text-[#10b981] font-mono flex items-center"><span class="w-1.5 h-1.5 rounded-full bg-[#10b981] mr-1"></span> ONLINE</span>
             </div>
 
             <div class="space-y-1">
               <div class="flex justify-between text-[10px] text-slate-400 tracking-wider font-bold uppercase">
-                <span>TRỌNG LƯỢNG THỰC TẾ (ACTUAL WEIGHT)</span><span class="text-emerald-400/80">UNIT: KG</span>
+                <span>TRỌNG LƯỢNG THỰC TẾ (ACTUAL WEIGHT)</span><span class="text-[#34d399]/80">UNIT: KG</span>
               </div>
               <div class="bg-black/40 rounded-xl p-4 border border-slate-800/80 flex items-center justify-between">
-                <div class="digital-font text-3xl sm:text-4xl font-black text-emerald-400 led-glow-green tracking-widest">{{ calcKgText }}</div>
+                <div ref="ledKg" class="digital-font text-3xl sm:text-4xl font-black text-[#34d399] led-glow-green tracking-widest">{{ calcKgText }}</div>
                 <div class="digital-sub text-slate-500 text-lg font-bold">KG</div>
               </div>
             </div>
@@ -962,7 +1003,7 @@
                 <span>SỐ LƯỢNG QUY ĐỔI (PCS COUNT)</span><span class="text-amber-400/80">UNIT: PCS</span>
               </div>
               <div class="bg-black/40 rounded-xl p-4 border border-slate-800/80 flex items-center justify-between">
-                <div class="digital-font text-3xl sm:text-4xl font-black text-amber-500 led-glow-amber tracking-widest">{{ calcPcsText }}</div>
+                <div ref="ledPcs" class="digital-font text-3xl sm:text-4xl font-black text-amber-500 led-glow-amber tracking-widest">{{ calcPcsText }}</div>
                 <div class="digital-sub text-slate-500 text-lg font-bold">PCS</div>
               </div>
             </div>
@@ -974,7 +1015,7 @@
               </div>
               <div class="text-right">
                 <span class="block text-slate-500 font-semibold">TỶ LỆ KHỐI LƯỢNG:</span>
-                <span class="font-mono text-emerald-400 font-bold">{{ calcUnitWeightText ? calcUnitWeightText + ' KG/PCS' : 'N/A' }}</span>
+                <span class="font-mono text-[#34d399] font-bold">{{ calcUnitWeightText ? calcUnitWeightText + ' KG/PCS' : 'N/A' }}</span>
               </div>
             </div>
           </div>
@@ -984,6 +1025,85 @@
             <button type="button" @click="closeWeightCalc()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg text-xs tracking-wider uppercase transition shadow-lg">Hoàn tất</button>
           </div>
         </div>
+      </div>
+
+      <!-- ================= ẢNH CATALOGUE CỦA MÃ ĐANG QUY ĐỔI ================= -->
+      <div class="mt-6 bg-white/90 border border-slate-200/80 rounded-2xl p-4">
+        <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <h4 class="text-xs font-bold text-slate-500 tracking-wider uppercase flex items-center">
+            <i data-lucide="image" class="w-4 h-4 text-emerald-600 mr-2"></i>Ảnh Catalogue Linh Kiện
+            <span v-if="weightCalc.selected" class="ml-2 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 font-mono text-slate-700 tracking-normal">{{ weightCalc.selected.code }}</span>
+          </h4>
+          <div v-if="weightCalc.image.status==='ready'" class="flex items-center gap-2 flex-wrap">
+            <button @click="wcImgSetTab('front')" :class="wcImgTabClass('front')"><i data-lucide="panel-top" class="w-3.5 h-3.5 inline-block align-[-2px] mr-1"></i>Mặt chính</button>
+            <button @click="wcImgSetTab('back')" :class="wcImgTabClass('back')" :disabled="!wcImgHasBack"><i data-lucide="panel-bottom" class="w-3.5 h-3.5 inline-block align-[-2px] mr-1"></i>Mặt sau</button>
+            <button @click="wcImgSetTab('detail')" :class="wcImgTabClass('detail')" :disabled="!wcImgDetailAssets.length"><i data-lucide="scan-search" class="w-3.5 h-3.5 inline-block align-[-2px] mr-1"></i>Chi tiết</button>
+            <span class="w-px h-6 bg-slate-200 mx-1"></span>
+            <button @click="wcImgZoomOut()" class="btn h-9 w-9 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Thu nhỏ"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
+            <button @click="wcImgReset()" class="btn h-9 w-9 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Khôi phục"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
+            <button @click="wcImgZoomIn()" class="btn h-9 w-9 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-600" title="Phóng to"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+
+        <!-- Chưa chọn mã -->
+        <div v-if="!weightCalc.selected" class="wc-viewer rounded-2xl flex items-center justify-center text-slate-400 px-6">
+          <div class="text-center font-bold text-sm">
+            <i data-lucide="mouse-pointer-click" class="w-10 h-10 mx-auto mb-2 opacity-70"></i>
+            Chọn mã hàng ở ô "Mã hàng" để tự hiện ảnh tương ứng từ Catalogue Linh Kiện.
+          </div>
+        </div>
+
+        <!-- Đang tải -->
+        <div v-else-if="weightCalc.image.status==='loading'" class="wc-viewer rounded-2xl flex items-center justify-center text-slate-400 px-6">
+          <div class="text-center font-bold text-sm">
+            <span class="w-8 h-8 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin inline-block mb-3"></span>
+            <p>Đang tải ảnh mã {{ weightCalc.selected?.code }}...</p>
+          </div>
+        </div>
+
+        <!-- Mã chưa có ảnh -->
+        <div v-else-if="weightCalc.image.status==='empty'" class="wc-viewer rounded-2xl flex items-center justify-center text-slate-400 px-6">
+          <div class="text-center font-bold text-sm max-w-md">
+            <i data-lucide="image-off" class="w-10 h-10 mx-auto mb-2 opacity-70"></i>
+            <p>Mã này chưa có ảnh trong Catalogue Linh Kiện. Thêm ảnh cho mã ở mục "Thêm mã mới" để hiển thị tại đây.</p>
+          </div>
+        </div>
+
+        <!-- Lỗi -->
+        <div v-else-if="weightCalc.image.status==='error'" class="wc-viewer rounded-2xl flex items-center justify-center text-slate-400 px-6">
+          <div class="text-center font-bold text-sm">
+            <i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-2 text-amber-500"></i>
+            <p>Không tải được ảnh của mã này.</p>
+            <button @click="wcLoadImage(weightCalc.selected?.code)" class="btn h-9 px-4 mt-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50">Thử lại</button>
+          </div>
+        </div>
+
+        <!-- Viewer: zoom / kéo / pinch -->
+        <section v-else :class="['wc-viewer rounded-2xl overflow-hidden relative flex items-center justify-center', weightCalc.image.dragging ? 'dragging' : '']"
+          @wheel.prevent="wcImgWheel"
+          @pointerdown="wcImgPointerDown"
+          @pointermove="wcImgPointerMove"
+          @pointerup="wcImgPointerUp"
+          @pointercancel="wcImgPointerUp"
+          @lostpointercapture="wcImgPointerUp">
+          <img v-if="wcImgActiveUrl" :src="wcImgActiveUrl" class="viewer-object part-img max-w-[92%] max-h-[92%] object-contain" :style="wcImgTransform" draggable="false" alt="" />
+          <div v-else class="text-slate-400 text-center font-black">
+            <i data-lucide="image-off" class="w-12 h-12 mx-auto mb-2"></i>
+            {{ wcImgTabLabel }} chưa có ảnh
+          </div>
+          <div class="absolute left-3 bottom-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-wider font-black text-slate-600 pointer-events-none">
+            <span class="px-3 py-1.5 rounded-xl bg-white/90 border border-slate-200 shadow-sm backdrop-blur-md">{{ wcImgTabLabel }}</span>
+            <span class="px-3 py-1.5 rounded-xl bg-white/90 border border-slate-200 shadow-sm backdrop-blur-md">Zoom {{ weightCalc.image.zoom.toFixed(1) }}x</span>
+            <span class="hidden sm:inline-flex px-3 py-1.5 rounded-xl bg-white/90 border border-slate-200 shadow-sm backdrop-blur-md">Cuộn để phóng to · kéo để di chuyển</span>
+          </div>
+          <div v-if="wcImgDetailAssets.length && weightCalc.image.tab==='detail'" class="absolute right-3 bottom-3 flex gap-2 overflow-x-auto max-w-[50%] pb-1 scrollbar-soft">
+            <button v-for="a in wcImgDetailAssets" :key="a.id || a.image_path" @click="weightCalc.image.activeAsset=a; wcImgReset()"
+              class="checker rounded-lg overflow-hidden h-14 min-w-[3.5rem] border-2 transition-colors shrink-0"
+              :class="weightCalc.image.activeAsset===a ? 'border-emerald-500' : 'border-slate-200'">
+              <img :src="assetUrl(a)" class="w-full h-full object-contain" loading="lazy" decoding="async" />
+            </button>
+          </div>
+        </section>
       </div>
 
       <!-- ================= TAB 2: DANH SÁCH ĐƠN TRỌNG ================= -->
@@ -1014,9 +1134,10 @@
             class="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
 
-        <!-- Bảng -->
-        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white/90">
-          <table class="w-full text-xs">
+        <!-- Bảng (cửa sổ ảo: chỉ render tối đa 10 hàng trong DOM, cuộn để tải/gỡ hàng) -->
+        <div class="overflow-auto scrollbar-soft rounded-2xl border border-slate-200 bg-white/90"
+             :style="{ maxHeight: wcScrollMax }" @scroll.passive="wcListScroll">
+          <table class="wc-table w-full text-xs">
             <thead>
               <tr class="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider">
                 <th class="text-left font-black px-4 py-3">Mã hàng</th>
@@ -1024,46 +1145,50 @@
                 <th class="text-right font-black px-4 py-3 w-56">Thao tác</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody ref="wcBody">
               <tr v-if="weightCalc.loading && !weightCalc.list.length">
                 <td colspan="3" class="px-4 py-8 text-center text-slate-400 font-bold">Đang tải danh sách...</td>
               </tr>
               <tr v-else-if="!weightRows.length">
                 <td colspan="3" class="px-4 py-8 text-center text-slate-400 font-bold">Không có mã nào khớp.</td>
               </tr>
-              <tr v-for="row in weightRows" :key="row.id" class="hover:bg-slate-50/70">
-                <!-- Đang sửa -->
-                <template v-if="weightCalc.editingId === row.id">
-                  <td class="px-4 py-2">
-                    <input type="text" v-model="weightCalc.editDraft.code"
-                      class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-mono uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  </td>
-                  <td class="px-4 py-2">
-                    <input type="number" step="any" min="0" v-model="weightCalc.editDraft.kg"
-                      class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  </td>
-                  <td class="px-4 py-2 text-right whitespace-nowrap">
-                    <button @click="wcSaveEdit(row)" :disabled="weightCalc.saving" class="btn h-8 px-3 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 mr-1.5 text-[11px] uppercase font-black"><i data-lucide="check" class="w-3.5 h-3.5 inline-block align-[-2px]"></i> Lưu</button>
-                    <button @click="wcCancelEdit()" class="btn h-8 px-3 bg-slate-200 text-slate-600 hover:bg-slate-300 text-[11px] uppercase font-black">Huỷ</button>
-                  </td>
-                </template>
-                <!-- Hiển thị -->
-                <template v-else>
-                  <td class="px-4 py-2.5 font-mono font-bold text-slate-800 uppercase">{{ row.code }}</td>
-                  <td class="px-4 py-2.5 font-mono text-emerald-700 font-bold">{{ Number(row.kg).toFixed(4) }}</td>
-                  <td class="px-4 py-2.5 text-right whitespace-nowrap">
-                    <button @click="wcUseInCalc(row)" title="Dùng mã này để quy đổi" class="btn h-8 px-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 mr-1.5 text-[11px] uppercase font-black"><i data-lucide="arrow-right-left" class="w-3.5 h-3.5 inline-block align-[-2px]"></i></button>
-                    <button @click="wcStartEdit(row)" title="Sửa" class="btn h-8 px-2.5 bg-slate-100 text-slate-600 hover:bg-slate-200 mr-1.5 text-[11px] uppercase font-black"><i data-lucide="pencil" class="w-3.5 h-3.5 inline-block align-[-2px]"></i></button>
-                    <button @click="wcDelete(row)" title="Xoá" class="btn h-8 px-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 text-[11px] uppercase font-black"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block align-[-2px]"></i></button>
-                  </td>
-                </template>
-              </tr>
+              <template v-else>
+                <tr v-if="wcTopPad" class="wc-pad"><td colspan="3" :style="{height: wcTopPad + 'px'}"></td></tr>
+                <tr v-for="row in wcVisibleRows" :key="row.id" class="wc-row hover:bg-slate-50/70">
+                  <!-- Đang sửa -->
+                  <template v-if="weightCalc.editingId === row.id">
+                    <td class="px-4 py-2">
+                      <input type="text" v-model="weightCalc.editDraft.code"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-mono uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </td>
+                    <td class="px-4 py-2">
+                      <input type="number" step="any" min="0" v-model="weightCalc.editDraft.kg"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </td>
+                    <td class="px-4 py-2 text-right whitespace-nowrap">
+                      <button @click="wcSaveEdit(row)" :disabled="weightCalc.saving" class="btn h-8 px-3 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 mr-1.5 text-[11px] uppercase font-black"><i data-lucide="check" class="w-3.5 h-3.5 inline-block align-[-2px]"></i> Lưu</button>
+                      <button @click="wcCancelEdit()" class="btn h-8 px-3 bg-slate-200 text-slate-600 hover:bg-slate-300 text-[11px] uppercase font-black">Huỷ</button>
+                    </td>
+                  </template>
+                  <!-- Hiển thị -->
+                  <template v-else>
+                    <td class="px-4 py-2.5 font-mono font-bold text-slate-800 uppercase">{{ row.code }}</td>
+                    <td class="px-4 py-2.5 font-mono text-emerald-700 font-bold">{{ Number(row.kg).toFixed(4) }}</td>
+                    <td class="px-4 py-2.5 text-right whitespace-nowrap">
+                      <button @click="wcUseInCalc(row)" title="Dùng mã này để quy đổi" class="btn h-8 px-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 mr-1.5 text-[11px] uppercase font-black"><i data-lucide="arrow-right-left" class="w-3.5 h-3.5 inline-block align-[-2px]"></i></button>
+                      <button @click="wcStartEdit(row)" title="Sửa" class="btn h-8 px-2.5 bg-slate-100 text-slate-600 hover:bg-slate-200 mr-1.5 text-[11px] uppercase font-black"><i data-lucide="pencil" class="w-3.5 h-3.5 inline-block align-[-2px]"></i></button>
+                      <button @click="wcDelete(row)" title="Xoá" class="btn h-8 px-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 text-[11px] uppercase font-black"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block align-[-2px]"></i></button>
+                    </td>
+                  </template>
+                </tr>
+                <tr v-if="wcBottomPad" class="wc-pad"><td colspan="3" :style="{height: wcBottomPad + 'px'}"></td></tr>
+              </template>
             </tbody>
           </table>
         </div>
 
         <p class="text-[11px] text-slate-400 font-bold mt-3">
-          Hiển thị {{ weightRows.length }} / {{ weightCalc.list.length }} mã. Thay đổi được lưu ngay vào bảng <span class="font-mono text-slate-500">material_weights</span> và dùng chung cho tab Quy đổi.
+          Đang render {{ wcVisibleRows.length }} / {{ weightRows.length }} mã (tổng {{ weightCalc.list.length }} trong bảng <span class="font-mono text-slate-500">material_weights</span>). Cuộn bảng để tải thêm mã, cuộn ngược để gỡ bớt khỏi DOM.
         </p>
       </div>
 
@@ -1196,6 +1321,9 @@
             <button @click="triggerMorisImage" class="moris-icon-btn" :disabled="moris.busy" aria-label="Đính kèm ảnh">
               <i data-lucide="image-plus" class="w-4 h-4"></i>
             </button>
+            <button @click="openCamera" class="moris-icon-btn" :disabled="moris.busy" aria-label="Chụp ảnh bằng camera" title="Chụp ảnh camera">
+              <i data-lucide="camera" class="w-4 h-4"></i>
+            </button>
             <input ref="morisImageInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="onMorisImageSelect" />
             <span class="text-[10px] font-bold text-slate-400">Enter để gửi</span>
           </div>
@@ -1210,6 +1338,268 @@
       </p>
     </footer>
   </aside>
+
+  <!-- ============== SLIDE MENU — nút sách đỏ mở bảng thao tác ============== -->
+  <Transition name="nav">
+    <div v-if="nav.open" class="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="Menu thao tác">
+      <div class="nav-backdrop absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="closeNav()"></div>
+      <nav class="nav-panel absolute left-0 top-0 h-full w-[88%] max-w-[340px] bg-white shadow-[0_0_60px_rgba(15,23,42,.35)] rounded-r-[1.75rem] flex flex-col overflow-hidden">
+
+        <!-- Ảnh bìa: sách đỏ -->
+        <div class="relative shrink-0 overflow-hidden" style="background:linear-gradient(135deg,#7F011F 0%,#A30B2C 58%,#F5EBD0 160%);">
+          <div class="absolute inset-0" style="background:radial-gradient(circle at 18% 12%, rgba(245,235,208,.55), transparent 62%);"></div>
+          <div class="relative flex items-center gap-3 p-4">
+            <div class="w-[64px] h-[84px] rounded-lg overflow-hidden bg-white shadow-lg border border-white/70 shrink-0">
+              <img src="assets/icon-book.png" alt="Bìa Catalogue" class="w-full h-full object-cover" draggable="false" />
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-black text-white truncate">Catalogue Linh Kiện</p>
+              <p class="text-[11px] font-bold text-white/80 truncate">{{ session.user.display_name || session.user.username }}</p>
+              <span class="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-md bg-white/15 border border-white/25 text-white text-[10px] font-black uppercase tracking-wider">
+                <i data-lucide="shield-check" class="w-3 h-3"></i>{{ session.user.role_name }}
+              </span>
+            </div>
+            <button @click="closeNav()" class="w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 text-white flex items-center justify-center shrink-0" aria-label="Đóng menu"><i data-lucide="x" class="w-5 h-5"></i></button>
+          </div>
+        </div>
+
+        <!-- Danh sách thao tác -->
+        <div class="flex-1 overflow-y-auto overscroll-contain scrollbar-soft px-3 py-3">
+          <p class="nav-label">Thao tác</p>
+
+          <button v-if="canEdit" @click="closeNav(); openBulkImport()" class="nav-item text-teal-700 hover:bg-teal-50">
+            <span class="nav-ico bg-teal-50 border-teal-100"><i data-lucide="folder-up" class="w-[18px] h-[18px]"></i></span>
+            <span class="min-w-0"><b class="block text-[13px] font-black truncate">Thêm ảnh tự động</b><span class="block text-[11px] font-bold text-slate-500 truncate">Tải ảnh theo mã linh kiện</span></span>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
+          </button>
+
+          <button v-if="canEdit" @click="closeNav(); openEditor()" class="nav-item text-emerald-700 hover:bg-emerald-50">
+            <span class="nav-ico bg-emerald-50 border-emerald-100"><i data-lucide="plus" class="w-[18px] h-[18px]"></i></span>
+            <span class="min-w-0"><b class="block text-[13px] font-black truncate">Thêm mã mới</b><span class="block text-[11px] font-bold text-slate-500 truncate">Tạo mã linh kiện trong catalogue</span></span>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
+          </button>
+
+          <button @click="closeNav(); openWeightCalc()" class="nav-item text-indigo-700 hover:bg-indigo-50">
+            <span class="nav-ico bg-indigo-50 border-indigo-100"><i data-lucide="calculator" class="w-[18px] h-[18px]"></i></span>
+            <span class="min-w-0"><b class="block text-[13px] font-black truncate">Quy đổi</b><span class="block text-[11px] font-bold text-slate-500 truncate">Bảng đơn trọng ảo &amp; ảnh Catalogue</span></span>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
+          </button>
+
+          <button v-if="session.user?.role_name === 'admin'" @click="closeNav(); openVectorCenter()" class="nav-item text-violet-700 hover:bg-violet-50">
+            <span class="nav-ico bg-violet-50 border-violet-100"><i data-lucide="orbit" class="w-[18px] h-[18px]"></i></span>
+            <span class="min-w-0"><b class="block text-[13px] font-black truncate">Trung tâm Vector AI</b><span class="block text-[11px] font-bold text-slate-500 truncate">Nhận diện ảnh &amp; tìm kiếm vector</span></span>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
+          </button>
+
+          <button v-if="isAdmin" @click="closeNav(); openUserManager()" class="nav-item text-sky-700 hover:bg-sky-50">
+            <span class="nav-ico bg-sky-50 border-sky-100"><i data-lucide="users" class="w-[18px] h-[18px]"></i></span>
+            <span class="min-w-0"><b class="block text-[13px] font-black truncate">Quản lý người dùng</b><span class="block text-[11px] font-bold text-slate-500 truncate">Đổi role, mở khóa, cấp lại mật khẩu</span></span>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
+          </button>
+
+          <p class="nav-label mt-4">Tài khoản</p>
+          <button @click="closeNav(); logout()" class="nav-item text-rose-700 hover:bg-rose-50">
+            <span class="nav-ico bg-rose-50 border-rose-100"><i data-lucide="log-out" class="w-[18px] h-[18px]"></i></span>
+            <span class="min-w-0"><b class="block text-[13px] font-black truncate">Thoát</b><span class="block text-[11px] font-bold text-slate-500 truncate">Đăng xuất khỏi hệ thống</span></span>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 shrink-0"></i>
+          </button>
+        </div>
+
+        <div class="shrink-0 px-4 py-3 border-t border-slate-200/80 bg-slate-50/80 text-[11px] font-bold text-slate-500 flex items-center gap-2">
+          <i data-lucide="book-open" class="w-4 h-4 text-rose-800 shrink-0"></i>
+          <span class="truncate">Catalogue Linh Kiện · thư viện ảnh &amp; tra cứu</span>
+        </div>
+      </nav>
+    </div>
+  </Transition>
+
+  <!-- ============== QUẢN LÝ NGƯỜI DÙNG (admin) ============== -->
+  <div v-if="users.open" class="fixed inset-0 z-[86] bg-slate-900/70 backdrop-blur-md p-3 sm:p-6 flex items-center justify-center" @click.self="closeUserManager()">
+    <div class="modal-shell glass w-full max-w-3xl rounded-[2rem] bg-white overflow-hidden flex flex-col my-auto" style="max-height:min(92dvh, calc(100dvh - 1rem));">
+
+      <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-slate-200 shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center shrink-0">
+            <i data-lucide="users" class="w-5 h-5 text-sky-600"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 class="text-base sm:text-lg font-black text-slate-800 truncate">Quản lý người dùng</h3>
+            <p class="text-[11px] font-bold text-slate-500">Đổi role (viewer / converter / admin) · mở khóa · cấp lại mật khẩu</p>
+          </div>
+        </div>
+        <button @click="closeUserManager()" class="btn w-10 h-10 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500 shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div v-if="users.tempPw" class="mx-4 mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 flex flex-wrap items-center gap-3 shrink-0">
+        <div class="min-w-0 flex-1">
+          <p class="text-[11px] font-black uppercase tracking-wider text-emerald-700">Mật khẩu tạm — chỉ hiển thị 1 lần</p>
+          <p class="font-mono text-lg font-black text-slate-800 break-all">{{ users.tempPw }}</p>
+        </div>
+        <button @click="copyTempPw" class="btn h-9 px-4 bg-emerald-600 text-white hover:bg-emerald-700 text-xs uppercase tracking-wider font-black shrink-0">
+          <i data-lucide="copy" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Sao chép
+        </button>
+      </div>
+
+      <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-soft px-4 py-3 space-y-2">
+        <div v-if="users.loading" class="py-10 text-center">
+          <span class="w-7 h-7 border-4 border-slate-200 border-t-sky-600 rounded-full animate-spin inline-block mb-2"></span>
+          <p class="text-sm font-bold text-slate-500">Đang tải danh sách người dùng...</p>
+        </div>
+        <div v-else-if="!users.list.length" class="py-10 text-center text-sm font-bold text-slate-500">Chưa có người dùng nào.</div>
+
+        <div v-for="u in users.list" :key="u.user_id" class="rounded-2xl border border-slate-200 bg-white p-3 flex flex-wrap items-center gap-2">
+          <div class="min-w-0 flex-1 basis-full sm:basis-auto">
+            <p class="text-sm font-black text-slate-800 truncate">{{ u.email }}</p>
+            <p class="text-[11px] font-bold text-slate-500 truncate">
+              <span class="uppercase tracking-wider text-slate-700">{{ u.role_name }}</span>
+              <template v-if="u.is_active === false"> · <span class="text-rose-600 font-black">vô hiệu hóa</span></template>
+              <template v-if="u.permanent_lock"> · <span class="text-rose-700 font-black">khóa vĩnh viễn</span></template>
+              <template v-else-if="u.locked_until"> · <span class="text-amber-600">khóa tới {{ fmtStamp(u.locked_until) }}</span></template>
+              <template v-if="u.failed_count"> · sai {{ u.failed_count }} lần</template>
+              <template v-if="u.last_login_at"> · đăng nhập {{ fmtStamp(u.last_login_at) }}</template>
+            </p>
+          </div>
+
+          <select :value="u.role_name" @change="userAction(u, 'set_role', $event.target.value)" :disabled="users.saving"
+            class="input h-9 px-2 text-xs w-auto cursor-pointer" title="Đổi role">
+            <option value="viewer">viewer</option>
+            <option value="converter">converter</option>
+            <option value="admin">admin</option>
+          </select>
+
+          <button v-if="u.locked_until || u.failed_count || u.permanent_lock" @click="userAction(u, 'unlock')"
+            :disabled="users.saving || users.actionId === u.user_id"
+            class="btn h-9 px-3 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 text-xs font-black uppercase tracking-wider shrink-0">Mở khóa</button>
+
+          <button @click="userAction(u, 'reset_password')"
+            :disabled="users.saving || users.actionId === u.user_id"
+            class="btn h-9 px-3 bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 text-xs font-black uppercase tracking-wider shrink-0">
+            <i data-lucide="key-round" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Cấp lại MK
+          </button>
+
+          <button @click="userAction(u, u.is_active === false ? 'set_active' : 'set_inactive')"
+            :disabled="users.saving || users.actionId === u.user_id"
+            :class="['btn h-9 px-3 text-xs font-black uppercase tracking-wider shrink-0', u.is_active === false ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100']">
+            {{ u.is_active === false ? 'Bật' : 'Tắt' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="shrink-0 px-4 py-3 border-t border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-500">
+        Admin không tạo user mới — tạo tài khoản trong Supabase Dashboard → <b>Authentication</b>. Sau khi tạo, quay lại đây đặt role.
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== VECTOR AI — modal nổi nhúng trang Tools ============== -->
+  <div v-if="vectorCenter.open" class="fixed inset-0 z-[85] bg-slate-900/80 backdrop-blur-md p-3 sm:p-6 flex items-center justify-center" @click.self="closeVectorCenter">
+    <div class="modal-shell glass w-full max-w-5xl rounded-[2rem] bg-white/95 overflow-hidden flex flex-col shadow-2xl" style="height:min(92dvh, calc(100dvh - 1.5rem));">
+
+      <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-slate-200/80 bg-white shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded-2xl bg-violet-500/10 border border-violet-500/30 flex items-center justify-center shrink-0">
+            <i data-lucide="orbit" class="w-5 h-5 text-violet-600"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 class="text-sm sm:text-base font-black text-slate-800 truncate">Trung tâm Vector AI</h3>
+            <p class="text-[11px] font-bold text-slate-500 truncate">Trợ lý nhận diện &amp; vector — chạy trong Catalogue</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button @click="openVectorCenterTab" class="btn h-9 px-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs uppercase tracking-wider font-black" title="Mở trong tab riêng">
+            <i data-lucide="external-link" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Mở tab
+          </button>
+          <button @click="closeVectorCenter" class="btn w-9 h-9 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500" aria-label="Đóng"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+      </div>
+
+      <div class="relative flex-1 min-h-0 bg-slate-100">
+        <iframe ref="vectorFrame" src="/tools/moris-vector-center.html" title="Trung tâm Vector AI"
+          class="w-full h-full border-0 bg-white" allow="clipboard-write; camera; microphone"
+          @load="vectorCenter.loading = false"></iframe>
+        <div v-if="vectorCenter.loading" class="absolute inset-0 flex items-center justify-center bg-white pointer-events-none">
+          <div class="text-center">
+            <span class="w-8 h-8 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin inline-block mb-3"></span>
+            <p class="text-sm font-bold text-slate-600">Đang tải Trung tâm Vector AI...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== CAMERA MORIS (khung căn chỉnh 1000:410) ============== -->
+  <div v-if="camera.open" class="fixed inset-0 z-[90] bg-slate-900/80 backdrop-blur-md p-3 sm:p-6 flex items-center justify-center" @click.self="closeCamera">
+    <div class="modal-shell glass w-full max-w-3xl rounded-[2rem] bg-white/95 overflow-y-auto overscroll-contain scrollbar-soft p-4 sm:p-5 my-auto">
+
+      <div class="flex items-center justify-between gap-3 mb-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
+            <i data-lucide="camera" class="w-5 h-5 text-emerald-600"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 class="text-base sm:text-lg font-black text-slate-800 truncate">Chụp ảnh linh kiện</h3>
+            <p class="text-[11px] font-bold text-slate-500">Căn vật thể vừa khung tròn nét để kết quả tra cứu chính xác nhất</p>
+          </div>
+        </div>
+        <button @click="closeCamera" class="btn w-10 h-10 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500 shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <!-- Khung camera -->
+      <div class="relative rounded-2xl overflow-hidden bg-black">
+        <video ref="camVideo" autoplay playsinline muted
+          class="w-full block bg-black"
+          style="aspect-ratio:1000/410; object-fit:cover;"></video>
+
+        <!-- Lớp tối bên ngoài + khung căn chỉnh -->
+        <div v-if="!camera.error" class="pointer-events-none absolute inset-0">
+          <div class="absolute inset-[5%] rounded-xl border-2 border-dashed border-white/85"
+               style="box-shadow:0 0 0 9999px rgba(15,23,42,.6);"></div>
+          <div class="absolute left-[5%] top-[5%] w-7 h-7 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl"></div>
+          <div class="absolute right-[5%] top-[5%] w-7 h-7 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl"></div>
+          <div class="absolute left-[5%] bottom-[5%] w-7 h-7 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl"></div>
+          <div class="absolute right-[5%] bottom-[5%] w-7 h-7 border-b-4 border-r-4 border-emerald-400 rounded-br-xl"></div>
+          <span class="absolute left-1/2 -translate-x-1/2 top-[7%] px-3 py-1 rounded-full bg-black/55 text-white text-[11px] font-black uppercase tracking-wider">
+            Đưa vật thể vào khung · nền sáng đồng màu
+          </span>
+        </div>
+
+        <!-- Trạng thái lỗi / chờ -->
+        <div v-if="camera.error || !camera.ready" class="absolute inset-0 flex items-center justify-center bg-black/75 px-6">
+          <div class="text-center text-white max-w-md">
+            <template v-if="camera.error">
+              <i data-lucide="camera-off" class="w-10 h-10 mx-auto mb-2 text-amber-400"></i>
+              <p class="text-sm font-bold mb-3">{{ camera.error }}</p>
+              <button @click="startCameraStream" class="btn h-9 px-4 bg-white text-slate-800 hover:bg-slate-100">Thử lại</button>
+            </template>
+            <template v-else>
+              <span class="w-8 h-8 border-4 border-white/25 border-t-emerald-400 rounded-full animate-spin inline-block mb-3"></span>
+              <p class="text-sm font-bold">Đang khởi động camera...</p>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Điều khiển -->
+      <div class="flex flex-wrap items-center gap-2 mt-4">
+        <button @click="captureCamera" :disabled="!camera.ready || camera.busy"
+          class="btn h-11 px-5 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 text-xs uppercase tracking-wider font-black">
+          <i data-lucide="aperture" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>{{ camera.busy ? 'Đang chụp...' : 'Chụp & gắn vào Moris' }}
+        </button>
+        <button @click="switchCamera" :disabled="!camera.ready || camera.busy"
+          class="btn h-11 px-4 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 text-xs uppercase tracking-wider font-black">
+          <i data-lucide="refresh-cw" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Đổi camera
+        </button>
+        <button @click="closeCamera"
+          class="btn h-11 px-4 bg-slate-200 text-slate-600 hover:bg-slate-300 text-xs uppercase tracking-wider font-black ml-auto">Đóng</button>
+      </div>
+
+      <ul class="mt-3 text-[11px] font-bold text-slate-500 leading-relaxed list-disc pl-5">
+        <li>Tỉ lệ khung 1000:410 — đặt vật thể gọn trong khung, chừa lề như ảnh mẫu (nền sáng, một màu).</li>
+        <li>Giữ máy song song, tránh đổ bóng và lóa sáng; ảnh chụp sẽ tự cắt theo khung.</li>
+        <li>Ảnh sau khi chụp nằm trong ô nhập Moris — bấm <b>Gửi</b> để tra cứu.</li>
+      </ul>
+    </div>
+  </div>
 
 </div>
 

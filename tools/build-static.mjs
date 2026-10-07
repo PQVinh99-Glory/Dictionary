@@ -118,6 +118,7 @@ const STATIC_ENTRIES = [
   "index.html",
   "tools",
   "src",
+  "assets",
   "_headers",
   "_redirects",
 ];

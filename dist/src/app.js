@@ -15,6 +15,15 @@ const CONFIG = {
   UPLOAD_HEALTH_URL: '/api/upload/health',
   UPLOAD_HEALTH_TTL_MS: 60000,
 
+  // ---- Auth (Pages Functions /api/auth/*) ----
+  LOGIN_URL: PC.PUBLIC_LOGIN_URL || '/api/auth/login',
+  LOGOUT_URL: '/api/auth/logout',
+  SESSION_URL: '/api/auth/session',
+  USERS_URL: '/api/auth/users',
+  // Khoá lưu HẠN PHIÊN (chỉ timestamp, KHÔNG chứa token/bí mật).
+  // Phiên hết hạn đúng 07:00 sáng giờ VN mỗi ngày (00:00 UTC).
+  SESSION_EXP_KEY: 'kim_session_expires_at',
+
   ALLOWED_ORIGIN: 'https://pqvinh99-glory.github.io',
   // Rỗng = chỉ dùng R2. Bucket Supabase 'product-images' không tồn tại (404).
   SUPABASE_BUCKET_FALLBACK: '',
@@ -56,6 +65,9 @@ createApp({
       // reload trang hoặc đóng tab => mất phiên => bắt buộc đăng nhập lại.
       // localStorage chỉ còn dùng cho hàng đợi vector (không chứa bí mật).
       session:{ token:'', user:null },
+      // Hạn phiên (ISO) — chu kỳ 24h bắt đầu 07:00 giờ VN.
+      sessionExp: localStorage.getItem('kim_session_expires_at') || '',
+      users:{ open:false, loading:false, saving:false, list:[], tempPw:'', actionId:null },
       loginForm:{ username:'', password:'' },
       filters:{ search:'', usage:'all', viewMode:'all' },
       parts:[], page:0, hasMore:false,
@@ -107,6 +119,11 @@ createApp({
       },
       pointerCache:null,
 
+      // ---- Camera chụp ảnh cho Moris (khung căn chỉnh 1000:410 như ảnh mẫu) ----
+      camera:{ open:false, ready:false, error:'', busy:false, facing:'environment' },
+      vectorCenter:{ open:false, loading:true },
+      nav:{ open:false },
+
       // ---- Công cụ quy đổi định lượng (PCS <-> KG) ----
       weightCalc:{
         open:false,
@@ -121,12 +138,33 @@ createApp({
         listFilter:'',
         draft:{ code:'', kg:'' },        // form thêm mới (tab list)
         editingId:null,                  // id đang sửa inline
-        editDraft:{ code:'', kg:'' }
+        editDraft:{ code:'', kg:'' },
+        // ---- Cửa sổ ảo của bảng đơn trọng (tối đa 10 hàng trong DOM) ----
+        winStart:0,                      // index hàng đầu tiên đang render
+        winCount:10,                     // số hàng render tối đa (<= 10)
+        rowH:41,                         // chiều cao 1 hàng (px), đo thật khi render
+        headH:40,                        // chiều cao hàng tiêu đề (px)
+        // ---- Ảnh Catalogue của mã đang quy đổi ----
+        image:{
+          status:'idle',                 // idle | loading | ready | empty | error
+          item:null,                     // row image_library
+          assets:[],                     // app_get_part_assets
+          tab:'front',                   // front | back | detail
+          activeAsset:null,
+          zoom:1, panX:0, panY:0,
+          dragging:false, pointerId:null, startX:0, startY:0, startPanX:0, startPanY:0,
+          pinchStartDistance:0, pinchStartZoom:1
+        }
       }
     };
   },
   computed:{
-    canEdit() { return ['admin','editor'].includes(this.session.user?.role_name); },
+    // Chỉ admin được sửa/xoá linh kiện, upload ảnh, chạy queue vector.
+    canEdit() { return this.role === 'admin'; },
+    // admin + converter được dùng modal Quy đổi (thêm/sửa/xoá đơn trọng).
+    canConvert() { return this.role === 'admin' || this.role === 'converter'; },
+    isAdmin() { return this.role === 'admin'; },
+    role() { return String(this.session.user?.role_name || '').toLowerCase(); },
 
     // ---------------- Quy đổi định lượng ----------------
     /** Dropdown gợi ý mã trong tab quy đổi */
@@ -142,10 +180,10 @@ createApp({
       return s ? Number(s.kg).toFixed(4) : null;
     },
     calcKgText() {
-      return Number(this.weightCalc.display.kg || 0).toLocaleString('vi-VN', {minimumFractionDigits:4, maximumFractionDigits:4});
+      return this.fmtLedKg(this.weightCalc.display.kg);
     },
     calcPcsText() {
-      return Math.round(Number(this.weightCalc.display.pcs || 0)).toLocaleString('vi-VN');
+      return this.fmtLedPcs(this.weightCalc.display.pcs);
     },
     /** Danh sách tham chiếu ở tab list (lọc theo ô tìm kiếm) */
     weightRows() {
@@ -153,6 +191,63 @@ createApp({
       const q = String(w.listFilter ?? '').trim().toLowerCase();
       const rows = q ? w.list.filter(it => String(it.code).toLowerCase().includes(q)) : w.list;
       return rows;
+    },
+    /** Các hàng thật sự nằm trong DOM (cửa sổ trượt tối đa 10 mã) */
+    wcVisibleRows() {
+      const rows = this.weightRows;
+      const w = this.weightCalc;
+      if (!rows.length) return [];
+      const start = Math.max(0, Math.min(w.winStart, rows.length - 1));
+      return rows.slice(start, start + w.winCount);
+    },
+    /** Chiều cao vùng đệm phía trên (giữ thanh cuộn đúng với toàn bộ danh sách) */
+    wcTopPad() {
+      const rows = this.weightRows;
+      const w = this.weightCalc;
+      if (!rows.length) return 0;
+      const start = Math.max(0, Math.min(w.winStart, rows.length - 1));
+      return Math.round(start * w.rowH);
+    },
+    /** Chiều cao vùng đệm phía dưới */
+    wcBottomPad() {
+      const rows = this.weightRows;
+      const w = this.weightCalc;
+      if (!rows.length) return 0;
+      const start = Math.max(0, Math.min(w.winStart, rows.length - 1));
+      return Math.max(0, (rows.length - start - this.wcVisibleRows.length) * w.rowH);
+    },
+    /** Chiều cao khung cuộn = 9 hàng thật + tiêu đề (DOM giữ 10 hàng, không bị hở) */
+    wcScrollMax() {
+      const w = this.weightCalc;
+      const px = Math.round((w.headH || 40) + (w.rowH || 41) * 9);
+      return `min(${px}px, 58dvh)`;
+    },
+
+    // ---------------- Ảnh Catalogue trong modal Quy đổi ----------------
+    wcImgDetailAssets() { return this.weightCalc.image.assets.filter(a => a.asset_type === 'detail'); },
+    wcImgFind(type, order=1) {
+      return this.weightCalc.image.assets.find(a => a.asset_type===type && Number(a.sort_order||1)===order) || null;
+    },
+    wcImgTypeUrl(type) {
+      const a = type === 'detail' ? (this.weightCalc.image.activeAsset || this.wcImgDetailAssets[0] || null) : this.wcImgFind(type, 1);
+      return a ? this.assetUrl(a) : '';
+    },
+    wcImgBackUrl() {
+      const back = this.wcImgTypeUrl('back');
+      if (!back) return '';
+      return back === this.wcImgTypeUrl('front') ? '' : back;
+    },
+    wcImgActiveUrl() {
+      const img = this.weightCalc.image;
+      if (img.tab === 'detail') return img.activeAsset ? this.assetUrl(img.activeAsset) : (this.wcImgDetailAssets[0] ? this.assetUrl(this.wcImgDetailAssets[0]) : '');
+      if (img.tab === 'back') return img.item?.is_symmetric ? (this.wcImgTypeUrl('back') || this.wcImgTypeUrl('front')) : this.wcImgBackUrl;
+      return this.wcImgTypeUrl('front') || this.wcImgTypeUrl('back');
+    },
+    wcImgHasBack() { return !!(this.wcImgBackUrl || this.weightCalc.image.item?.is_symmetric); },
+    wcImgTabLabel() { return {front:'Mặt chính', back:'Mặt sau', detail:'Ảnh chi tiết'}[this.weightCalc.image.tab] || 'Ảnh'; },
+    wcImgTransform() {
+      const i = this.weightCalc.image;
+      return `transform: translate3d(${i.panX}px, ${i.panY}px, 0) scale(${i.zoom});`;
     },
 
     listStatusText() {
@@ -204,9 +299,15 @@ createApp({
     this.sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
     this.updateTime(); setInterval(this.updateTime, 30000);
     await this.checkSession();
+    // Chốt phiên theo chu kỳ 07:00 sáng giờ VN (kiểm tra mỗi phút).
+    setInterval(() => this.guardSession(), 60000);
     this.renderIcons();
   },
   updated() { this.renderIcons(); },
+  watch: {
+    // Đổi ô lọc -> đưa cửa sổ ảo về hàng đầu tiên
+    'weightCalc.listFilter'() { this.wcResetWindow(); },
+  },
   methods:{
     emptyForm() { return { id:null, code:'', part_id:'', usage_side:'unknown', view_mode:'single_face', is_symmetric:false, identifying_features:'', confusing_note:'', image_path:'', image_name:'' }; },
     updateTime() { this.nowText = new Date().toLocaleString('vi-VN'); },
@@ -258,6 +359,51 @@ createApp({
       return { ok:true, session_token: data.session.access_token, user_id: data.user.id };
     },
 
+    // ---------------- PHIÊN LÀM VIỆC (chu kỳ 24h bắt đầu 07:00 giờ VN) -----
+    setSessionExpiry(iso) {
+      this.sessionExp = String(iso || '');
+      try {
+        if (this.sessionExp) localStorage.setItem(CONFIG.SESSION_EXP_KEY, this.sessionExp);
+        else localStorage.removeItem(CONFIG.SESSION_EXP_KEY);
+      } catch(_) {}
+    },
+    isSessionExpired() {
+      if (!this.sessionExp) return false;
+      const t = Date.parse(this.sessionExp);
+      return Number.isFinite(t) && Date.now() >= t;
+    },
+    sessionExpLabel() {
+      if (!this.sessionExp) return '07:00 hàng ngày';
+      const d = new Date(this.sessionExp);
+      if (Number.isNaN(d.getTime())) return '07:00 hàng ngày';
+      return d.toLocaleString('vi-VN', { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' });
+    },
+    /** Định dạng timestamp trong panel quản lý user. */
+    fmtStamp(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString('vi-VN', { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit', year:'2-digit' });
+    },
+    /** Đóng phiên + xoá hạn (dùng khi hết hạn hoặc logout). */
+    async endSession(message) {
+      try { await this.sb?.auth?.signOut(); } catch(_) {}
+      try { localStorage.removeItem(CONFIG.SESSION_EXP_KEY); } catch(_) {}
+      this.session = { token:'', user:null };
+      this.sessionExp = '';
+      this.parts = [];
+      this.closeNav(); this.closeMoris(); this.closeWeightCalc();
+      if (this.vectorCenter.open) this.closeVectorCenter();
+      if (message) this.toast('error', message);
+    },
+    /** Kiểm tra định kỳ — gọi mỗi 60s từ mounted(). */
+    guardSession() {
+      if (!this.session.user) return;
+      if (this.isSessionExpired()) {
+        this.endSession(`Phiên làm việc đã hết hạn (07:00 sáng). Vui lòng đăng nhập lại.`);
+      }
+    },
+
     async checkSession() {
       // Supabase Auth tự lưu/đồng bộ session; đọc lại token hiện tại.
       const token = await this.freshToken();
@@ -265,6 +411,10 @@ createApp({
         if (CONFIG.AUTO_LOGIN_ENABLED && CONFIG.AUTO_LOGIN_USERNAME) {
           await this.autoLogin();
         }
+        return;
+      }
+      if (this.isSessionExpired()) {
+        await this.endSession('Phiên làm việc đã hết hạn (07:00 sáng). Vui lòng đăng nhập lại.');
         return;
       }
       this.session.token = token;
@@ -285,11 +435,27 @@ createApp({
     async login() {
       this.loading=true;
       try {
-        const row = await this.loginRow(this.loginForm.username, this.loginForm.password);
-        if (!row?.ok) throw new Error(row?.message || 'Đăng nhập thất bại');
-        this.session.token = row.session_token; // chỉ giữ trong RAM
+        const res = await fetch(CONFIG.LOGIN_URL, {
+          method:'POST',
+          headers:{ 'content-type':'application/json' },
+          body: JSON.stringify({ email: this.loginForm.username, password: this.loginForm.password })
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Đăng nhập thất bại.');
+
+        const s = data.session || {};
+        if (s.access_token) {
+          // Ghép session GoTrue vào client để các RPC sau dùng JWT.
+          const { error } = await this.sb.auth.setSession({
+            access_token: s.access_token,
+            refresh_token: s.refresh_token
+          });
+          if (error) throw error;
+        }
+        this.setSessionExpiry(data.expires_at);
+        this.session.token = s.access_token || '';
         await this.checkSession();
-        this.toast('success','Đăng nhập thành công.');
+        this.toast('success', `Đăng nhập thành công. Phiên tự hết hạn lúc ${this.sessionExpLabel()}.`);
       } catch(e) { this.toast('error', this.readError(e)); } finally { this.loading=false; }
     },
     async autoLogin() {
@@ -305,8 +471,15 @@ createApp({
     },
     async logout() {
       // Supabase Auth: signOut() mới thực sự huỷ refresh token phía máy chủ.
-      try { await this.sb.auth.signOut(); } catch(_) {}
-      this.session={token:'',user:null}; this.parts=[];
+      try {
+        const token = await this.freshToken();
+        if (token) await fetch(CONFIG.LOGOUT_URL, {
+          method:'POST', headers:{'content-type':'application/json'},
+          body: JSON.stringify({ access_token: token })
+        }).catch(() => null);
+      } catch(_) {}
+      await this.endSession('');
+      this.toast('success','Bạn đã đăng xuất.');
     },
 
     // ================================================================
@@ -315,12 +488,14 @@ createApp({
     // sang Vue 3 Options API + lucide, không TypeScript.
     // ================================================================
     openWeightCalc() {
+      if (!this.canConvert) return this.toast('error', 'Bạn chưa được cấp quyền, liên hệ admin.');
       this.weightCalc.open = true;
       this.weightCalc.tab = 'calc';
       if (!this.weightCalc.loaded) this.loadWeights();
     },
     closeWeightCalc() {
       this.wcCancelAnim();
+      this.wcCancelListScroll();
       this.weightCalc.open = false;
     },
     async loadWeights() {
@@ -333,6 +508,8 @@ createApp({
         if (error) throw error;
         w.list = (data || []).map(r => ({ id:r.id, code:r.code, kg:Number(r.kg) }));
         w.loaded = true;
+        this.wcResetWindow();
+        this.$nextTick(() => this.wcMeasureRows());
       } catch(e) {
         console.error('Không tải được danh sách đơn trọng:', e);
         this.toast('error', 'Không tải được danh sách đơn trọng: ' + this.readError(e));
@@ -340,22 +517,50 @@ createApp({
     },
 
     // -------------------------------------------------- animation màn LED
+    /** Định dạng số cho màn LED (dùng chung cho computed + lúc ghi thẳng DOM) */
+    fmtLedKg(v) {
+      return Number(v || 0).toLocaleString('vi-VN', { minimumFractionDigits:4, maximumFractionDigits:4 });
+    },
+    fmtLedPcs(v) {
+      return Math.round(Number(v || 0)).toLocaleString('vi-VN');
+    },
     wcCancelAnim() {
       const f = this._wcFrames;
       if (!f) return;
-      for (const k of ['pcs','kg']) { if (f[k] !== null) { cancelAnimationFrame(f[k]); f[k] = null; } }
+      for (const k of ['pcs','kg']) {
+        if (f[k] !== null) { cancelAnimationFrame(f[k]); f[k] = null; }
+        // Dừng giữa chừng -> đồng bộ state về giá trị đích cuối cùng
+        if (this._wcTargets && this._wcTargets[k] !== undefined) this.weightCalc.display[k] = this._wcTargets[k];
+      }
     },
+    /**
+     * Nhảy số màn LED 60FPS: mỗi frame ghi thẳng textContent (không đụng state
+     * -> Vue không re-render theo frame), chỉ đồng bộ state 1 lần khi animation xong.
+     */
     wcAnimate(type, target) {
       if (!this._wcFrames) this._wcFrames = { pcs:null, kg:null };
+      if (!this._wcTargets) this._wcTargets = { pcs:0, kg:0 };
+      this._wcTargets[type] = target;
       const start = this.weightCalc.display[type];
       const duration = 250;
       const startTime = performance.now();
+      const isKg = type === 'kg';
+      const fmt = isKg ? this.fmtLedKg : this.fmtLedPcs;
+      const node = () => (isKg ? this.$refs.ledKg : this.$refs.ledPcs);
+      const paint = (value) => {
+        const el = node();
+        if (el) el.textContent = fmt(value);
+      };
       const run = (now) => {
         const progress = Math.min((now - startTime) / duration, 1);
         const value = start + (target - start) * progress;
-        this.weightCalc.display[type] = type === 'pcs' ? Math.round(value) : Number(value.toFixed(4));
+        paint(value);
         if (progress < 1) { this._wcFrames[type] = requestAnimationFrame(run); }
-        else { this.weightCalc.display[type] = target; this._wcFrames[type] = null; }
+        else {
+          this._wcFrames[type] = null;
+          this.weightCalc.display[type] = target;   // 1 lần duy nhất -> Vue patch
+          this.$nextTick(() => paint(target));      // đảm bảo DOM khớp sau patch
+        }
       };
       if (this._wcFrames[type] !== null) cancelAnimationFrame(this._wcFrames[type]);
       this._wcFrames[type] = requestAnimationFrame(run);
@@ -370,15 +575,17 @@ createApp({
       w.form.pcs = null;
       w.form.kg = null;
       this.wcAnimateBoth(0, 0);
+      this.wcLoadImage(item.code);
     },
     /** Gõ tay mã -> tự khớp đúng exact (hoặc bỏ chọn nếu không còn khớp) */
     wcCodeChanged() {
       const w = this.weightCalc;
-      if (!w.form.code) { w.selected = null; this.wcAnimateBoth(0,0); return; }
+      if (!w.form.code) { w.selected = null; this.wcAnimateBoth(0,0); this.wcResetImage('idle'); return; }
       const q = String(w.form.code).trim().toLowerCase();
       const match = w.list.find(it => String(it.code).trim().toLowerCase() === q) || null;
       w.selected = match;
-      if (!match) return;
+      if (!match) { this.wcResetImage('idle'); return; }
+      this.wcLoadImage(match.code);
       if (w.form.pcs !== null && w.form.pcs !== '' && !Number.isNaN(Number(w.form.pcs))) this.wcOnPcs();
       else if (w.form.kg !== null && w.form.kg !== '' && !Number.isNaN(Number(w.form.kg))) this.wcOnKg();
     },
@@ -412,6 +619,7 @@ createApp({
       const w = this.weightCalc;
       w.form.code = ''; w.form.pcs = null; w.form.kg = null; w.selected = null;
       this.wcAnimateBoth(0,0);
+      this.wcResetImage('idle');
     },
     /** Chọn 1 mã từ tab list -> nhảy sang tab quy đổi với mã đó */
     wcUseInCalc(row) {
@@ -422,13 +630,181 @@ createApp({
       w.form.code = row.code;
     },
 
+    // -------------------------------------------------- Ảnh Catalogue của mã quy đổi
+    /** Xoá ảnh hiện tại (bỏ chọn / đổi mã / chưa chọn) */
+    wcResetImage(status='idle') {
+      const i = this.weightCalc.image;
+      i.status = status; i.item = null; i.assets = []; i.tab = 'front'; i.activeAsset = null;
+      i.zoom = 1; i.panX = 0; i.panY = 0; i.dragging = false; i.pointerId = null; i.pinchStartDistance = 0;
+    },
+    /**
+     * Tải ảnh từ Catalogue Linh Kiện theo mã đang chọn.
+     * Có seq chống request về trễ khi người dùng đổi mã liên tục.
+     */
+    async wcLoadImage(code) {
+      const seq = (this._wcImgSeq = (this._wcImgSeq || 0) + 1);
+      this.wcResetImage('loading');
+      const c = String(code || '').trim();
+      if (!c || !this.session.token) return;
+      try {
+        const rows = await this.rpcRows('app_search_catalogue', {
+          p_session_token:this.session.token,
+          p_search:c,
+          p_usage_side:'',
+          p_view_mode:'',
+          p_limit:CONFIG.PAGE_LIMIT,
+          p_offset:0
+        });
+        if (seq !== this._wcImgSeq) return;
+        const hit = rows.find(r => String(r.code || '').trim().toLowerCase() === c.toLowerCase());
+        if (!hit) { this.wcResetImage('empty'); return; }
+        const img = this.weightCalc.image;
+        img.item = hit;
+        const assets = await this.rpcRows('app_get_part_assets', { p_session_token:this.session.token, p_image_id:hit.id });
+        if (seq !== this._wcImgSeq) return;
+        img.assets = assets;
+        if (!this.wcImgTypeUrl('front') && this.wcImgTypeUrl('back')) img.tab = 'back';
+        img.status = 'ready';
+        this.renderIcons();
+      } catch(e) {
+        if (seq !== this._wcImgSeq) return;
+        this.wcResetImage('error');
+        console.error('Không tải được ảnh mã quy đổi:', e);
+      }
+    },
+    // ---- viewer ảnh (zoom / kéo / pinch — hoạt động độc biệt với modal Chi tiết) ----
+    wcImgCache() { if (!this._wcImgCache) this._wcImgCache = new Map(); return this._wcImgCache; },
+    wcImgReset() {
+      const i = this.weightCalc.image;
+      i.zoom = 1; i.panX = 0; i.panY = 0; i.dragging = false; i.pointerId = null; i.pinchStartDistance = 0;
+      this.wcImgCache().clear();
+    },
+    wcImgSetTab(t) {
+      const i = this.weightCalc.image;
+      i.tab = t;
+      if (t === 'detail') i.activeAsset = this.wcImgDetailAssets[0] || null;
+      this.wcImgReset();
+    },
+    wcImgTabClass(t) {
+      return ['btn h-9 px-3 text-xs border transition-colors',
+        this.weightCalc.image.tab === t ? 'bg-emerald-600 text-white border-emerald-700 shadow-inner' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'].join(' ');
+    },
+    wcImgZoomIn() { const i = this.weightCalc.image; i.zoom = this.clamp(i.zoom * 1.25, 1, 8); },
+    wcImgZoomOut() {
+      const i = this.weightCalc.image;
+      i.zoom = this.clamp(i.zoom / 1.25, 1, 8);
+      if (i.zoom === 1) { i.panX = 0; i.panY = 0; }
+    },
+    wcImgWheel(e) {
+      const i = this.weightCalc.image;
+      i.zoom = this.clamp(i.zoom * (e.deltaY < 0 ? 1.12 : 0.88), 1, 8);
+      if (i.zoom === 1) { i.panX = 0; i.panY = 0; }
+    },
+    wcImgPointerDown(e) {
+      const cache = this.wcImgCache();
+      const i = this.weightCalc.image;
+      e.currentTarget?.setPointerCapture?.(e.pointerId);
+      cache.set(e.pointerId, { x:e.clientX, y:e.clientY });
+      i.dragging = true;
+      if (cache.size === 1) {
+        i.pointerId = e.pointerId; i.startX = e.clientX; i.startY = e.clientY;
+        i.startPanX = i.panX; i.startPanY = i.panY;
+      }
+      if (cache.size === 2) {
+        i.pinchStartDistance = this.pointerDistance(cache);
+        i.pinchStartZoom = i.zoom;
+      }
+    },
+    wcImgPointerMove(e) {
+      const cache = this.wcImgCache();
+      const i = this.weightCalc.image;
+      if (!cache.has(e.pointerId)) return;
+      cache.set(e.pointerId, { x:e.clientX, y:e.clientY });
+      if (cache.size >= 2 && i.pinchStartDistance > 0) {
+        const dist = this.pointerDistance(cache);
+        if (dist > 0) i.zoom = this.clamp(i.pinchStartZoom * (dist / i.pinchStartDistance), 1, 8);
+        return;
+      }
+      if (i.dragging && e.pointerId === i.pointerId) {
+        i.panX = i.startPanX + (e.clientX - i.startX);
+        i.panY = i.startPanY + (e.clientY - i.startY);
+      }
+    },
+    wcImgPointerUp(e) {
+      const cache = this.wcImgCache();
+      const i = this.weightCalc.image;
+      try { e.currentTarget?.releasePointerCapture?.(e.pointerId); } catch(_) {}
+      cache.delete(e.pointerId);
+      if (cache.size === 0) { i.dragging = false; i.pointerId = null; i.pinchStartDistance = 0; return; }
+      if (cache.size === 1) {
+        const [id, pt] = [...cache.entries()][0];
+        i.pointerId = id; i.startX = pt.x; i.startY = pt.y;
+        i.startPanX = i.panX; i.startPanY = i.panY; i.pinchStartDistance = 0;
+      }
+    },
+
     // -------------------------------------------------- tab Danh sách
+    /** Mở tab danh sách + khởi tạo cửa sổ ảo 10 hàng */
+    wcOpenList() {
+      this.weightCalc.tab = 'list';
+      this.wcResetWindow();
+      this.$nextTick(() => this.wcMeasureRows());
+    },
+    /** Đưa cửa sổ về hàng đầu tiên */
+    wcResetWindow() {
+      const w = this.weightCalc;
+      const total = this.weightRows.length;
+      w.winStart = 0;
+      w.winCount = Math.max(1, Math.min(10, total || 10));
+    },
+    /** Đo chiều cao thật của hàng + tiêu đề để tính toán vị trí cuộn */
+    wcMeasureRows() {
+      const w = this.weightCalc;
+      if (w.editingId !== null) return;           // đang sửa -> hàng cao hơn, bỏ qua
+      const body = this.$refs.wcBody;
+      if (!body) return;
+      const th = body.closest('table')?.tHead?.rows?.[0];
+      if (th && th.offsetHeight > 0 && Math.abs(th.offsetHeight - w.headH) > 1) w.headH = th.offsetHeight;
+      const rows = body.querySelectorAll('tr.wc-row');
+      if (!rows.length) return;
+      let sum = 0;
+      for (const r of rows) sum += r.offsetHeight;
+      const h = sum / rows.length;
+      if (h > 0 && Math.abs(h - w.rowH) > 1) w.rowH = Math.round(h);
+    },
+    /** Cuộn bảng: trượt cửa sổ 10 hàng theo vị trí cuộn (thêm hàng khi cuộn xuống, gỡ hàng khi cuộn ngược) */
+    wcListScroll(e) {
+      const w = this.weightCalc;
+      if (w.tab !== 'list') return;
+      if (this._wcListRaf) return;
+      const el = e.target;
+      this._wcListRaf = requestAnimationFrame(() => {
+        this._wcListRaf = null;
+        const rows = this.weightRows;
+        const total = rows.length;
+        if (!total) return;
+        const count = Math.max(1, Math.min(10, total));
+        if (total <= count) { if (w.winStart !== 0) w.winStart = 0; return; }
+        this.wcMeasureRows();
+        const rh = w.rowH || 41;
+        let start = Math.floor(el.scrollTop / rh);
+        start = Math.max(0, Math.min(start, total - count));
+        if (start !== w.winStart || count !== w.winCount) { w.winStart = start; w.winCount = count; }
+      });
+    },
+    wcCancelListScroll() {
+      if (this._wcListRaf) { cancelAnimationFrame(this._wcListRaf); this._wcListRaf = null; }
+    },
     wcStartEdit(row) {
       this.weightCalc.editingId = row.id;
       this.weightCalc.editDraft = { code:String(row.code), kg:String(row.kg) };
     },
-    wcCancelEdit() { this.weightCalc.editingId = null; },
+    wcCancelEdit() {
+      this.weightCalc.editingId = null;
+      this.$nextTick(() => this.wcMeasureRows());
+    },
     async wcSaveNew() {
+      if (!this.canConvert) return this.toast('error', 'Bạn chưa được cấp quyền, liên hệ admin.');
       const w = this.weightCalc;
       const code = String(w.draft.code ?? '').trim();
       const kg = Number(w.draft.kg);
@@ -450,6 +826,7 @@ createApp({
       finally { w.saving = false; }
     },
     async wcSaveEdit(row) {
+      if (!this.canConvert) return this.toast('error', 'Bạn chưa được cấp quyền, liên hệ admin.');
       const w = this.weightCalc;
       const code = String(w.editDraft.code ?? '').trim();
       const kg = Number(w.editDraft.kg);
@@ -467,11 +844,13 @@ createApp({
         // Đồng bộ với tab quy đổi nếu đang chọn đúng mã này
         if (w.selected && w.selected.id === row.id) { w.selected = row; w.form.code = code; this.wcCodeChanged(); }
         w.editingId = null;
+        this.$nextTick(() => this.wcMeasureRows());
         this.toast('success', `Đã cập nhật ${code}.`);
       } catch(e) { this.toast('error', this.readError(e)); }
       finally { w.saving = false; }
     },
     async wcDelete(row) {
+      if (!this.canConvert) return this.toast('error', 'Bạn chưa được cấp quyền, liên hệ admin.');
       if (!confirm(`Xoá ${row.code} (${Number(row.kg).toFixed(4)} kg/pcs) khỏi danh sách đơn trọng?`)) return;
       const w = this.weightCalc;
       w.saving = true;
@@ -479,7 +858,7 @@ createApp({
         const { error } = await this.sb.from('material_weights').delete().eq('id', row.id);
         if (error) throw error;
         w.list = w.list.filter(it => it.id !== row.id);
-        if (w.selected && w.selected.id === row.id) { w.selected = null; w.form.code = ''; this.wcAnimateBoth(0,0); }
+        if (w.selected && w.selected.id === row.id) { w.selected = null; w.form.code = ''; this.wcAnimateBoth(0,0); this.wcResetImage('idle'); }
         this.toast('success', `Đã xoá ${row.code}.`);
       } catch(e) { this.toast('error', this.readError(e)); }
       finally { w.saving = false; }
@@ -584,7 +963,7 @@ createApp({
     },
     closeDetail() { this.resetViewer(); this.detail.open=false; this.detail.assets=[]; this.detail.item=null; },
     setDetailTab(t) { this.detail.tab=t; if(t==='detail') this.detail.activeAsset=this.detailAssets[0] || null; this.resetViewer(); },
-    tabBtnClass(t) { return ['btn h-10 px-3 text-xs sm:text-sm border transition-colors', this.detail.tab===t ? 'bg-emerald-600 text-white border-emerald-700 shadow-inner' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'].join(' '); },
+    tabBtnClass(t) { return ['btn h-10 px-2 sm:px-3 text-[11px] sm:text-xs border transition-colors', this.detail.tab===t ? 'bg-emerald-600 text-white border-emerald-700 shadow-inner' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'].join(' '); },
     clamp(n,min,max) { return Math.max(min, Math.min(max, n)); },
     ensurePointerCache() {
       if (!this.pointerCache) this.pointerCache = new Map();
@@ -669,7 +1048,7 @@ createApp({
 
     // --- Editor & API Tách Nền ---
     async openEditor(item=null) {
-      if(!this.canEdit) return this.toast('error','Tài khoản không có quyền.');
+      if(!this.canEdit) return this.toast('error','Bạn chưa được cấp quyền, liên hệ admin.');
       this.clearEditorFiles();
       this.editor.open=true;
       if(item) {
@@ -845,7 +1224,7 @@ createApp({
     },
 
     async savePart() {
-      if(!this.canEdit) return;
+      if(!this.canEdit) return this.toast('error','Bạn chưa được cấp quyền, liên hệ admin.');
       this.saving=true;
       try {
         const code = this.editor.form.code.trim().toUpperCase();
@@ -925,12 +1304,111 @@ createApp({
 
     // --- BULK IMPORT ---
     openBulkImport() {
-      if(!this.canEdit) return this.toast('error','Tài khoản không có quyền.');
+      if(!this.canEdit) return this.toast('error','Bạn chưa được cấp quyền, liên hệ admin.');
       this.bulkImport = { open: true, files: [], groups: [], uploading: false, progress: 0, current: 0, total: 0, successCount: 0, errorCount: 0, statusText: '' };
       this.renderIcons();
     },
     closeBulkImport() {
       this.bulkImport.open = false;
+    },
+
+    // ------------------------------------------------------------------
+    // SLIDE MENU — bảng thao tác mở từ nút sách đỏ
+    // ------------------------------------------------------------------
+    openNav() {
+      this.nav.open = true;
+      this._navEsc = (e) => { if (e.key === 'Escape') this.closeNav(); };
+      window.addEventListener('keydown', this._navEsc);
+      this.$nextTick(() => this.renderIcons());
+    },
+    closeNav() {
+      if (!this.nav.open) return;
+      this.nav.open = false;
+      if (this._navEsc) { window.removeEventListener('keydown', this._navEsc); this._navEsc = null; }
+    },
+
+    // ------------------------------------------------------------------
+    // VECTOR AI — trang /tools/moris-vector-center.html mở trong modal nổi
+    // ------------------------------------------------------------------
+    openVectorCenter() {
+      if (this.session.user?.role_name !== 'admin') return this.toast('error', 'Bạn chưa được cấp quyền, liên hệ admin.');
+      this.vectorCenter.open = true;
+      this.vectorCenter.loading = true;
+      this.$nextTick(() => this.renderIcons());
+    },
+    closeVectorCenter() {
+      this.vectorCenter.open = false;
+      const f = this.$refs.vectorFrame;
+      if (f) { try { f.src = f.src; } catch(_) {} }   // dừng JS/animation trong iframe
+    },
+    openVectorCenterTab() {
+      try { window.open('/tools/moris-vector-center.html', '_blank', 'noopener'); }
+      catch(_) { this.toast('error', 'Không mở được tab mới.'); }
+    },
+
+    // ------------------------------------------------------------------
+    // QUẢN LÝ USER (admin) — /api/auth/users
+    // ------------------------------------------------------------------
+    openUserManager() {
+      if (!this.isAdmin) return this.toast('error', 'Bạn chưa được cấp quyền, liên hệ admin.');
+      this.users.open = true;
+      this.users.tempPw = '';
+      this.loadUsers();
+      this.$nextTick(() => this.renderIcons());
+    },
+    closeUserManager() {
+      this.users.open = false;
+      this.users.tempPw = '';
+    },
+    async loadUsers() {
+      const u = this.users;
+      if (u.loading) return;
+      u.loading = true;
+      try {
+        const token = await this.freshToken();
+        const res = await fetch(CONFIG.USERS_URL, { headers: { authorization: `Bearer ${token}` } });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Không tải được danh sách người dùng.');
+        u.list = Array.isArray(data.users) ? data.users : [];
+      } catch(e) { this.toast('error', this.readError(e)); }
+      finally { u.loading = false; }
+    },
+    async userAction(user, action, role = null) {
+      const u = this.users;
+      if (u.saving) return;
+      const labels = {
+        set_role: `đổi role của ${user.email} thành ${role}`,
+        unlock: `mở khóa ${user.email}`,
+        set_active: `kích hoạt lại ${user.email}`,
+        set_inactive: `vô hiệu hóa ${user.email}`,
+        reset_password: `cấp lại mật khẩu mới cho ${user.email}`
+      };
+      if (!confirm(`Xác nhận: ${labels[action] || action}?`)) return;
+
+      u.saving = true;
+      u.actionId = user.user_id;
+      try {
+        const token = await this.freshToken();
+        const res = await fetch(CONFIG.USERS_URL, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+          body: JSON.stringify({ user_id: user.user_id, action, role })
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Thao tác thất bại.');
+        if (data.temp_password) {
+          u.tempPw = data.temp_password;
+          this.toast('success', 'Đã cấp lại mật khẩu — mật khẩu tạm chỉ hiển thị 1 lần.');
+        } else {
+          this.toast('success', 'Đã cập nhật tài khoản.');
+        }
+        await this.loadUsers();
+      } catch(e) { this.toast('error', this.readError(e)); }
+      finally { u.saving = false; u.actionId = null; }
+    },
+    async copyTempPw() {
+      try { await navigator.clipboard.writeText(this.users.tempPw); this.toast('success', 'Đã sao chép mật khẩu tạm.'); }
+      catch(_) { this.toast('error', 'Không sao chép được — hãy copy thủ công.'); }
     },
     onBulkFileSelect(e) {
       const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
@@ -967,6 +1445,7 @@ createApp({
     },
 
     closeMoris() {
+      if (this.camera.open) this.closeCamera();   // không bỏ chạy camera mồi pin
       this.moris.open = false;
     },
 
@@ -982,6 +1461,12 @@ createApp({
     async onMorisImageSelect(event) {
       const file = event?.target?.files?.[0];
       if (!file) return;
+      await this.applyMorisFile(file);
+      if (event?.target) event.target.value = '';
+    },
+
+    /** Gán 1 file ảnh vào ô nhập Moris (dùng chung cho đính kèm file + chụp camera) */
+    async applyMorisFile(file) {
       try {
         this.moris.status = 'Đang chuẩn bị ảnh...';
         const dataUrl = await this.prepareMorisImage(file);
@@ -993,7 +1478,6 @@ createApp({
         this.toast('error', `Không chuẩn bị được ảnh cho Moris: ${this.readError(e)}`);
       } finally {
         this.moris.status = '';
-        if (event?.target) event.target.value = '';
         this.$nextTick(() => this.renderIcons());
       }
     },
@@ -1051,6 +1535,95 @@ createApp({
       this.moris.imageName = '';
       this.moris.imageFile = null;
       this.$nextTick(() => this.renderIcons());
+    },
+
+    // ------------------------------------------------------------------
+    // CAMERA MORIS — mở camera có khung căn chỉnh tỉ lệ 1000:410 (ảnh mẫu)
+    // Ảnh chụp được cắt theo khung rồi gắn vào ô nhập Moris.
+    // ------------------------------------------------------------------
+    openCamera() {
+      this.camera.open = true;
+      this.camera.ready = false;
+      this.camera.error = '';
+      this.$nextTick(() => this.startCameraStream());
+    },
+    async startCameraStream() {
+      this.camera.error = '';
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error('Trình duyệt không hỗ trợ camera.');
+        this.stopCameraStream();
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: this.camera.facing }, width:{ ideal:1920 }, height:{ ideal:1080 } },
+          audio: false
+        });
+        this._camStream = stream;
+        const video = this.$refs.camVideo;
+        if (!video) { this.stopCameraStream(); return; }
+        video.srcObject = stream;
+        try { await video.play(); } catch(_) {}
+        this.camera.ready = true;
+      } catch(e) {
+        const name = String(e?.name || '');
+        this.camera.ready = false;
+        this.camera.error = /NotAllowed|Permission|Security/i.test(name)
+          ? 'Bạn chưa cho phép truy cập camera. Hãy cho phép quyền Camera trong cài đặt trình duyệt rồi bấm Thử lại.'
+          : (/NotFound|DevicesNotFound|Overconstrained/i.test(name)
+              ? 'Không tìm thấy camera nào trên thiết bị.'
+              : 'Không mở được camera: ' + this.readError(e));
+      }
+    },
+    stopCameraStream() {
+      const s = this._camStream;
+      if (s) { try { for (const t of s.getTracks()) t.stop(); } catch(_) {} this._camStream = null; }
+      const v = this.$refs.camVideo;
+      if (v) { try { v.srcObject = null; } catch(_) {} }
+    },
+    closeCamera() {
+      this.camera.open = false;
+      this.camera.ready = false;
+      this.camera.error = '';
+      this.stopCameraStream();
+    },
+    async switchCamera() {
+      this.camera.facing = this.camera.facing === 'environment' ? 'user' : 'environment';
+      this.camera.ready = false;
+      await this.startCameraStream();
+    },
+    /** Chụp 1 frame, cắt theo khung căn chỉnh rồi gắn vào ô nhập Moris */
+    async captureCamera() {
+      const video = this.$refs.camVideo;
+      if (!video || !this.camera.ready || this.camera.busy) return;
+      this.camera.busy = true;
+      try {
+        const vw = Number(video.videoWidth || 0), vh = Number(video.videoHeight || 0);
+        if (!vw || !vh) throw new Error('Camera chưa sẵn sàng, thử lại sau giây lát.');
+
+        // Khung căn chỉnh = vùng cắt thật, tỉ lệ 1000:410 (giống ảnh mẫu anh gửi)
+        const RATIO = 1000 / 410;
+        let cw = vw, ch = Math.round(vw / RATIO);
+        if (ch > vh) { ch = vh; cw = Math.round(vh * RATIO); }
+        const cx = Math.round((vw - cw) / 2), cy = Math.round((vh - ch) / 2);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = cw; canvas.height = ch;
+        const ctx = canvas.getContext('2d', { alpha:false });
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, cw, ch);
+        ctx.drawImage(video, cx, cy, cw, ch, 0, 0, cw, ch);
+
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+        canvas.width = 1; canvas.height = 1;
+        if (!blob) throw new Error('Không chụp được ảnh.');
+
+        const file = new File([blob], `moris-camera-${Date.now()}.jpg`, { type:'image/jpeg' });
+        this.closeCamera();
+        await this.applyMorisFile(file);
+        if (this.moris.imageDataUrl) this.toast('success', 'Đã gắn ảnh chụp vào ô nhập Moris.');
+      } catch(e) {
+        this.toast('error', this.readError(e));
+      } finally {
+        this.camera.busy = false;
+      }
     },
 
     scrollMorisToBottom() {

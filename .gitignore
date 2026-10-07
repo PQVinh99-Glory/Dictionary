@@ -18,4 +18,11 @@ Book.png
 Screenshot.png
 image.png
 *.zip
-assets/
+
+# Thư mục assets: chỉ giữ icon sách đỏ dùng chung (logo/favicon/drawer)
+assets/*
+!assets/icon-book.png
+
+# Dependencies (cài lại bằng `npm install`)
+node_modules/
+

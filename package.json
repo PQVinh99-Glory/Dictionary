@@ -21,6 +21,11 @@
         "supa:migrate": "supabase migration list",
         "supa:new": "supabase migration new",
         "supa:diff": "supabase db diff",
-        "supa:reset": "supabase db reset"
+        "supa:reset": "supabase db reset",
+        "test": "vitest run",
+        "test:watch": "vitest"
+    },
+    "devDependencies": {
+        "vitest": "^5.0.3"
     }
 }

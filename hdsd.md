@@ -61,6 +61,40 @@ nano .env   # Điền API keys thật
 | `KIM_EMBEDDING_ENDPOINT` | ⚠️ | DINOv2 server endpoint (chỉ cần cho vector search) |
 | `KIM_MEDIA_BASE_URL` | ⚠️ | Proxy ảnh (mặc định `/api/media`) |
 
+### 2.4 Secrets cho Cloudflare Pages (bắt buộc khi deploy)
+
+Pages Functions (`functions/`) đọc env từ **secret của dự án Pages**, không đọc `.env` hay `wrangler.toml [vars]`. Nếu thiếu, API trả lỗi:
+
+```
+Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY.        (functions/_lib/moris/v5/connectors/supabase.js:14)
+Thiếu SUPABASE_URL hoặc server secret key.        (functions/_lib/moris/v5/connectors/supabaseService.js:31)
+```
+
+Thiết lập bằng CLI (lần đầu hỏi để nhập giá trị, không lưu vào repo):
+
+```bash
+# Bắt buộc — tra cứu metadata + ghi dữ liệu
+wrangler pages secret put SUPABASE_URL              --project-name dictionary-catalogue-ai
+wrangler pages secret put SUPABASE_ANON_KEY         --project-name dictionary-catalogue-ai
+wrangler pages secret put SUPABASE_SERVICE_ROLE_KEY --project-name dictionary-catalogue-ai
+wrangler pages secret put SUPABASE_SECRET_KEY       --project-name dictionary-catalogue-ai
+
+# Moris / Vector — chỉ cần khi bật Moris
+wrangler pages secret put MORIS_ADMIN_TOKEN           --project-name dictionary-catalogue-ai
+wrangler pages secret put MORIS_EMBEDDING_BEARER_TOKEN --project-name dictionary-catalogue-ai
+wrangler pages secret put MORIS_FOREGROUND_BEARER_TOKEN --project-name dictionary-catalogue-ai
+```
+
+Kiểm tra & áp dụng:
+
+```bash
+wrangler pages secret list --project-name dictionary-catalogue-ai   # phải thấy đủ tên biến
+npm run build && wrangler pages deploy dist --project-name dictionary-catalogue-ai
+```
+
+> Secret mới chỉ có hiệu lực cho **build/deploy sau thời điểm đặt** — deploy lại sau khi `secret put`.
+> R2 binding `CATALOGUE_BUCKET` đã cấu hình sẵn trong `wrangler.toml [[r2_buckets]]`, không phải secret.
+
 ---
 
 ## 3. Cấu hình API Rotator (Đa Provider)

@@ -6,11 +6,11 @@
   <title>Moris — Trung tâm Vector</title>
   <style>
     :root{
-      font-family:Calibri,Carlito,'Segoe UI',system-ui,sans-serif;
+      font-family:'Aptos Narrow',Calibri,Carlito,'Segoe UI',system-ui,sans-serif;
       color:#0f172a;
       background:
-        radial-gradient(circle at top left,#d1fae5 0,transparent 34%),
-        linear-gradient(180deg,#f8fafc,#ecfdf5);
+        radial-gradient(circle at top left,#FBE3E8 0,transparent 34%),
+        linear-gradient(180deg,#FDFBF6,#FAF4E8);
     }
     *{box-sizing:border-box}
     body{margin:0;padding:20px;min-height:100vh}
@@ -18,7 +18,7 @@
     .top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px}
     .card{
       background:rgba(255,255,255,.94);
-      border:1px solid #dbe7e2;
+      border:1px solid #EFE0E4;
       border-radius:24px;
       padding:20px;
       box-shadow:0 18px 50px rgba(15,23,42,.08)
@@ -29,29 +29,29 @@
     .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     .kpi{padding:14px;border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc}
     .kpi span{display:block;color:#64748b;font-size:12px;font-weight:800}
-    .kpi b{display:block;font-size:24px;color:#047857;margin-top:4px}
+    .kpi b{display:block;font-size:24px;color:#7F011F;margin-top:4px}
     .layout{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;margin-top:16px}
     button,a.btn{
       border:0;border-radius:14px;padding:12px 16px;
       font-weight:850;cursor:pointer;text-decoration:none;
       display:inline-flex;align-items:center;justify-content:center
     }
-    .primary{background:#059669;color:#fff}
+    .primary{background:#7F011F;color:#fff}
     .secondary{background:#e2e8f0;color:#334155}
     .danger{background:#fee2e2;color:#b91c1c}
     button:disabled{opacity:.45;cursor:not-allowed}
     .row{display:flex;gap:10px;flex-wrap:wrap}
     .bar{height:14px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin:14px 0}
-    .bar>div{height:100%;background:#10b981;width:0;transition:width .2s}
+    .bar>div{height:100%;background:#C21341;width:0;transition:width .2s}
     pre{
-      white-space:pre-wrap;background:#0f172a;color:#d1fae5;
+      white-space:pre-wrap;background:#0f172a;color:#FBE3E8;
       padding:14px;border-radius:16px;max-height:330px;overflow:auto
     }
     .status{
       padding:12px 14px;border-radius:14px;background:#f8fafc;
       border:1px solid #e2e8f0;font-weight:750;color:#475569
     }
-    .good{color:#047857}
+    .good{color:#7F011F}
     .bad{color:#b91c1c}
     .warn{color:#b45309}
     code{background:#f1f5f9;padding:2px 6px;border-radius:7px}
