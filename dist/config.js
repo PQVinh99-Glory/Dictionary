@@ -1,12 +1,1 @@
-// GENERATED TỰ ĐỘNG bởi tools/build-static.mjs — ĐỪNG SỬA TAY.
-// Nguồn: .env / .dev.vars. Chỉ chứa biến PUBLIC_*, không có secret.
-window.MORIS_PUBLIC_CONFIG = Object.freeze({
-  "PUBLIC_SUPABASE_URL": "https://vhsikdgkzecdfopkpzum.supabase.co",
-  "PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc2lrZGdremVjZGZvcGtwenVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjgyMTcsImV4cCI6MjA5Njg0NDIxN30.bj1yl4azsk8X-V2I1C6l5Qpa0kqt6j0TP4ZCJ3Du0l4",
-  "PUBLIC_UPLOAD_PRIMARY_URL": "/api/upload",
-  "PUBLIC_R2_MEDIA_BASE_URL": "/api/media",
-  "PUBLIC_MORIS_BROWSER_VECTOR_MODULE_URL": "/src/moris/vector/browserDinov2.js",
-  "PUBLIC_MORIS_VECTOR_UPSERT_MODULE_URL": "/src/moris/vector/chunkedUpsert.js",
-  "PUBLIC_PAGE_LIMIT": "36",
-  "PUBLIC_LOGIN_URL": "/api/auth/login"
-});
+(function(){var _d=function(s){try{return decodeURIComponent(escape(atob(s)))}catch(e){return atob(s)}};window.MORIS_PUBLIC_CONFIG=Object.freeze({PUBLIC_SUPABASE_URL:_d("aHR0cHM6Ly92aHNpa2Rna3plY2Rmb3BrcHp1bS5zdXBhYmFzZS5jbw=="),PUBLIC_SUPABASE_ANON_KEY:_d("ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW5ab2MybHJaR2RyZW1WalpHWnZjR3R3ZW5WdElpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzT0RFeU5qZ3lNVGNzSW1WNGNDSTZNakE1TmpnME5ESXhOMzAuYmoxeWw0YXpzazhYLVYySTFDNmw1UXBhMGtxdDZqMFRQNFpDSjNEdTBsNA=="),PUBLIC_UPLOAD_PRIMARY_URL:"/api/upload",PUBLIC_R2_MEDIA_BASE_URL:"/api/media",PUBLIC_MORIS_BROWSER_VECTOR_MODULE_URL:"/src/moris/vector/browserDinov2.js",PUBLIC_MORIS_VECTOR_UPSERT_MODULE_URL:"/src/moris/vector/chunkedUpsert.js",PUBLIC_PAGE_LIMIT:"36",PUBLIC_LOGIN_URL:"/api/auth/login"})})();

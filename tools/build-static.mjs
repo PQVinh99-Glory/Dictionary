@@ -96,15 +96,25 @@ async function generateConfig(env) {
     );
   }
 
-  const banner =
-    "// GENERATED TỰ ĐỘNG bởi tools/build-static.mjs — ĐỪNG SỬA TAY.\n" +
-    "// Nguồn: .env / .dev.vars. Chỉ chứa biến PUBLIC_*, không có secret.\n";
+  const b64 = (s) => Buffer.from(String(s || "")).toString("base64");
+  const supaUrlB64 = b64(config.PUBLIC_SUPABASE_URL || "");
+  const supaKeyB64 = b64(config.PUBLIC_SUPABASE_ANON_KEY || "");
 
-  await writeFile(
-    join(OUT, "config.js"),
-    `${banner}window.MORIS_PUBLIC_CONFIG = Object.freeze(${JSON.stringify(config, null, 2)});\n`,
-    "utf8"
-  );
+  const content = `(function(){
+  var _d=function(s){try{return decodeURIComponent(escape(atob(s)));}catch(e){return atob(s);}};
+  window.MORIS_PUBLIC_CONFIG=Object.freeze({
+    PUBLIC_SUPABASE_URL:_d(${JSON.stringify(supaUrlB64)}),
+    PUBLIC_SUPABASE_ANON_KEY:_d(${JSON.stringify(supaKeyB64)}),
+    PUBLIC_UPLOAD_PRIMARY_URL:${JSON.stringify(config.PUBLIC_UPLOAD_PRIMARY_URL || "/api/upload")},
+    PUBLIC_R2_MEDIA_BASE_URL:${JSON.stringify(config.PUBLIC_R2_MEDIA_BASE_URL || "/api/media")},
+    PUBLIC_MORIS_BROWSER_VECTOR_MODULE_URL:${JSON.stringify(config.PUBLIC_MORIS_BROWSER_VECTOR_MODULE_URL || "/src/moris/vector/browserDinov2.js")},
+    PUBLIC_MORIS_VECTOR_UPSERT_MODULE_URL:${JSON.stringify(config.PUBLIC_MORIS_VECTOR_UPSERT_MODULE_URL || "/src/moris/vector/chunkedUpsert.js")},
+    PUBLIC_PAGE_LIMIT:${JSON.stringify(config.PUBLIC_PAGE_LIMIT || "36")},
+    PUBLIC_LOGIN_URL:${JSON.stringify(config.PUBLIC_LOGIN_URL || "/api/auth/login")}
+  });
+})();\n`;
+
+  await writeFile(join(OUT, "config.js"), content, "utf8");
 
   return Object.keys(config).length;
 }
@@ -200,6 +210,32 @@ async function main() {
   const configKeys = await generateConfig(env);
   const version = await generateVersion();
   files += 2;
+
+  // Dọn sạch toàn bộ comment trong các file JS trong dist/ (bảo vệ mã nguồn khi mở F12)
+  try {
+    const { minify } = await import("terser");
+    const minifyJs = async (dir) => {
+      for (const e of await readdir(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name);
+        if (e.isDirectory()) {
+          await minifyJs(p);
+        } else if (e.name.endsWith(".js") && !e.name.endsWith(".min.js")) {
+          const code = await readFile(p, "utf8");
+          const res = await minify(code, {
+            format: { comments: false },
+            compress: false,
+            mangle: false
+          });
+          if (res && res.code) {
+            await writeFile(p, res.code, "utf8");
+          }
+        }
+      }
+    };
+    await minifyJs(OUT);
+  } catch (err) {
+    console.warn("Terser minify warning:", err.message);
+  }
 
   // Kiểm tra chốt chặn: không file nào tên dotfile lọt vào dist/
   const leaked = [];

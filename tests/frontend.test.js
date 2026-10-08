@@ -41,9 +41,10 @@ describe('build-static — allowlist, không rò secret', () => {
     }
   });
 
-  it('dist/index.html = index.html nguồn (không sửa tay bản build)', () => {
+  it('dist/index.html = index.html nguồn và dist/src/app.js được build sạch không còn comment', () => {
     expect(read('dist/index.html')).toBe(read('index.html'));
-    expect(read('dist/src/app.js')).toBe(read('src/app.js'));
+    expect(read('dist/src/app.js')).not.toContain('// CẤU HÌNH HỆ THỐNG');
+    expect(read('dist/src/app.js')).toContain('MORIS_PUBLIC_CONFIG');
   });
 });
 

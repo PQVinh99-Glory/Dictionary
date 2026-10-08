@@ -26,6 +26,7 @@
         "test:watch": "vitest"
     },
     "devDependencies": {
+        "terser": "^5.51.2",
         "vitest": "^5.0.3"
     }
 }
