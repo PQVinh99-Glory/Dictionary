@@ -83,8 +83,8 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // 1. TUYỆT ĐỐI KHÔNG CACHE API, AUTH VÀ SUPABASE
-  if (url.pathname.startsWith('/api/')) return;
+  // 1. TUYỆT ĐỐI KHÔNG CACHE API, AUTH VÀ SUPABASE (NGOẠI TRỪ /api/media)
+  if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/media/')) return;
   if (url.hostname.includes('supabase.co')) return;
 
   // 2. CONFIG RUNTIME VÀ CHECK VERSION LUÔN TƯƠI MỚI (NO-STORE)
@@ -113,8 +113,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. ẢNH R2 MEDIA VÀ ASSETS -> CACHE-FIRST ĐỂ TĂNG TỐC ĐỘ XEM CATALOGUE
-  if (url.hostname.includes('r2.dev') || url.pathname.startsWith('/assets/')) {
+  // 4. ẢNH MEDIA VÀ ASSETS -> CACHE-FIRST ĐỂ TĂNG TỐC ĐỘ XEM CATALOGUE
+  if (url.pathname.startsWith('/api/media/') || url.pathname.startsWith('/assets/')) {
     event.respondWith(
       caches.open(CACHE_MEDIA).then((cache) => {
         return cache.match(req).then((cached) => {

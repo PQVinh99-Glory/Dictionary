@@ -176,6 +176,8 @@ export async function onRequestPost({ request, env }) {
     });
 
     const s = grant.session || {};
+    const isHttps = new URL(request.url).protocol === "https:";
+    const cookie = `catalogue_session=${encodeURIComponent(s.access_token || "")}; Path=/; SameSite=Lax; HttpOnly; Max-Age=86400${isHttps ? "; Secure" : ""}`;
     return json({
       ok: true,
       user: {
@@ -192,7 +194,7 @@ export async function onRequestPost({ request, env }) {
         expires_in: s.expires_in ?? 3600
       },
       expires_at: sessionExpiry()
-    });
+    }, 200, { "set-cookie": cookie });
   } catch (e) {
     return errorResponse(e);
   }

@@ -16,8 +16,8 @@ deepseek-harness/
 # Screenshots / local-only images
 Book.png
 Screenshot.png
-image.png
-image copy.png
+image*.png
+image copy*.png
 session-*.md
 *.zip
 

@@ -220,7 +220,7 @@ describe('yêu cầu mới — icon, tab Quy đổi, Vector AI, quản lý user'
     expect(html).toContain('pwChange.open');
     expect(html).toContain('openPwChange()');
 
-    expect(js).toContain("const SYSTEM_ADMIN_EMAIL = 'pquangvinh1999@gmail.com';");
+    expect(js).not.toContain('pquangvinh1999@gmail.com');
     expect(js).toContain('async submitPwChange()');
     expect(js).toContain('sb.auth.updateUser({ password: p.new })');
     // Admin hệ thống: chặn đủ 3 nhóm thao tác
@@ -270,8 +270,19 @@ describe('yêu cầu mới — icon, tab Quy đổi, Vector AI, quản lý user'
   });
 
   it('form đăng nhập hỗ trợ đăng nhập bằng "Vinh" và admin display_name là "Vinh"', () => {
-    expect(html).toContain('Vinh hoặc tên đăng nhập...');
+    expect(html).not.toContain('Vinh hoặc tên đăng nhập...');
+    expect(html).toContain('placeholder="Tên đăng nhập..."');
     expect(js).toContain("me.display_name = 'Vinh'");
-    expect(js).toContain("SYSTEM_ADMIN_EMAIL");
+    expect(js).toContain("isSystemAdmin");
+  });
+
+  it('Client-Shield: ẩn console, chặn chuột phải, chặn phím F12/Ctrl+U/Ctrl+Shift+I và bẫy debugger', () => {
+    expect(html).toContain('window.console.clear()');
+    expect(html).toContain('configurable: false');
+    expect(html).toContain('writable: false');
+    expect(html).toContain('contextmenu');
+    expect(html).toContain('F12');
+    expect(html).toContain('debugger');
+    expect(html).not.toContain('isDebug');
   });
 });

@@ -17,6 +17,8 @@ export async function onRequestGet({ request, env }) {
     }
 
     const isSysAdmin = isSystemAdminEmail(profile?.email || me?.username);
+    const isHttps = new URL(request.url).protocol === "https:";
+    const cookie = `catalogue_session=${encodeURIComponent(token)}; Path=/; SameSite=Lax; HttpOnly; Max-Age=86400${isHttps ? "; Secure" : ""}`;
     return json({
       ok: true,
       user: {
@@ -25,9 +27,10 @@ export async function onRequestGet({ request, env }) {
         username: isSysAdmin ? "Vinh" : (me.username || ""),
         display_name: isSysAdmin ? "Vinh" : (me.display_name || profile?.username || String(profile?.email || "").split("@")[0] || ""),
         role_name: String(profile?.role_name || me.role_name || "").toLowerCase(),
-        must_change_password: !!me.must_change_password
+        must_change_password: !!me.must_change_password,
+        is_system_admin: isSysAdmin
       }
-    });
+    }, 200, { "set-cookie": cookie });
   } catch (e) {
     return errorResponse(e);
   }

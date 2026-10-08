@@ -13,7 +13,9 @@ export async function onRequestPost({ request, env }) {
     const token = String(body.access_token || body.token || "").trim();
     if (token) await adminLogout(env, token);
 
-    return json({ ok: true });
+    const isHttps = new URL(request.url).protocol === "https:";
+    const clearCookie = `catalogue_session=; Path=/; SameSite=Lax; HttpOnly; Max-Age=0${isHttps ? "; Secure" : ""}`;
+    return json({ ok: true }, 200, { "set-cookie": clearCookie });
   } catch (e) {
     return errorResponse(e);
   }

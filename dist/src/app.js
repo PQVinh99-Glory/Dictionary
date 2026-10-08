@@ -2,20 +2,13 @@
 // CẤU HÌNH HỆ THỐNG
 // =======================================================================
 // Giá trị lấy từ /config.js (sinh lúc build từ .env/.dev.vars).
-// Nếu chạy index.html trực tiếp bằng file:// thì PC = {} => dùng fallback.
 const PC = window.MORIS_PUBLIC_CONFIG || {};
 
-// Email tài khoản admin hệ thống: không cho đổi role / bật-tắt / cấp lại mật khẩu
-// trong "Quản lý người dùng". Đổi mật khẩu làm qua modal ở menu trên header.
-const SYSTEM_ADMIN_EMAIL = 'pquangvinh1999@gmail.com';
 const CONFIG = {
-  // ---- Đọc từ config.js (không hardcode) ----
-  SUPABASE_URL: PC.PUBLIC_SUPABASE_URL || 'https://vhsikdgkzecdfopkpzum.supabase.co',
-  SUPABASE_ANON_KEY: PC.PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoc2lrZGdremVjZGZvcGtwenVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNjgyMTcsImV4cCI6MjA5Njg0NDIxN30.bj1yl4azsk8X-V2I1C6l5Qpa0kqt6j0TP4ZCJ3Du0l4',
-  R2_PUBLIC_URL: PC.PUBLIC_R2_PUBLIC_URL || 'https://pub-fe997ecbd0714682b10cba684d175ac8.r2.dev',
+  SUPABASE_URL: PC.PUBLIC_SUPABASE_URL || '',
+  SUPABASE_ANON_KEY: PC.PUBLIC_SUPABASE_ANON_KEY || '',
   R2_MEDIA_BASE_URL: PC.PUBLIC_R2_MEDIA_BASE_URL || '/api/media',
   UPLOAD_PRIMARY_URL: PC.PUBLIC_UPLOAD_PRIMARY_URL || '/api/upload',
-  R2_WORKER_URL: PC.PUBLIC_R2_WORKER_URL || '',
   UPLOAD_HEALTH_URL: '/api/upload/health',
   UPLOAD_HEALTH_TTL_MS: 60000,
 
@@ -28,13 +21,9 @@ const CONFIG = {
   // Phiên hết hạn đúng 07:00 sáng giờ VN mỗi ngày (00:00 UTC).
   SESSION_EXP_KEY: 'kim_session_expires_at',
 
-  ALLOWED_ORIGIN: 'https://pqvinh99-glory.github.io',
-  // Rỗng = chỉ dùng R2. Bucket Supabase 'product-images' không tồn tại (404).
-  SUPABASE_BUCKET_FALLBACK: '',
   PAGE_LIMIT: Number(PC.PUBLIC_PAGE_LIMIT) || 36,
 
-  // Auto-login (chế độ prototype): TẮT mặc định vì credential không được hardcode.
-  // Muốn bật lại chỉ dùng cho demo nội bộ: set true + điền user/pass thật, KHÔNG commit lên production.
+  // Auto-login (chế độ prototype): TẮT mặc định
   AUTO_LOGIN_ENABLED: false,
   AUTO_LOGIN_USERNAME: '',
   AUTO_LOGIN_PASSWORD: '',
@@ -422,21 +411,15 @@ createApp({
     // Đăng nhập qua Supabase Auth (password). Rate-limit/do sai mật khẩu do
     // GoTrue xử lý. app_users KHÔNG còn là nguồn danh tính.
     async loginRow(username,password) {
-      let email = String(username || '').trim();
-      if (email.toLowerCase() === 'vinh') {
-        email = SYSTEM_ADMIN_EMAIL;
-      }
-      const { data, error } = await this.sb.auth.signInWithPassword({ email, password });
-      if (error) {
-        const e = new Error(
-          error.message === 'Invalid login credentials'
-            ? 'Tên đăng nhập hoặc mật khẩu không đúng.'
-            : error.message
-        );
-        e.status = error.status || 400;
-        throw e;
-      }
-      return { ok:true, session_token: data.session.access_token, user_id: data.user.id };
+      const email = String(username || '').trim();
+      const res = await fetch(CONFIG.LOGIN_URL, {
+        method:'POST',
+        headers:{ 'content-type':'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Đăng nhập thất bại.');
+      return { ok:true, session_token: data.session?.access_token, user_id: data.user?.id };
     },
 
     // ---------------- PHIÊN LÀM VIỆC (chu kỳ 24h bắt đầu 07:00 giờ VN) -----
@@ -469,6 +452,7 @@ createApp({
     async endSession(message) {
       try { await this.sb?.auth?.signOut(); } catch(_) {}
       try { localStorage.removeItem(CONFIG.SESSION_EXP_KEY); } catch(_) {}
+      try { navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_CACHE' }); } catch(_) {}
       this.session = { token:'', user:null };
       this.sessionExp = '';
       this.parts = [];
@@ -501,7 +485,7 @@ createApp({
       try {
         const me = await this.rpcRow('app_me', {p_session_token: token});
         if (!me?.ok) throw new Error(me?.message || 'Session hết hạn');
-        if (this.isSystemAdmin(me) || String(me?.email || me?.username || '').toLowerCase() === SYSTEM_ADMIN_EMAIL.toLowerCase()) {
+        if (this.isSystemAdmin(me)) {
           me.display_name = 'Vinh';
           me.username = 'Vinh';
         }
@@ -1524,8 +1508,8 @@ createApp({
     },
     /** Tài khoản admin hệ thống: khoá đổi role / bật-tắt / cấp lại MK. */
     isSystemAdmin(u) {
-      const raw = String(u?.email || u?.username || '').trim().toLowerCase();
-      return raw === SYSTEM_ADMIN_EMAIL.toLowerCase() || raw === 'vinh';
+      const raw = String(u?.username || u?.display_name || u?.email || '').trim().toLowerCase();
+      return raw === 'vinh' || raw.startsWith('vinh@') || u?.is_system_admin === true;
     },
     resetUserForm() {
       this.users.form = { username:'', password:'', role:'viewer' };
@@ -2876,7 +2860,7 @@ createApp({
         this.pwa.deferredPrompt = null;
         this.pwa.isStandalone = true;
         this.pwa.guideOpen = false;
-        this.toast('success', 'Đã cài đặt Catalogue AI thành công!');
+        this.toast('success', 'Đã cài đặt Catalogue thành công!');
       });
 
       if ('serviceWorker' in navigator) {

@@ -11,7 +11,7 @@ describe('PWA & Versioning — Đặc tả và cấu hình', () => {
     expect(existsSync(join(ROOT, 'manifest.webmanifest'))).toBe(true);
     const manifest = JSON.parse(read('manifest.webmanifest'));
     expect(manifest.name).toBe('Catalogue Linh Kiện');
-    expect(manifest.short_name).toBe('Catalogue AI');
+    expect(manifest.short_name).toBe('Catalogue');
     expect(manifest.start_url).toBe('/');
     expect(manifest.display).toBe('standalone');
     expect(manifest.theme_color).toBe('#7F011F');
@@ -53,7 +53,7 @@ describe('PWA & Versioning — Đặc tả và cấu hình', () => {
     if (existsSync(join(ROOT, 'dist/version.json'))) {
       const distVer = JSON.parse(read('dist/version.json'));
       expect(distVer.version).toBe('6.1.2');
-      expect(distVer.name).toBe('Catalogue AI');
+      expect(distVer.name).toBe('Catalogue');
     }
   });
 
@@ -101,7 +101,7 @@ describe('PWA & Versioning — Đặc tả và cấu hình', () => {
     // Modal Hướng dẫn Cài đặt PWA
     expect(html).toContain('pwa.guideOpen');
     expect(html).toContain('openPwaModal()');
-    expect(html).toContain('Cài Đặt Catalogue AI');
+    expect(html).toContain('Cài Đặt Catalogue');
 
     // Mục "Phiên bản" tự hiện khi phát hiện bản mới
     expect(html).toContain('pwa.version');

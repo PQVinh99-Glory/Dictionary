@@ -9,7 +9,7 @@
 // =======================================================================
 
 const APP_VERSION = '6.1.2';
-const APP_NAME = 'Catalogue AI';
+const APP_NAME = 'Catalogue';
 
 /**
  * Phân tích chuỗi phiên bản thành [major, minor, patch]

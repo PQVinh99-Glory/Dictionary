@@ -1,8 +1,10 @@
+import { validateSession } from "../../_lib/moris/v5/connectors/supabase.js";
+
 const BROWSER_CACHE =
-  "public, max-age=3600, stale-while-revalidate=86400";
+  "private, max-age=3600, stale-while-revalidate=86400";
 
 const CDN_CACHE =
-  "public, max-age=86400, stale-while-revalidate=604800";
+  "private, max-age=86400, stale-while-revalidate=604800";
 
 function text(message, status=500) {
   return new Response(message, {
@@ -13,6 +15,22 @@ function text(message, status=500) {
       "x-content-type-options":"nosniff"
     }
   });
+}
+
+function getCookie(request, name) {
+  const cookieHeader = request.headers.get("cookie") || "";
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function extractToken(request) {
+  return (
+    request.headers.get("x-session-token") ||
+    (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "") ||
+    getCookie(request, "catalogue_session") ||
+    new URL(request.url).searchParams.get("token") ||
+    ""
+  ).trim();
 }
 
 function getObjectKey(params) {
@@ -27,23 +45,26 @@ function getObjectKey(params) {
 }
 
 function applyMediaCacheHeaders(headers) {
-  // Browser cache: conservative 1 hour.
   headers.set(
     "cache-control",
     headers.get("cache-control") || BROWSER_CACHE
   );
-
-  // Cloudflare shared cache: longer than browser cache.
-  // No "immutable" because legacy object keys may theoretically be reused.
   headers.set("cdn-cache-control", CDN_CACHE);
-
   headers.set("x-content-type-options", "nosniff");
   headers.set("cross-origin-resource-policy", "same-origin");
-
   return headers;
 }
 
 export async function onRequestGet({ request, env, params }) {
+  const token = extractToken(request);
+  if (!token) return text("Unauthorized", 401);
+
+  try {
+    await validateSession(env, token);
+  } catch (_) {
+    return text("Unauthorized", 401);
+  }
+
   if (!env.CATALOGUE_BUCKET) {
     return text("Missing R2 binding CATALOGUE_BUCKET.", 503);
   }
@@ -86,7 +107,16 @@ export async function onRequestGet({ request, env, params }) {
   );
 }
 
-export async function onRequestHead({ env, params }) {
+export async function onRequestHead({ request, env, params }) {
+  const token = extractToken(request);
+  if (!token) return new Response(null, { status: 401 });
+
+  try {
+    await validateSession(env, token);
+  } catch (_) {
+    return new Response(null, { status: 401 });
+  }
+
   if (!env.CATALOGUE_BUCKET) {
     return new Response(null, {status:503});
   }

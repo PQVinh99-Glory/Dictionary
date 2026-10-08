@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Catalogue AI</title>
+  <title>Catalogue</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Font màn hình LED của công cụ quy đổi (Orbitron + Share Tech Mono) -->
@@ -12,9 +12,97 @@
   <meta name="theme-color" content="#7F011F" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Catalogue AI" />
+  <meta name="apple-mobile-web-app-title" content="Catalogue" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
+
+  <!-- =======================================================================
+       BẢO MẬT CLIENT-SHIELD (Khóa chặt giao diện, không ảnh hưởng vận hành):
+       1. Khóa vĩnh viễn 100% console (không log, không error, không lộ state)
+       2. Chặn menu chuột phải (chống bấm "Kiểm tra / Inspect Element")
+       3. Chặn toàn bộ phím tắt mở DevTools (F12, Ctrl+Shift+I/J/C, Ctrl+U, Cmd+Opt+I...)
+       4. Bẫy Debugger ngầm (đóng băng DevTools nếu ai cố tình mở)
+       5. Bảo toàn 100% thao tác người dùng (vẫn gõ phím, click, cuộn, paste trong ô nhập)
+       ======================================================================= -->
+  <script>
+    (function () {
+      if (typeof window === 'undefined') return;
+
+      // 1. Khóa cứng 100% console
+      if (window.console) {
+        var noop = function () {};
+        var methods = [
+          'log', 'debug', 'info', 'warn', 'error', 'dir', 'table',
+          'trace', 'group', 'groupCollapsed', 'groupEnd', 'time',
+          'timeEnd', 'assert', 'count', 'countReset', 'profile', 'profileEnd'
+        ];
+        for (var i = 0; i < methods.length; i++) {
+          try {
+            Object.defineProperty(window.console, methods[i], {
+              value: noop,
+              writable: false,
+              configurable: false
+            });
+          } catch (_) {
+            try { window.console[methods[i]] = noop; } catch (__) {}
+          }
+        }
+        try { window.console.clear(); } catch (_) {}
+      }
+
+      // 2. Chặn menu chuột phải (cho phép trong ô nhập liệu INPUT / TEXTAREA)
+      if (typeof document !== 'undefined') {
+        document.addEventListener('contextmenu', function (e) {
+          var tag = (e.target && e.target.tagName) || '';
+          if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+            e.preventDefault();
+            return false;
+          }
+        }, { capture: true, passive: false });
+
+        // 3. Chặn toàn bộ phím tắt DevTools & View Source
+        window.addEventListener('keydown', function (e) {
+          // F12
+          if (e.key === 'F12' || e.keyCode === 123) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+          var isCtrlOrCmd = e.ctrlKey || e.metaKey;
+          var isShiftOrAlt = e.shiftKey || e.altKey;
+          var key = (e.key || '').toLowerCase();
+
+          // Ctrl+Shift+I / J / C (hoặc Cmd+Opt+I / J / C trên Mac)
+          if (isCtrlOrCmd && isShiftOrAlt && (key === 'i' || key === 'j' || key === 'c' || e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+          // Ctrl+U / Cmd+U (View Page Source)
+          if (isCtrlOrCmd && (key === 'u' || e.keyCode === 85)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+          // Ctrl+S / Cmd+S (Save Page)
+          if (isCtrlOrCmd && (key === 's' || e.keyCode === 83)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+        }, { capture: true });
+
+        // 4. Bẫy Debugger ngầm: Khi DevTools bị mở, bẫy này lập tức dừng luồng phân tích
+        setInterval(function () {
+          try {
+            (function () {
+              return false;
+            })['constructor']('debugger')();
+          } catch (_) {}
+        }, 1000);
+      }
+    })();
+  </script>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- ===== BỘ MÀU HỆ THỐNG: Wine Red #7F011F + Light Sand #F5EBD0 =====
@@ -426,13 +514,13 @@
       <div class="w-20 h-20 rounded-3xl bg-white border border-rose-100 shadow-xl shadow-rose-100 mb-8 mx-auto overflow-hidden p-1.5">
         <img src="assets/icon-book.png" alt="Catalogue" class="w-full h-full object-contain" draggable="false" />
       </div>
-      <h1 class="text-3xl font-black tracking-tight text-center text-slate-800">Catalogue AI</h1>
+      <h1 class="text-3xl font-black tracking-tight text-center text-slate-800">Catalogue</h1>
       <p class="mt-2 text-slate-500 font-semibold text-center">Hệ thống quản lý tra cứu thông minh.</p>
 
       <form @submit.prevent="login" class="mt-8 space-y-4">
         <div>
           <label class="block text-xs font-black tracking-widest text-slate-400 uppercase mb-1 ml-2">Tên đăng nhập</label>
-          <input class="input h-14" v-model.trim="loginForm.username" placeholder="Vinh hoặc tên đăng nhập..." autocomplete="username" />
+          <input class="input h-14" v-model.trim="loginForm.username" placeholder="Tên đăng nhập..." autocomplete="username" />
         </div>
         <div>
           <label class="block text-xs font-black tracking-widest text-slate-400 uppercase mb-1 ml-2">Mật khẩu</label>
@@ -1781,7 +1869,7 @@
             <i data-lucide="smartphone" class="w-5 h-5 text-amber-200"></i>
           </div>
           <div>
-            <h3 class="font-black text-sm sm:text-base">Cài Đặt Catalogue AI</h3>
+            <h3 class="font-black text-sm sm:text-base">Cài Đặt Catalogue</h3>
             <p class="text-[11px] text-white/80 font-medium">Sử dụng mượt mà như ứng dụng gốc</p>
           </div>
         </div>
@@ -1792,7 +1880,7 @@
         <!-- Trường hợp 1: Đã cài đặt / Đang chạy standalone -->
         <div v-if="pwa.isStandalone" class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-900 font-bold">
           <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-700 shrink-0 mt-0.5"></i>
-          <span>Ứng dụng Catalogue AI đã được cài đặt và đang chạy ở chế độ App toàn màn hình.</span>
+          <span>Ứng dụng Catalogue đã được cài đặt và đang chạy ở chế độ App toàn màn hình.</span>
         </div>
 
         <!-- Trường hợp 2: iOS / Safari -->
@@ -1856,7 +1944,7 @@
             </li>
             <li class="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
               <span class="w-5 h-5 rounded-md bg-rose-800 text-white font-black text-[11px] flex items-center justify-center shrink-0">3</span>
-              <div>Xác nhận <b>"Cài đặt"</b>. Icon Catalogue AI sẽ xuất hiện trên màn hình điện thoại.</div>
+              <div>Xác nhận <b>"Cài đặt"</b>. Icon Catalogue sẽ xuất hiện trên màn hình điện thoại.</div>
             </li>
           </ol>
         </div>
