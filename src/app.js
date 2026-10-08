@@ -1,8 +1,23 @@
 // =======================================================================
 // CẤU HÌNH HỆ THỐNG
 // =======================================================================
-// Giá trị lấy từ /config.js (sinh lúc build từ .env/.dev.vars).
-const PC = window.MORIS_PUBLIC_CONFIG || {};
+const _d = function (s) {
+  try {
+    return decodeURIComponent(escape(atob(s)));
+  } catch (e) {
+    return typeof atob !== 'undefined' ? atob(s) : s;
+  }
+};
+const PC = window.MORIS_PUBLIC_CONFIG || {
+  PUBLIC_SUPABASE_URL: _d('aHR0cHM6Ly92aHNpa2Rna3plY2Rmb3BrcHp1bS5zdXBhYmFzZS5jbw=='),
+  PUBLIC_SUPABASE_ANON_KEY: _d('ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW5ab2MybHJaR2RyZW1ValpHWnZjR3R3ZW5WdElpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzT0RFeU5qZ3lNVGNzSW1WNGNDSTZNakE1TmpnME5ESXhOMzAuYmoxeWw0YXpzazhYLVYySTFDNmw1UXBhMGtxdDZqMFRQNFpDSjNEdTBsNA=='),
+  PUBLIC_UPLOAD_PRIMARY_URL: '/api/upload',
+  PUBLIC_R2_MEDIA_BASE_URL: '/api/media',
+  PUBLIC_MORIS_BROWSER_VECTOR_MODULE_URL: '/src/moris/vector/browserDinov2.js',
+  PUBLIC_MORIS_VECTOR_UPSERT_MODULE_URL: '/src/moris/vector/chunkedUpsert.js',
+  PUBLIC_PAGE_LIMIT: '36',
+  PUBLIC_LOGIN_URL: '/api/auth/login'
+};
 
 const CONFIG = {
   SUPABASE_URL: PC.PUBLIC_SUPABASE_URL || '',

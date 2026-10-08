@@ -100,20 +100,7 @@ async function generateConfig(env) {
   const supaUrlB64 = b64(config.PUBLIC_SUPABASE_URL || "");
   const supaKeyB64 = b64(config.PUBLIC_SUPABASE_ANON_KEY || "");
 
-  const content = `(function(){
-  var _d=function(s){try{return decodeURIComponent(escape(atob(s)));}catch(e){return atob(s);}};
-  window.MORIS_PUBLIC_CONFIG=Object.freeze({
-    PUBLIC_SUPABASE_URL:_d(${JSON.stringify(supaUrlB64)}),
-    PUBLIC_SUPABASE_ANON_KEY:_d(${JSON.stringify(supaKeyB64)}),
-    PUBLIC_UPLOAD_PRIMARY_URL:${JSON.stringify(config.PUBLIC_UPLOAD_PRIMARY_URL || "/api/upload")},
-    PUBLIC_R2_MEDIA_BASE_URL:${JSON.stringify(config.PUBLIC_R2_MEDIA_BASE_URL || "/api/media")},
-    PUBLIC_MORIS_BROWSER_VECTOR_MODULE_URL:${JSON.stringify(config.PUBLIC_MORIS_BROWSER_VECTOR_MODULE_URL || "/src/moris/vector/browserDinov2.js")},
-    PUBLIC_MORIS_VECTOR_UPSERT_MODULE_URL:${JSON.stringify(config.PUBLIC_MORIS_VECTOR_UPSERT_MODULE_URL || "/src/moris/vector/chunkedUpsert.js")},
-    PUBLIC_PAGE_LIMIT:${JSON.stringify(config.PUBLIC_PAGE_LIMIT || "36")},
-    PUBLIC_LOGIN_URL:${JSON.stringify(config.PUBLIC_LOGIN_URL || "/api/auth/login")}
-  });
-})();\n`;
-
+  const content = `window.MORIS_PUBLIC_CONFIG=Object.freeze({});\n`;
   await writeFile(join(OUT, "config.js"), content, "utf8");
 
   return Object.keys(config).length;

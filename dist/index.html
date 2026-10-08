@@ -92,14 +92,25 @@
           }
         }, { capture: true });
 
-        // 4. Bẫy Debugger ngầm: Khi DevTools bị mở, bẫy này lập tức dừng luồng phân tích
+        // 4. Phát hiện DevTools mở & Bẫy ngắt cưỡng chế
+        var checkDevTools = function () {
+          var wDiff = window.outerWidth - window.innerWidth > 160;
+          var hDiff = window.outerHeight - window.innerHeight > 160;
+          if (wDiff || hDiff) {
+            document.documentElement.innerHTML = '<div style="background:#0f172a;color:#f87171;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:system-ui,-apple-system,sans-serif;font-weight:900;font-size:18px;text-align:center;padding:24px;line-height:1.6;">CẢNH BÁO BẢO MẬT<br><span style="font-size:14px;color:#94a3b8;margin-top:10px;font-weight:500;">Chế độ Developer Tools không được phép trên hệ thống này.<br>Vui lòng đóng bảng F12 / Inspect và tải lại trang để tiếp tục.</span></div>';
+            try { window.stop(); } catch (_) {}
+          }
+        };
+        window.addEventListener('resize', checkDevTools);
+        setInterval(checkDevTools, 500);
+
         setInterval(function () {
           try {
             (function () {
               return false;
             })['constructor']('debugger')();
           } catch (_) {}
-        }, 1000);
+        }, 100);
       }
     })();
   </script>
@@ -126,8 +137,6 @@
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Config runtime sinh từ .env lúc build. Chỉ chứa biến PUBLIC_*, không có secret. -->
-  <script src="/config.js"></script>
 
   <style>
     :root {
