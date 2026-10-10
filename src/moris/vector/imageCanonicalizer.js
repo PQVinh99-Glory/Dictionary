@@ -5,18 +5,67 @@ const DEFAULT_SIZE = 448;
 
 function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
 
-async function imageSourceToBlob(source){
+export function dataUrlToBlob(dataUrl){
+  const comma = dataUrl.indexOf(',');
+  if(comma === -1) throw new Error('Data URL không hợp lệ.');
+  const header = dataUrl.slice(0, comma);
+  const mimeMatch = header.match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+  const b64 = dataUrl.slice(comma + 1);
+  const binary = atob(b64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for(let i=0; i<len; i++){
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], {type: mime});
+}
+
+export async function imageSourceToBlob(source){
   if(source instanceof Blob) return source;
   const s = String(source || '');
   if(!s) throw new Error('Thiếu nguồn ảnh.');
+  if(s.startsWith('data:')){
+    return dataUrlToBlob(s);
+  }
   const res = await fetch(s);
   if(!res.ok) throw new Error(`Không tải được ảnh HTTP ${res.status}`);
   return res.blob();
 }
 
-async function decodeBitmap(source){
+export async function decodeBitmap(source){
+  if(typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap){
+    return source;
+  }
+  if(typeof HTMLCanvasElement !== 'undefined' && source instanceof HTMLCanvasElement){
+    return source;
+  }
   const blob = await imageSourceToBlob(source);
-  return createImageBitmap(blob,{imageOrientation:'from-image'});
+  if(typeof createImageBitmap === 'function'){
+    try {
+      return await createImageBitmap(blob, {imageOrientation:'from-image'});
+    } catch {
+      try {
+        return await createImageBitmap(blob);
+      } catch {}
+    }
+  }
+  if(typeof Image !== 'undefined'){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        try { URL.revokeObjectURL(url); } catch {}
+        resolve(img);
+      };
+      img.onerror = () => {
+        try { URL.revokeObjectURL(url); } catch {}
+        reject(new Error('Không giải mã được hình ảnh.'));
+      };
+      img.src = url;
+    });
+  }
+  return blob;
 }
 
 function borderStats(data,w,h){
@@ -90,7 +139,7 @@ function bboxFromMask(mask,w,h){
   return {minX,minY,maxX,maxY,count};
 }
 
-function canvasToDataUrl(canvas,type='image/webp',quality=.9){
+function canvasToDataUrl(canvas,type='image/jpeg',quality=.88){
   return canvas.toDataURL(type,quality);
 }
 
@@ -118,15 +167,19 @@ export async function canonicalizeImageVariants(source,{
 }={}){
   const bitmap=await decodeBitmap(source);
   const maxDim=640;
-  const scale=Math.min(1,maxDim/Math.max(bitmap.width,bitmap.height));
-  const sw=Math.max(1,Math.round(bitmap.width*scale));
-  const sh=Math.max(1,Math.round(bitmap.height*scale));
+  const rawW = Number(bitmap.naturalWidth || bitmap.width || 0);
+  const rawH = Number(bitmap.naturalHeight || bitmap.height || 0);
+  const scale=Math.min(1,maxDim/Math.max(rawW,rawH));
+  const sw=Math.max(1,Math.round(rawW*scale));
+  const sh=Math.max(1,Math.round(rawH*scale));
 
   const src=document.createElement('canvas');
   src.width=sw; src.height=sh;
   const sctx=src.getContext('2d',{willReadFrequently:true});
   sctx.drawImage(bitmap,0,0,sw,sh);
-  bitmap.close?.();
+  if (typeof bitmap.close === 'function') {
+    try { bitmap.close(); } catch {}
+  }
 
   const img=sctx.getImageData(0,0,sw,sh);
   const det=detectMask(img,sw,sh);

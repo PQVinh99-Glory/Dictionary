@@ -83,6 +83,9 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
+  // 0. CHỈ XỬ LÝ HTTP/HTTPS, BỎ QUA data:, blob:, chrome-extension: ĐỂ TRÁNH LỖI CACHE API
+  if (!url.protocol.startsWith('http')) return;
+
   // 1. TUYỆT ĐỐI KHÔNG CACHE API, AUTH VÀ SUPABASE (NGOẠI TRỪ /api/media)
   if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/media/')) return;
   if (url.hostname.includes('supabase.co')) return;

@@ -8,7 +8,7 @@
 // - Thay đổi lớn có thể không tương thích: Thay đổi số đầu (+1.0.0) -> Ví dụ 7.0.0
 // =======================================================================
 
-const APP_VERSION = '6.1.2';
+const APP_VERSION = '6.1.3';
 const APP_NAME = 'Catalogue';
 
 /**

@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { computeOrientationPCA } from "../src/moris/geometry/pcaAligner.js";
 import { extractHoleTopology } from "../src/moris/geometry/holeTopology.js";
+import { dataUrlToBlob, imageSourceToBlob } from "../src/moris/vector/imageCanonicalizer.js";
 
 describe("Moris Geometry Engine (Pure JS, 0MB WASM, Zero-Crash)", () => {
   describe("PCA Orientation Aligner", () => {
@@ -169,6 +170,35 @@ describe("Moris Geometry Engine (Pure JS, 0MB WASM, Zero-Crash)", () => {
 
       const res = extractHoleTopology(mask, W, H);
       expect(res.hole_count).toBe(0); // Rãnh hở mép ngoài không phải lỗ dập kín
+    });
+  });
+
+  describe("Image Canonicalizer Data URL & Blob Decoder", () => {
+    it("dataUrlToBlob: phân giải chính xác chuỗi base64 thành Blob mà KHÔNG gọi fetch", async () => {
+      // 1x1 transparent PNG: iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==
+      const sampleDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+      
+      const blob = dataUrlToBlob(sampleDataUrl);
+      expect(blob).toBeInstanceOf(Blob);
+      expect(blob.type).toBe("image/png");
+      expect(blob.size).toBeGreaterThan(0);
+    });
+
+    it("imageSourceToBlob: xử lý an toàn nguồn data URL mà không chạm Service Worker / fetch", async () => {
+      const sampleDataUrl = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
+      
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      const blob = await imageSourceToBlob(sampleDataUrl);
+      
+      expect(blob).toBeInstanceOf(Blob);
+      expect(blob.type).toBe("image/jpeg");
+      // Phải giải mã đồng bộ trực tiếp bằng atob / Uint8Array, TUYỆT ĐỐI không gọi fetch
+      expect(fetchSpy).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it("imageSourceToBlob: ném lỗi nếu nguồn rỗng", async () => {
+      await expect(imageSourceToBlob("")).rejects.toThrow("Thiếu nguồn ảnh");
     });
   });
 });

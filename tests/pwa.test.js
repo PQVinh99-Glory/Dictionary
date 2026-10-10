@@ -26,33 +26,33 @@ describe('PWA & Versioning — Đặc tả và cấu hình', () => {
     }
   });
 
-  it('src/version.js — phiên bản hiện tại là 6.1.2 và tuân thủ quy tắc tăng phiên bản', async () => {
+  it('src/version.js — phiên bản hiện tại là 6.1.3 và tuân thủ quy tắc tăng phiên bản', async () => {
     const versionMod = await import('../src/version.js');
-    expect(versionMod.APP_VERSION).toBe('6.1.2');
+    expect(versionMod.APP_VERSION).toBe('6.1.3');
 
     // Quy tắc người dùng yêu cầu:
     // 1) Sửa lỗi nhỏ không thêm tính năng: tăng số cuối 0.0.1
-    expect(versionMod.bumpPatch('6.1.2')).toBe('6.1.3');
+    expect(versionMod.bumpPatch('6.1.3')).toBe('6.1.4');
     expect(versionMod.bumpPatch('6.1.9')).toBe('6.1.10');
 
-    // 2) Thêm tính năng vẫn tương thích bản cũ: sửa số giữa 0.1.0
-    expect(versionMod.bumpMinor('6.1.2')).toBe('6.2.0');
+    // 2) Thêm tính năng mới vẫn tương thích bản cũ: sửa số giữa 0.1.0
+    expect(versionMod.bumpMinor('6.1.3')).toBe('6.2.0');
 
     // 3) Thay đổi lớn có thể không tương thích: thay đổi số đầu 1.0.0
-    expect(versionMod.bumpMajor('6.1.2')).toBe('7.0.0');
+    expect(versionMod.bumpMajor('6.1.3')).toBe('7.0.0');
 
     // So sánh phiên bản
-    expect(versionMod.compareVersions('6.1.3', '6.1.2')).toBeGreaterThan(0);
+    expect(versionMod.compareVersions('6.1.4', '6.1.3')).toBeGreaterThan(0);
     expect(versionMod.compareVersions('6.2.0', '6.1.5')).toBeGreaterThan(0);
-    expect(versionMod.compareVersions('6.1.2', '6.1.2')).toBe(0);
+    expect(versionMod.compareVersions('6.1.3', '6.1.3')).toBe(0);
   });
 
-  it('version.json tại root và dist khớp với phiên bản 6.1.2', () => {
+  it('version.json tại root và dist khớp với phiên bản 6.1.3', () => {
     const rootVer = JSON.parse(read('version.json'));
-    expect(rootVer.version).toBe('6.1.2');
+    expect(rootVer.version).toBe('6.1.3');
     if (existsSync(join(ROOT, 'dist/version.json'))) {
       const distVer = JSON.parse(read('dist/version.json'));
-      expect(distVer.version).toBe('6.1.2');
+      expect(distVer.version).toBe('6.1.3');
       expect(distVer.name).toBe('Catalogue');
     }
   });
@@ -76,6 +76,8 @@ describe('PWA & Versioning — Đặc tả và cấu hình', () => {
     expect(sw).toContain('/version.json');
     // Navigation là Network-First
     expect(sw).toContain("mode === 'navigate'");
+    // Protocol guard cho data/blob scheme
+    expect(sw).toContain("url.protocol.startsWith('http')");
   });
 
   it('index.html có đầy đủ thẻ PWA trong head, nút Tải App, Xóa cache, Floating Toast và Modal Hướng dẫn', () => {

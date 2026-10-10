@@ -2126,14 +2126,23 @@ createApp({
         if (ch > vh) { ch = vh; cw = Math.round(vh * RATIO); }
         const cx = Math.round((vw - cw) / 2), cy = Math.round((vh - ch) / 2);
 
+        // Chuẩn hóa kích thước khung hình (tối đa 1280px) để bảo vệ RAM Safari iOS/Android và tối ưu tốc độ AI
+        const MAX_W = 1280;
+        let targetW = cw, targetH = ch;
+        if (targetW > MAX_W) {
+          const s = MAX_W / targetW;
+          targetW = MAX_W;
+          targetH = Math.round(targetH * s);
+        }
+
         const canvas = document.createElement('canvas');
-        canvas.width = cw; canvas.height = ch;
+        canvas.width = targetW; canvas.height = targetH;
         const ctx = canvas.getContext('2d', { alpha:false });
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, cw, ch);
-        ctx.drawImage(video, cx, cy, cw, ch, 0, 0, cw, ch);
+        ctx.fillRect(0, 0, targetW, targetH);
+        ctx.drawImage(video, cx, cy, cw, ch, 0, 0, targetW, targetH);
 
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.84);
         if (!dataUrl) throw new Error('Không chụp được ảnh.');
 
         // Tạo mặt nạ chỉ quét linh kiện tối màu (bỏ qua nền và các lỗ)
@@ -2153,11 +2162,13 @@ createApp({
 
         // Chạy trích xuất vector AI (DINOv2 + PCA + Hole topology) trong lúc quét
         let vectorResult = null;
+        let vectorError = null;
         if (CONFIG.MORIS_BROWSER_VECTOR_ENABLED) {
           try {
             vectorResult = await this.buildMorisQueryVector(dataUrl);
           } catch (embedErr) {
             console.warn('Vector embedding during camera scan failed, will fallback to server:', embedErr);
+            vectorError = embedErr;
           }
         }
 
@@ -2176,7 +2187,7 @@ createApp({
         this.moris.imagePreview = capturedDataUrl;
         this.moris.imageName = `camera-scan-${Date.now()}.jpg`;
 
-        await this.sendMorisMessage(null, vectorResult);
+        await this.sendMorisMessage(null, vectorResult, vectorError);
       } catch(e) {
         this.toast('error', this.readError(e));
         this.camera.busy = false;
@@ -2301,6 +2312,9 @@ createApp({
           const pct = Math.max(0, Math.min(100, Math.round(Number(progress.progress))));
           this.moris.status = `Đang tải mô hình DINOv2: ${pct}%...`;
           this.morisAi.statusText = `Tải DINOv2: ${pct}%`;
+          if (this.camera?.scanning) {
+            this.camera.scanStatus = `Đang tải mô hình DINOv2: ${pct}% (85MB)...`;
+          }
           if (this.morisScan.active) {
             this.setMorisScanStep(Math.round(pct * 0.4), 'KHỞI TẠO MÔ HÌNH', `ĐANG TẢI DINOV2: ${pct}% (85MB)...`);
           }
@@ -2385,6 +2399,11 @@ createApp({
           'Xin lỗi anh, em chưa tạo được vector phù hợp cho ảnh này. ' +
           'Anh thử lại với ảnh rõ vật thể hơn giúp em nhé.'
         );
+      }
+
+      const msg = error?.message ? String(error.message) : '';
+      if (msg && !msg.includes('[object') && msg.length < 100) {
+        return `Xin lỗi anh, em chưa thể xử lý tìm kiếm hình ảnh: ${msg}. Anh thử lại giúp em nhé.`;
       }
 
       return (
@@ -2765,7 +2784,7 @@ createApp({
       this.$nextTick(() => this.renderIcons());
     },
 
-    async sendMorisMessage(message = null, precomputedVectorResult = null) {
+    async sendMorisMessage(message = null, precomputedVectorResult = null, precomputedError = null) {
       if (this.moris.busy) return;
 
       const rawInput = (typeof message === 'string' && message.trim()) ? message.trim() : String(this.moris.input || '').trim();
@@ -2915,6 +2934,9 @@ createApp({
         let vectorResult = precomputedVectorResult || null;
 
         if (!vectorResult && CONFIG.MORIS_BROWSER_VECTOR_ENABLED) {
+          if (precomputedError) {
+            throw precomputedError;
+          }
           this.moris.status = 'Đang khởi tạo nhận dạng hình ảnh...';
 
           vectorResult = await this.buildMorisQueryVector(
