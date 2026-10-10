@@ -57,6 +57,7 @@ export function validateMorisQuery(body, config) {
       usage_side:body?.filters?.usage_side || "all",
       view_mode:body?.filters?.view_mode || "all"
     },
-    hints:body?.hints || {}
+    hints:body?.hints || {},
+    geometry:body?.geometry || null
   };
 }

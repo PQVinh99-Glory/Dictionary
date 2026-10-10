@@ -159,7 +159,22 @@ export async function onRequestPost({request,env}) {
             p_quality_score:
               row?.quality_score == null
                 ? null
-                : Number(row.quality_score)
+                : Number(row.quality_score),
+
+            p_hole_count:
+              row?.hole_count == null
+                ? 0
+                : Math.max(0, parseInt(row.hole_count, 10) || 0),
+
+            p_aspect_ratio:
+              row?.aspect_ratio == null
+                ? 1.0
+                : Number(row.aspect_ratio) || 1.0,
+
+            p_hole_centroids:
+              Array.isArray(row?.hole_centroids)
+                ? row.hole_centroids
+                : []
           }
         );
 

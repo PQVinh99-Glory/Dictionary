@@ -462,7 +462,10 @@ async function vectorizeSingleItem(item, btn) {
           view_variant: probe.view_variant,
           embedding: probe.embedding,
           embedding_profile: probe.profile,
-          foreground_status: "browser_dinov2_v59_canonical"
+          foreground_status: "browser_dinov2_v59_canonical",
+          hole_count: result.geometry?.hole_count ?? 0,
+          aspect_ratio: result.geometry?.aspect_ratio ?? 1.0,
+          hole_centroids: result.geometry?.hole_centroids ?? []
         });
       }
     }
@@ -563,7 +566,10 @@ async function batchVectorizePending() {
               view_variant: probe.view_variant,
               embedding: probe.embedding,
               embedding_profile: probe.profile,
-              foreground_status: "browser_dinov2_v59_canonical"
+              foreground_status: "browser_dinov2_v59_canonical",
+              hole_count: result.geometry?.hole_count ?? 0,
+              aspect_ratio: result.geometry?.aspect_ratio ?? 1.0,
+              hole_centroids: result.geometry?.hole_centroids ?? []
             });
           }
         }

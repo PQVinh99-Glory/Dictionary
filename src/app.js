@@ -2128,6 +2128,7 @@ createApp({
         embedding:probes[0].embedding,
         profile:probes[0].profile,
         probes,
+        geometry:result?.geometry || null,
         diagnostics:result?.diagnostics || null
       };
     },
@@ -2717,6 +2718,7 @@ createApp({
               query_embedding:queryEmbedding,
               query_embeddings:queryEmbeddings,
               embedding_profile:embeddingProfile,
+              geometry:vectorResult?.geometry || null,
               hints:{
                 query_vector_source:
                   queryEmbedding
@@ -2873,7 +2875,7 @@ createApp({
             p_part_id: null,
             p_usage_side: 'unknown',
             p_view_mode: hasBack ? 'dual_face' : 'single_face',
-            p_is_symmetric: !hasBack, // Mã 1 mặt mặc định gán đối xứng
+            p_is_symmetric: false,
             p_identifying_features: null,
             p_confusing_note: null,
             p_primary_image_path: primary.image_path,

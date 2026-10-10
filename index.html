@@ -631,8 +631,6 @@
             <div class="checker aspect-[4/3] flex items-center justify-center overflow-hidden border-b border-slate-100 relative">
               <img v-if="partThumbUrl(item)" :src="partThumbUrl(item)" loading="lazy" decoding="async" fetchpriority="low" width="320" height="320" class="part-img max-w-[85%] max-h-[85%] object-contain transition duration-500 group-hover:scale-[1.08]" />
               <div v-else class="text-slate-300"><i data-lucide="image-off" class="w-12 h-12"></i></div>
-              <!-- Badge -->
-              <div v-if="item.is_symmetric" class="absolute top-3 right-3 px-2.5 py-1 bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg backdrop-blur-sm">Đối xứng</div>
             </div>
             <div class="p-5 flex-1 flex flex-col">
               <div class="text-[10px] uppercase tracking-[0.2em] font-black text-emerald-600 mb-1">Mã linh kiện</div>

@@ -45,7 +45,10 @@ export async function hydrateVectorHits(env, token, hits, {maxRows=1500}={}) {
         probe_rrf:Number(hit.probe_rrf ?? 0),
         probe_count:Number(hit.probe_count ?? 1),
         vector_object_key:hit.object_key || "",
-        vector_asset_type:hit.asset_type || ""
+        vector_asset_type:hit.asset_type || "",
+        hole_count:Number(hit.hole_count || 0),
+        aspect_ratio:Number(hit.aspect_ratio || 1.0),
+        hole_centroids:Array.isArray(hit.hole_centroids) ? hit.hole_centroids : []
       };
     });
 }

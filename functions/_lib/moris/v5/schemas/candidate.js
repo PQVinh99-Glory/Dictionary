@@ -21,6 +21,8 @@ export function publicCandidate(row) {
     reason:row?.reason || null,
     matched:row?.matched || [],
     conflicts:row?.conflicts || [],
-    unknown:row?.unknown || []
+    unknown:row?.unknown || [],
+    hole_count:row?.hole_count == null ? null : Number(row.hole_count),
+    aspect_ratio:row?.aspect_ratio == null ? null : Number(row.aspect_ratio)
   };
 }

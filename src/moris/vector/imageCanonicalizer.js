@@ -1,3 +1,6 @@
+import { computeOrientationPCA } from "../geometry/pcaAligner.js";
+import { extractHoleTopology } from "../geometry/holeTopology.js";
+
 const DEFAULT_SIZE = 448;
 
 function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
@@ -129,6 +132,9 @@ export async function canonicalizeImageVariants(source,{
   const det=detectMask(img,sw,sh);
   let box=bboxFromMask(det.mask,sw,sh);
 
+  const pca = computeOrientationPCA(det.mask, sw, sh);
+  const topology = extractHoleTopology(det.mask, sw, sh);
+
   if(!box || det.coverage<.02 || det.coverage>.96){
     box={minX:0,minY:0,maxX:sw-1,maxY:sh-1,count:sw*sh};
   }
@@ -183,6 +189,12 @@ export async function canonicalizeImageVariants(source,{
   return {
     variants,
     diagnostics:variants[0].diagnostics,
+    geometry: {
+      hole_count: topology.hole_count,
+      aspect_ratio: topology.aspect_ratio,
+      hole_centroids: topology.hole_centroids,
+      pca_angle_deg: Number(pca.angleDeg.toFixed(2))
+    },
     preprocess_version:'kim_canon_v2'
   };
 }

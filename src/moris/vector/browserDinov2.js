@@ -136,6 +136,7 @@ export async function embedImageDinov2Variants(image,{includeGray=true}={}){
   return {
     probes,
     diagnostics:canonical.diagnostics,
+    geometry:canonical.geometry || null,
     preprocess_version:'kim_canon_v2'
   };
 }
