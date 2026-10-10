@@ -8,6 +8,7 @@
         "node": ">=22"
     },
     "scripts": {
+        "prepare": "bash .agents/ensure-settings.sh || true",
         "build": "node tools/build-static.mjs",
         "dev": "npm run build && wrangler pages dev --port 8788 --ip 127.0.0.1",
         "dev:hot": "wrangler pages dev --port 8788 --ip 127.0.0.1",

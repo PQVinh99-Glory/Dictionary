@@ -115,8 +115,9 @@ createApp({
       session:{ token:'', user:null },
       // Hạn phiên (ISO) — chu kỳ 24h bắt đầu 07:00 giờ VN.
       sessionExp: localStorage.getItem('kim_session_expires_at') || '',
-      users:{ open:false, loading:false, saving:false, list:[], tempPw:'', actionId:null,
-              creating:false, form:{ username:'', password:'', role:'viewer' } },
+      users:{ open:false, loading:false, saving:false, list:[], blockedIps:[], unlockIpInput:'', tempPw:'', actionId:null,
+              creating:false, form:{ username:'', password:'', role:'viewer' },
+              createdInfo:null, totpModal:{ open:false, user:null, secret:'' } },
       pwChange:{ open:false, saving:false, new:'', confirm:'', error:'' },
       loginForm:{ username:'', password:'' },
       filters:{ search:'', usage:'all', viewMode:'all' },
@@ -1515,6 +1516,8 @@ createApp({
       this.users.open = true;
       this.users.tempPw = '';
       this.users.creating = false;
+      this.users.createdInfo = null;
+      this.users.totpModal = { open: false, user: null, secret: '', qrUrl: '' };
       this.resetUserForm();
       this.loadUsers();
       this.$nextTick(() => this.renderIcons());
@@ -1523,11 +1526,13 @@ createApp({
       this.users.open = false;
       this.users.tempPw = '';
       this.users.creating = false;
+      this.users.createdInfo = null;
+      this.users.totpModal = { open: false, user: null, secret: '', qrUrl: '' };
     },
-    /** Tài khoản admin hệ thống: khoá đổi role / bật-tắt / cấp lại MK. */
+    /** Tài khoản admin hệ thống: khoá đổi role / bật-tắt / cấp lại MK / xóa / đổi 2FA. */
     isSystemAdmin(u) {
       const raw = String(u?.username || u?.display_name || u?.email || '').trim().toLowerCase();
-      return raw === 'vinh' || raw.startsWith('vinh@') || u?.is_system_admin === true;
+      return raw === 'vinh' || raw.startsWith('vinh@') || raw.startsWith('pquangvinh1999') || u?.is_system_admin === true;
     },
     resetUserForm() {
       this.users.form = { username:'', password:'', role:'viewer' };
@@ -1537,7 +1542,7 @@ createApp({
       if (this.users.creating) this.resetUserForm();
       this.$nextTick(() => this.renderIcons());
     },
-    /** Thêm user trực tiếp: tên đăng nhập + mật khẩu + role (không cần email). */
+    /** Thêm user trực tiếp: tên đăng nhập + mật khẩu + role + sinh Secret 2FA riêng. */
     async createUser() {
       const u = this.users;
       if (u.saving) return;
@@ -1564,10 +1569,21 @@ createApp({
         });
         const data = await res.json().catch(() => null);
         if (!res.ok || !data?.ok) throw new Error(data?.error || 'Tạo user thất bại.');
-        this.toast('success', `Đã tạo user "${username}" (role ${data.role_name || u.form.role}).`);
+        
+        const totpSecret = data.totp_secret || '';
+
+        u.createdInfo = {
+          username,
+          password,
+          role: data.role_name || u.form.role,
+          secret: totpSecret
+        };
+
+        this.toast('success', `Đã tạo user "${username}" thành công kèm khóa 2FA.`);
         this.resetUserForm();
         this.users.creating = false;
         await this.loadUsers();
+        this.$nextTick(() => this.renderIcons());
       } catch(e) { this.toast('error', this.readError(e)); }
       finally { u.saving = false; }
     },
@@ -1581,8 +1597,34 @@ createApp({
         const data = await res.json().catch(() => null);
         if (!res.ok || !data?.ok) throw new Error(data?.error || 'Không tải được danh sách người dùng.');
         u.list = Array.isArray(data.users) ? data.users : [];
+        u.blockedIps = Array.isArray(data.blocked_ips) ? data.blocked_ips : [];
       } catch(e) { this.toast('error', this.readError(e)); }
       finally { u.loading = false; }
+    },
+    async unlockIp(ipToUnlock) {
+      const ip = String(ipToUnlock || this.users.unlockIpInput || '').trim();
+      if (!ip) return this.toast('error', 'Vui lòng nhập hoặc chọn địa chỉ IP cần mở khóa.');
+      const ok = await this.showConfirm(`Mở khóa cho địa chỉ IP "${ip}"? IP này sẽ được khôi phục quyền truy cập và xác thực 2FA ngay lập tức.`, {
+        title: 'Mở khóa IP bị chặn',
+        confirmText: 'Mở khóa IP'
+      });
+      if (!ok) return;
+
+      this.users.saving = true;
+      try {
+        const token = await this.freshToken();
+        const res = await fetch(CONFIG.USERS_URL, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+          body: JSON.stringify({ action: 'unlock_ip', ip })
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Mở khóa IP thất bại.');
+        this.toast('success', `Đã mở khóa IP ${ip} thành công.`);
+        this.users.unlockIpInput = '';
+        await this.loadUsers();
+      } catch(e) { this.toast('error', this.readError(e)); }
+      finally { this.users.saving = false; }
     },
     async userAction(user, action, role = null) {
       const u = this.users;
@@ -1595,7 +1637,7 @@ createApp({
         set_role: `đổi role của ${user.email} thành ${role}`,
         unlock: `mở khóa ${user.email}`,
         set_active: `kích hoạt lại ${user.email}`,
-        set_inactive: `vô hiệu hóa ${user.email}`,
+        set_inactive: `vô hiệu hóa ${user.email} (thu hồi luôn 2FA)`,
         reset_password: `cấp lại mật khẩu mới cho ${user.email}`
       };
       const ok = await this.showConfirm(`Xác nhận: ${labels[action] || action}?`, {
@@ -1625,6 +1667,93 @@ createApp({
         await this.loadUsers();
       } catch(e) { this.toast('error', this.readError(e)); }
       finally { u.saving = false; u.actionId = null; }
+    },
+    viewTotp(user) {
+      const secret = user.totp_secret || '';
+      this.users.totpModal = {
+        open: true,
+        user,
+        secret
+      };
+      this.$nextTick(() => this.renderIcons());
+    },
+    closeTotpModal() {
+      this.users.totpModal = { open: false, user: null, secret: '' };
+    },
+    async resetUserTotp(user) {
+      const name = user.username || user.email;
+      const ok = await this.showConfirm(`Cấp lại mã 2FA mới cho "${name}"? Khóa 2FA cũ trên điện thoại người này sẽ bị VÔ HIỆU HÓA ngay lập tức!`, {
+        title: 'Cấp lại mã 2FA (Microsoft Authenticator)',
+        confirmText: 'Cấp lại mã mới',
+        danger: true
+      });
+      if (!ok) return;
+
+      this.users.saving = true;
+      try {
+        const token = await this.freshToken();
+        const res = await fetch(CONFIG.USERS_URL, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+          body: JSON.stringify({ user_id: user.user_id, action: 'reset_totp' })
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Cấp lại 2FA thất bại.');
+        this.toast('success', `Đã cấp lại mã 2FA mới cho "${name}".`);
+        user.totp_secret = data.totp_secret;
+        this.viewTotp(user);
+        await this.loadUsers();
+      } catch(e) { this.toast('error', this.readError(e)); }
+      finally { this.users.saving = false; }
+    },
+    async deleteUserAccount(user) {
+      const name = user.username || user.email;
+      const ok = await this.showConfirm(`XÓA VĨNH VIỄN tài khoản "${name}"? Toàn bộ tài khoản và quyền xác thực 2FA của người này sẽ bị xóa sạch ngay lập tức!`, {
+        title: 'Xóa tài khoản người dùng',
+        confirmText: 'Xóa vĩnh viễn',
+        danger: true
+      });
+      if (!ok) return;
+
+      this.users.saving = true;
+      try {
+        const token = await this.freshToken();
+        const res = await fetch(CONFIG.USERS_URL, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+          body: JSON.stringify({ user_id: user.user_id, action: 'delete' })
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Xóa user thất bại.');
+        this.toast('success', `Đã xóa người dùng "${name}".`);
+        await this.loadUsers();
+      } catch(e) { this.toast('error', this.readError(e)); }
+      finally { this.users.saving = false; }
+    },
+    async copyCreatedHandover() {
+      const c = this.users.createdInfo;
+      if (!c) return;
+      const text = [
+        `[THÔNG TIN TÀI KHOẢN CATALOGUE]`,
+        `- Tên đăng nhập: ${c.username}`,
+        `- Mật khẩu: ${c.password}`,
+        `- Khóa 2FA (Secret Key): ${c.secret}`
+      ].join('\n');
+      try {
+        await navigator.clipboard.writeText(text);
+        this.toast('success', 'Đã sao chép đầy đủ thông tin bàn giao tài khoản & khóa 2FA.');
+      } catch(_) {
+        this.toast('error', 'Không sao chép tự động được, vui lòng copy thủ công.');
+      }
+    },
+    async copyUserSecret(secret) {
+      if (!secret) return;
+      try {
+        await navigator.clipboard.writeText(secret);
+        this.toast('success', 'Đã sao chép khóa bí mật 2FA.');
+      } catch(_) {
+        this.toast('error', 'Không sao chép tự động được, vui lòng copy thủ công.');
+      }
     },
     async copyTempPw() {
       try { await navigator.clipboard.writeText(this.users.tempPw); this.toast('success', 'Đã sao chép mật khẩu tạm.'); }

@@ -21,6 +21,7 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
   Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
 
 # Trang chính — không cho trang khác nhúng (cũng không cache)

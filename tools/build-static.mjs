@@ -129,6 +129,7 @@ const STATIC_ENTRIES = [
   "assets",
   "_headers",
   "_redirects",
+  "robots.txt",
   "manifest.webmanifest",
   "sw.js",
   "version.json",

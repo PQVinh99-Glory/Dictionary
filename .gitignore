@@ -32,3 +32,6 @@ assets/*
 # Dependencies (cài lại bằng `npm install`)
 node_modules/
 
+# Agent local configuration
+.agents/
+

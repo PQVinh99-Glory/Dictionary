@@ -1,15 +1,15 @@
 // =============================================================================
 // /api/auth/users — quản lý người dùng (CHỈ admin)
 //
-//   GET  /api/auth/users                 -> danh sách user + trạng thái khóa
+//   GET  /api/auth/users                 -> danh sách user + trạng thái khóa + 2FA
 //   POST /api/auth/users                 -> { user_id, action, role? | username/password }
-//     action = create | set_role | unlock | set_active | set_inactive | reset_password
+//     action = create | set_role | unlock | set_active | set_inactive | reset_password | reset_totp | delete
 //
 // Quyền admin được xác thực qua RPC app_me (JWT) + profiles.role_name.
 // create: admin tạo thẳng tài khoản bằng TÊN ĐĂNG NHẬP (không cần email) —
-//         hệ thống sinh email ảo định danh trong Supabase Auth.
+//         hệ thống sinh email ảo định danh trong Supabase Auth + sinh Secret 2FA riêng.
 // Lưu ý: tài khoản admin hệ thống (SYSTEM_ADMIN_EMAIL) bị chặn
-//         đổi role / bật-tắt / cấp lại mật khẩu (đổi MK ở menu header).
+//         đổi role / bật-tắt / cấp lại mật khẩu / xóa / reset 2FA.
 // =============================================================================
 import { json, readJson, errorResponse } from "../../_lib/shared/http.js";
 import { rpc } from "../../_lib/moris/v5/connectors/supabase.js";
@@ -17,6 +17,7 @@ import {
   bearer, requireAdmin, rest, adminSetPassword, tempPassword, configMissing,
   serviceKey, baseUrl, isSystemAdminEmail
 } from "../../_lib/auth.js";
+import { generateBase32Secret, resetFailedGateAttempt } from "../../_lib/gatekeeper.js";
 
 const ROLES = new Set(["viewer", "converter", "admin"]);
 
@@ -30,7 +31,7 @@ const isSystemAdmin = isSystemAdminEmail;
 
 function systemAdminBlocked() {
   const e = new Error(
-    "Tài khoản admin hệ thống — không đổi role, không bật/tắt, không cấp lại mật khẩu ở đây. Đổi mật khẩu qua menu trên header."
+    "Tài khoản admin hệ thống — không đổi role, không bật/tắt, không cấp lại mật khẩu/2FA ở đây. Đổi mật khẩu qua menu trên header."
   );
   e.status = 403;
   return e;
@@ -65,7 +66,12 @@ export async function onRequestGet({ request, env }) {
     await requireAdmin(env, token);
 
     const rows = await rpc(env, "app_admin_list_profiles", { p_session_token: token });
-    return json({ ok: true, users: Array.isArray(rows) ? rows : [] });
+    const blockedIps = await rest(env, "gate_ip_blocks?is_blocked=eq.true&order=blocked_at.desc").catch(() => []);
+    return json({
+      ok: true,
+      users: Array.isArray(rows) ? rows : [],
+      blocked_ips: Array.isArray(blockedIps) ? blockedIps : []
+    });
   } catch (e) {
     return errorResponse(e);
   }
@@ -82,6 +88,14 @@ export async function onRequestPost({ request, env }) {
     const body = await readJson(request, { maxBytes: 4_000 });
     const action = String(body.action || "").trim();
     if (!action) return json({ ok: false, error: "Thiếu action." }, 400);
+
+    // ---- Mở khóa IP bị gatekeeper khóa do nhập sai mã 2FA ----
+    if (action === "unlock_ip") {
+      const ip = String(body.ip || "").trim();
+      if (!ip) return json({ ok: false, error: "Thiếu địa chỉ IP cần mở khóa." }, 400);
+      await resetFailedGateAttempt(ip, env);
+      return json({ ok: true, message: `Đã mở khóa IP ${ip} thành công.` });
+    }
 
     // ---- Thêm user mới (không cần user_id) ----
     if (action === "create") {
@@ -116,14 +130,29 @@ export async function onRequestPost({ request, env }) {
         body: { username, role_name: role }
       });
 
-      return json({ ok: true, user_id: userId, username, email, role_name: role });
+      // Tự sinh Secret Key 2FA riêng cho user mới này
+      const totpSecret = generateBase32Secret(32);
+      await rest(env, "user_security", {
+        method: "POST",
+        headers: { prefer: "resolution=merge-duplicates" },
+        body: { user_id: userId, totp_secret: totpSecret, totp_enabled: true }
+      }).catch(() => null);
+
+      return json({
+        ok: true,
+        user_id: userId,
+        username,
+        email,
+        role_name: role,
+        totp_secret: totpSecret
+      });
     }
 
     const userId = String(body.user_id || "").trim();
     if (!userId) return json({ ok: false, error: "Thiếu user_id." }, 400);
 
     // ---- Chặn thao tác trên tài khoản admin hệ thống ----
-    if (["set_role", "set_active", "set_inactive", "reset_password"].includes(action)) {
+    if (["set_role", "set_active", "set_inactive", "reset_password", "reset_totp", "delete"].includes(action)) {
       const target = await findProfile(env, userId);
       if (isSystemAdmin(target?.email)) throw systemAdminBlocked();
     }
@@ -157,6 +186,12 @@ export async function onRequestPost({ request, env }) {
           method: "PATCH",
           body: { is_active: active }
         });
+        // Đồng bộ trạng thái 2FA: vô hiệu hóa user -> khóa luôn 2FA
+        await rest(env, `user_security?user_id=eq.${encodeURIComponent(userId)}`, {
+          method: "PATCH",
+          body: { totp_enabled: active }
+        }).catch(() => null);
+
         if (active) {
           await rpc(env, "app_admin_unlock_profile", { p_session_token: token, p_user_id: userId });
         }
@@ -172,6 +207,28 @@ export async function onRequestPost({ request, env }) {
           body: { must_reset: true }
         }).catch(() => null);
         return json({ ok: true, temp_password: password, must_reset: true });
+      }
+
+      case "reset_totp": {
+        const newSecret = generateBase32Secret(32);
+        await rest(env, `user_security?user_id=eq.${encodeURIComponent(userId)}`, {
+          method: "PATCH",
+          body: { totp_secret: newSecret, totp_enabled: true }
+        });
+        return json({ ok: true, totp_secret: newSecret });
+      }
+
+      case "delete": {
+        const key = serviceKey(env);
+        const res = await fetch(`${baseUrl(env)}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+          method: "DELETE",
+          headers: { apikey: key, authorization: `Bearer ${key}` }
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          return json({ ok: false, error: data?.msg || data?.message || "Xóa người dùng thất bại." }, 400);
+        }
+        return json({ ok: true, message: "Đã xóa người dùng thành công." });
       }
 
       default:
