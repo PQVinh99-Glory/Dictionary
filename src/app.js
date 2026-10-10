@@ -177,7 +177,7 @@ createApp({
       pointerCache:null,
 
       // ---- Camera chụp ảnh cho Moris (khung căn chỉnh 1000:410 như ảnh mẫu) ----
-      camera:{ open:false, ready:false, error:'', busy:false, facing:'environment' },
+      camera:{ open:false, ready:false, error:'', busy:false, facing:'environment', scanning:false, previewUrl:'', maskUrl:'', scanStatus:'' },
       vectorCenter:{ open:false, loading:true },
       nav:{ open:false },
 
@@ -1950,6 +1950,11 @@ createApp({
     openCamera() {
       this.camera.open = true;
       this.camera.ready = false;
+      this.camera.busy = false;
+      this.camera.scanning = false;
+      this.camera.previewUrl = '';
+      this.camera.maskUrl = '';
+      this.camera.scanStatus = '';
       this.camera.error = '';
       this.$nextTick(() => this.startCameraStream());
     },
@@ -1987,6 +1992,11 @@ createApp({
     closeCamera() {
       this.camera.open = false;
       this.camera.ready = false;
+      this.camera.busy = false;
+      this.camera.scanning = false;
+      this.camera.previewUrl = '';
+      this.camera.maskUrl = '';
+      this.camera.scanStatus = '';
       this.camera.error = '';
       this.stopCameraStream();
     },
@@ -1995,16 +2005,122 @@ createApp({
       this.camera.ready = false;
       await this.startCameraStream();
     },
-    /** Chụp 1 frame, cắt theo khung căn chỉnh rồi gắn vào ô nhập Moris */
+
+    /**
+     * Tạo mặt nạ PNG Data URL chỉ giữ lại thân linh kiện tối màu (bỏ qua nền & lỗ).
+     * Phục vụ hiệu ứng quét luồng sáng ping-pong trên linh kiện camera.
+     */
+    generatePartMaskDataUrl(sourceCanvas) {
+      try {
+        const sw = Number(sourceCanvas?.width || 0), sh = Number(sourceCanvas?.height || 0);
+        if (!sw || !sh) return '';
+
+        // Thu nhỏ kích thước tối ưu (max 500px) để tính toán dưới 5ms, kích thước PNG ~10KB
+        const mw = Math.min(sw, 500);
+        const mh = Math.max(1, Math.round(sh * (mw / sw)));
+
+        const workCanvas = document.createElement('canvas');
+        workCanvas.width = mw; workCanvas.height = mh;
+        const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
+        workCtx.drawImage(sourceCanvas, 0, 0, mw, mh);
+
+        const imgData = workCtx.getImageData(0, 0, mw, mh);
+        const d = imgData.data;
+
+        // Lấy mẫu viền 4 cạnh của khung hình
+        const borderThickness = Math.max(2, Math.floor(Math.min(mw, mh) * 0.04));
+        let bgR = 0, bgG = 0, bgB = 0, n = 0;
+        for (let y = 0; y < mh; y++) {
+          for (let x = 0; x < mw; x++) {
+            if (y < borderThickness || y >= mh - borderThickness || x < borderThickness || x >= mw - borderThickness) {
+              const idx = (y * mw + x) * 4;
+              if (d[idx + 3] < 20) continue;
+              bgR += d[idx]; bgG += d[idx + 1]; bgB += d[idx + 2];
+              n++;
+            }
+          }
+        }
+
+        if (n > 0) {
+          bgR /= n; bgG /= n; bgB /= n;
+        } else {
+          bgR = 240; bgG = 240; bgB = 240;
+        }
+        const bgLuma = 0.299 * bgR + 0.587 * bgG + 0.114 * bgB;
+
+        let spread = 0;
+        for (let y = 0; y < mh; y += 2) {
+          for (let x = 0; x < mw; x += 2) {
+            if (y < borderThickness || y >= mh - borderThickness || x < borderThickness || x >= mw - borderThickness) {
+              const idx = (y * mw + x) * 4;
+              if (d[idx + 3] < 20) continue;
+              spread += Math.hypot(d[idx] - bgR, d[idx + 1] - bgG, d[idx + 2] - bgB);
+            }
+          }
+        }
+        spread /= Math.max(1, n / 4);
+
+        const threshold = Math.max(26, Math.min(78, 24 + spread * 1.35));
+
+        const maskCanvas = document.createElement('canvas');
+        maskCanvas.width = mw; maskCanvas.height = mh;
+        const maskCtx = maskCanvas.getContext('2d');
+        const maskImgData = maskCtx.createImageData(mw, mh);
+        const md = maskImgData.data;
+
+        let partPixels = 0;
+        for (let i = 0; i < mw * mh; i++) {
+          const idx = i * 4;
+          const a = d[idx + 3];
+          if (a < 36) {
+            md[idx + 3] = 0;
+            continue;
+          }
+
+          const pr = d[idx], pg = d[idx + 1], pb = d[idx + 2];
+          const dist = Math.hypot(pr - bgR, pg - bgG, pb - bgB);
+          const luma = 0.299 * pr + 0.587 * pg + 0.114 * pb;
+
+          // Linh kiện tối màu: khác nền > threshold và độ sáng tối hơn nền
+          // Các lỗ tròn hiển thị màu nền -> dist <= threshold -> bị loại bỏ (alpha = 0)
+          const isDarkPart = (dist > threshold) && (luma < Math.max(160, bgLuma - 15));
+
+          if (isDarkPart) {
+            md[idx] = 255;
+            md[idx + 1] = 255;
+            md[idx + 2] = 255;
+            md[idx + 3] = 255;
+            partPixels++;
+          } else {
+            md[idx + 3] = 0;
+          }
+        }
+
+        // Dự phòng: nếu không nhận diện được (ví dụ che đen kịt camera), mở toàn khung
+        if (partPixels < mw * mh * 0.02) {
+          for (let i = 0; i < mw * mh; i++) {
+            md[i * 4 + 3] = 255;
+          }
+        }
+
+        maskCtx.putImageData(maskImgData, 0, 0);
+        return maskCanvas.toDataURL('image/png');
+      } catch (err) {
+        console.warn('generatePartMaskDataUrl failed:', err);
+        return '';
+      }
+    },
+
+    /** Chụp frame, hiển thị luồng sáng laser quét trên linh kiện, xử lý AI rồi chuyển vào Moris */
     async captureCamera() {
       const video = this.$refs.camVideo;
-      if (!video || !this.camera.ready || this.camera.busy) return;
+      if (!video || !this.camera.ready || this.camera.busy || this.camera.scanning) return;
       this.camera.busy = true;
       try {
         const vw = Number(video.videoWidth || 0), vh = Number(video.videoHeight || 0);
         if (!vw || !vh) throw new Error('Camera chưa sẵn sàng, thử lại sau giây lát.');
 
-        // Khung căn chỉnh = vùng cắt thật, tỉ lệ 1000:410 (giống ảnh mẫu anh gửi)
+        // Khung căn chỉnh = vùng cắt thật, tỉ lệ 1000:410
         const RATIO = 1000 / 410;
         let cw = vw, ch = Math.round(vw / RATIO);
         if (ch > vh) { ch = vh; cw = Math.round(vh * RATIO); }
@@ -2017,18 +2133,54 @@ createApp({
         ctx.fillRect(0, 0, cw, ch);
         ctx.drawImage(video, cx, cy, cw, ch, 0, 0, cw, ch);
 
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
-        canvas.width = 1; canvas.height = 1;
-        if (!blob) throw new Error('Không chụp được ảnh.');
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        if (!dataUrl) throw new Error('Không chụp được ảnh.');
 
-        const file = new File([blob], `moris-camera-${Date.now()}.jpg`, { type:'image/jpeg' });
+        // Tạo mặt nạ chỉ quét linh kiện tối màu (bỏ qua nền và các lỗ)
+        const maskDataUrl = this.generatePartMaskDataUrl(canvas);
+
+        // Đóng luồng video thực tế để tiết kiệm pin & RAM thiết bị
+        this.stopCameraStream();
+
+        // Kích hoạt giao diện quét laser ping-pong trên ảnh chụp
+        this.camera.previewUrl = dataUrl;
+        this.camera.maskUrl = maskDataUrl;
+        this.camera.scanning = true;
+        this.camera.scanStatus = 'AI Đang quét & nhận diện đặc trưng linh kiện...';
+
+        // Đảm bảo hiệu ứng quét hiển thị tối thiểu 1.6s để luồng sáng quét qua lại rõ ràng
+        const startTime = Date.now();
+
+        // Chạy trích xuất vector AI (DINOv2 + PCA + Hole topology) trong lúc quét
+        let vectorResult = null;
+        if (CONFIG.MORIS_BROWSER_VECTOR_ENABLED) {
+          try {
+            vectorResult = await this.buildMorisQueryVector(dataUrl);
+          } catch (embedErr) {
+            console.warn('Vector embedding during camera scan failed, will fallback to server:', embedErr);
+          }
+        }
+
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 1600) {
+          await new Promise(r => setTimeout(r, 1600 - elapsed));
+        }
+
+        // Hoàn tất xử lý hình ảnh -> chuyển vào box chat của Moris
+        const capturedDataUrl = this.camera.previewUrl;
         this.closeCamera();
-        await this.applyMorisFile(file);
-        if (this.moris.imageDataUrl) this.toast('success', 'Đã gắn ảnh chụp vào ô nhập Moris.');
+        this.openMoris();
+
+        // Gán ảnh vào Moris và bắt đầu tìm kiếm với vectorResult đã trích xuất sẵn
+        this.moris.imageDataUrl = capturedDataUrl;
+        this.moris.imagePreview = capturedDataUrl;
+        this.moris.imageName = `camera-scan-${Date.now()}.jpg`;
+
+        await this.sendMorisMessage(null, vectorResult);
       } catch(e) {
         this.toast('error', this.readError(e));
-      } finally {
         this.camera.busy = false;
+        this.camera.scanning = false;
       }
     },
 
@@ -2613,13 +2765,13 @@ createApp({
       this.$nextTick(() => this.renderIcons());
     },
 
-    async sendMorisMessage() {
+    async sendMorisMessage(message = null, precomputedVectorResult = null) {
       if (this.moris.busy) return;
 
-      const message = String(this.moris.input || '').trim();
+      const rawInput = (typeof message === 'string' && message.trim()) ? message.trim() : String(this.moris.input || '').trim();
       const imageDataUrl = this.moris.imageDataUrl || '';
 
-      if (!message && !imageDataUrl) {
+      if (!rawInput && !imageDataUrl) {
         this.toast('info', 'Anh hãy nhập mô tả hoặc đính kèm ảnh.');
         return;
       }
@@ -2627,7 +2779,7 @@ createApp({
       const queryId = globalThis.crypto?.randomUUID?.()
         || `${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-      const userText = message ||
+      const userText = rawInput ||
         'Tìm linh kiện giống ảnh này. Ưu tiên hình dạng, số lỗ, vị trí lỗ và đặc điểm nhận dạng.';
 
       // Xóa candidate cards cũ để không gây hiểu nhầm với query mới.
@@ -2638,19 +2790,15 @@ createApp({
       this.moris.messages.push({
         id:`u-${queryId}`,
         role:'user',
-        text:userText
+        text:userText,
+        image:imageDataUrl || null
       });
 
       this.moris.input = '';
       this.moris.busy = true;
       this.moris.status = imageDataUrl
-        ? 'Em đang kiểm tra hình ảnh...'
+        ? 'Em đang so khớp linh kiện trong catalogue...'
         : 'Em đang tìm trong catalogue...';
-
-      // Trigger wireframe scan animation for image queries
-      if (imageDataUrl) {
-        this.startMorisScanAnimation(imageDataUrl);
-      }
 
       this.clearMorisSearch();
       this.morisSearch.queryId = queryId;
@@ -2760,18 +2908,21 @@ createApp({
           return;
         }
 
-        // ── CHẾ ĐỘ 2: Có ảnh → pipeline vector search cũ ──
+        // ── CHẾ ĐỘ 2: Có ảnh → pipeline vector search ──
         let queryEmbedding = null;
         let queryEmbeddings = [];
         let embeddingProfile = null;
+        let vectorResult = precomputedVectorResult || null;
 
-        if (CONFIG.MORIS_BROWSER_VECTOR_ENABLED) {
+        if (!vectorResult && CONFIG.MORIS_BROWSER_VECTOR_ENABLED) {
           this.moris.status = 'Đang khởi tạo nhận dạng hình ảnh...';
 
-          const vectorResult = await this.buildMorisQueryVector(
+          vectorResult = await this.buildMorisQueryVector(
             imageDataUrl
           );
+        }
 
+        if (vectorResult) {
           queryEmbedding = vectorResult.embedding;
           queryEmbeddings = (vectorResult.probes || []).map(probe => ({
             probe_id:probe.probe_id,
@@ -2779,9 +2930,9 @@ createApp({
             embedding_profile:probe.profile
           }));
           embeddingProfile = vectorResult.profile;
-
-          this.moris.status = 'Em đang so khớp hình ảnh...';
         }
+
+        this.moris.status = 'Em đang so khớp linh kiện trong catalogue...';
 
         const mainSearchToken = await this.freshAuth();
         const res = await this.fetchWithTimeout(
@@ -2833,7 +2984,6 @@ createApp({
           return;
         }
 
-        this.endMorisScanAnimation(); // Stop scan animation
         this.applyMorisSearchResults(data);
         this.clearMorisImage();
 
@@ -2845,7 +2995,6 @@ createApp({
 
         console.error('Moris UI request failed', e);
 
-        this.endMorisScanAnimation(); // Stop scan animation on error
         this.moris.messages.push({
           id:`a-${queryId}`,
           role:'assistant',
@@ -2864,73 +3013,14 @@ createApp({
       }
     },
 
-    setMorisScanStep(pct, label, text) {
-      if (!this.morisScan.active) return;
-      this.morisScan.progress = Math.max(0, Math.min(100, pct));
-      if (label) this.morisScan.phaseLabel = label;
-      if (text) this.morisScan.statusText = text;
-    },
-
-    // ─── Moris v6 Scan Animation ───────────────────────────────────────
-    startMorisScanAnimation(imageDataUrl) {
-      this.morisScan = {
-        active: true,
-        phase: 'boot',
-        phaseLabel: 'KHỞI TẠO MÔ HÌNH',
-        progress: 10,
-        statusText: 'ĐANG NẠP MÔ HÌNH DINOV2...',
-        imageUrl: imageDataUrl
-      };
-      
-      const phases = [
-        { at:0,   label:'BOOT SEQUENCE',       text:'LOADING NEURAL MODULES...' },
-        { at:15,  label:'VECTOR ENCODING',      text:'DINOV2 EXTRACTING FEATURES...' },
-        { at:35,  label:'EMBEDDING COMPLETE',   text:'384-DIM VECTOR GENERATED' },
-        { at:45,  label:'DATABASE QUERY',       text:'SEARCHING PGVECTOR INDEX...' },
-        { at:65,  label:'CANDIDATE POOL',       text:'TOP-10 MATCHES RETRIEVED' },
-        { at:75,  label:'TOPOLOGY ANALYSIS',    text:'HOLE TOPOLOGY & PCA ALIGNMENT...' },
-        { at:85,  label:'SYNTHESIZING',         text:'REFINING FEATURES...' },
-        { at:92,  label:'RERANKING',            text:'GEOMETRIC RE-RANKING...' },
-        { at:98,  label:'FINALIZING',           text:'PREPARING TOP-10 RESULTS...' }
-      ];
-      
-      let pct = 0;
-      const tick = () => {
-        if (!this.morisScan.active) return;
-        pct += 0.4 + Math.random() * 0.6;
-        if (pct > 99) pct = 99;
-        this.morisScan.progress = Math.round(pct);
-        
-        // Update phase label based on progress
-        for (let i = phases.length - 1; i >= 0; i--) {
-          if (pct >= phases[i].at) {
-            this.morisScan.phaseLabel = phases[i].label;
-            this.morisScan.statusText = phases[i].text;
-            break;
-          }
-        }
-        
-        this._morisScanTimer = requestAnimationFrame(tick);
-      };
-      this._morisScanTimer = requestAnimationFrame(tick);
-    },
-
-    // Cyberpunk animation is pure CSS — no WebGL needed
-
-
-
+    setMorisScanStep() {},
+    startMorisScanAnimation() {},
     endMorisScanAnimation() {
       if (this._morisScanTimer) cancelAnimationFrame(this._morisScanTimer);
-      if (this._morisThreeRAF) cancelAnimationFrame(this._morisThreeRAF);
       this.morisScan.active = false;
       this.morisScan.phase = '';
       this.morisScan.progress = 0;
       this.morisScan.statusText = '';
-      // Cleanup Three.js
-      if (this._morisThree) {
-        this._morisThree.renderer.dispose();
-        this._morisThree = null;
-      }
     },
 
     async startBulkImport() {
