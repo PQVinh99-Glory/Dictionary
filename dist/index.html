@@ -1327,9 +1327,21 @@
             <i data-lucide="brain-circuit" class="w-6 h-6"></i>
           </div>
           <div class="min-w-0">
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
               <h2 class="text-lg font-black text-slate-900">Moris</h2>
-              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black border transition-all"
+                :class="morisAi.ready 
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                  : morisAi.loading 
+                  ? 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
+                  : 'bg-slate-100 text-slate-600 border-slate-200'">
+                <span class="w-1.5 h-1.5 rounded-full" 
+                  :class="morisAi.ready ? 'bg-emerald-500 shadow-sm shadow-emerald-400' : morisAi.loading ? 'bg-amber-500' : 'bg-slate-400'"></span>
+                {{ morisAi.statusText || 'DINOv2' }}
+              </span>
+              <button v-if="!morisAi.ready" @click="testMorisDinov2" :disabled="morisAi.loading" class="text-[10px] font-black text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all" title="Nạp & kiểm tra DINOv2 ngay">
+                <i data-lucide="zap" class="w-2.5 h-2.5"></i> Test AI
+              </button>
             </div>
             <p class="text-xs font-bold text-slate-500 truncate">Hỏi đáp & tra cứu linh kiện thông minh</p>
           </div>
@@ -1356,7 +1368,7 @@
 
         <div v-if="m.candidates?.length" class="moris-candidates">
           <button
-            v-for="c in m.candidates.slice(0,5)"
+            v-for="c in m.candidates.slice(0,10)"
             :key="c.id"
             class="moris-candidate"
             @click="openMorisCandidate(c)">

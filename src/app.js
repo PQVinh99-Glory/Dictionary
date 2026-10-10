@@ -147,6 +147,12 @@ createApp({
           }
         ]
       },
+      morisAi: {
+        ready: false,
+        loading: false,
+        runtime: null,
+        statusText: 'DINOv2 Chưa nạp'
+      },
       morisScan: {
         active: false,
         phase: '',
@@ -1811,6 +1817,37 @@ createApp({
         this.renderIcons();
         this.scrollMorisToBottom();
       });
+      this.checkMorisDinov2Status();
+    },
+
+    async checkMorisDinov2Status() {
+      if (this.morisAi.ready || this.morisAi.loading) return;
+      try {
+        await this.loadMorisBrowserVectorModule();
+      } catch (_) {}
+    },
+
+    async testMorisDinov2() {
+      if (this.morisAi.loading) return;
+      this.morisAi.loading = true;
+      this.morisAi.statusText = 'Đang nạp DINOv2...';
+      try {
+        const mod = await this.loadMorisBrowserVectorModule();
+        const init = await mod.initDinov2();
+        this.morisAi.ready = true;
+        this.morisAi.runtime = init?.runtime || {};
+        const device = init?.runtime?.device || 'wasm';
+        const dtype = init?.runtime?.dtype || 'q8';
+        this.morisAi.statusText = `Sẵn sàng (${device}/${dtype})`;
+        this.toast('success', `Mô hình DINOv2 AI đã sẵn sàng (${device}/${dtype})!`);
+      } catch (err) {
+        this.morisAi.ready = false;
+        this.morisAi.statusText = 'Lỗi nạp';
+        this.toast('error', `Lỗi nạp DINOv2: ${err?.message || err}`);
+      } finally {
+        this.morisAi.loading = false;
+        this.$nextTick(() => this.renderIcons());
+      }
     },
 
     closeMoris() {
@@ -2101,10 +2138,51 @@ createApp({
       }
 
       const mod = await this.loadMorisBrowserVectorModule();
-      const result = await mod.embedImageDinov2Variants(
-        imageDataUrl,
-        {includeGray:true}
-      );
+
+      // Cập nhật trạng thái loading
+      this.morisAi.loading = true;
+      this.morisAi.statusText = 'Đang tải DINOv2...';
+
+      // Lắng nghe tiến trình tải mô hình thời gian thực
+      const unsubscribe = mod.onDinov2Progress?.(progress => {
+        if (progress?.status === 'progress' && Number.isFinite(progress?.progress)) {
+          const pct = Math.max(0, Math.min(100, Math.round(Number(progress.progress))));
+          this.moris.status = `Đang tải mô hình DINOv2: ${pct}%...`;
+          this.morisAi.statusText = `Tải DINOv2: ${pct}%`;
+          if (this.morisScan.active) {
+            this.setMorisScanStep(Math.round(pct * 0.4), 'KHỞI TẠO MÔ HÌNH', `ĐANG TẢI DINOV2: ${pct}% (85MB)...`);
+          }
+        }
+      }) || (() => {});
+
+      let result;
+      try {
+        if (this.morisScan.active) {
+          this.setMorisScanStep(45, 'LỚP 1: TIỀN XỬ LÝ', 'TÁCH NỀN CANVAS & CĂN GÓC XOAY PCA...');
+        }
+        this.moris.status = 'Lớp 1: Đang tách nền & căn góc xoay (PCA)...';
+
+        // Đặt timeout 90s (tránh treo vô tận trên kết nối chập chờn)
+        const embedPromise = mod.embedImageDinov2Variants(
+          imageDataUrl,
+          {includeGray:true}
+        );
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Quá hạn nhận dạng ảnh (90s). Vui lòng thử lại.')), 90000)
+        );
+
+        result = await Promise.race([embedPromise, timeoutPromise]);
+
+        // Đánh dấu DINOv2 sẵn sàng và cập nhật trạng thái xanh
+        this.morisAi.ready = true;
+        this.morisAi.loading = false;
+        const rt = result?.probes?.[0]?.runtime || {};
+        this.morisAi.runtime = rt;
+        this.morisAi.statusText = `Sẵn sàng (${rt.device || 'wasm'}/${rt.dtype || 'q8'})`;
+      } finally {
+        try { unsubscribe(); } catch {}
+        this.morisAi.loading = false;
+      }
 
       const probes = Array.isArray(result?.probes)
         ? result.probes
@@ -2122,6 +2200,10 @@ createApp({
           error.code = 'MORIS_QUERY_VECTOR_INVALID';
           throw error;
         }
+      }
+
+      if (this.morisScan.active) {
+        this.setMorisScanStep(70, 'LỚP 2: TRÍCH XUẤT XONG', 'VECTOR 384D ĐÃ TẠO · TRUY VẤN KHO HNSW...');
       }
 
       return {
@@ -2756,7 +2838,7 @@ createApp({
         this.clearMorisImage();
 
         if (Array.isArray(data?.candidates) && data.candidates.length) {
-          this.toast('success', `Đã tìm thấy ${Math.min(5, data.candidates.length)} mã phù hợp.`);
+          this.toast('success', `Đã tìm thấy ${Math.min(10, data.candidates.length)} mã phù hợp.`);
         }
       } catch (e) {
         if (queryId !== this.morisSearch.queryId) return;
@@ -2782,20 +2864,34 @@ createApp({
       }
     },
 
+    setMorisScanStep(pct, label, text) {
+      if (!this.morisScan.active) return;
+      this.morisScan.progress = Math.max(0, Math.min(100, pct));
+      if (label) this.morisScan.phaseLabel = label;
+      if (text) this.morisScan.statusText = text;
+    },
+
     // ─── Moris v6 Scan Animation ───────────────────────────────────────
     startMorisScanAnimation(imageDataUrl) {
-      this.morisScan = { active:true, phase:'boot', phaseLabel:'BOOT SEQUENCE', progress:0, statusText:'LOADING NEURAL MODULES...', imageUrl:imageDataUrl };
+      this.morisScan = {
+        active: true,
+        phase: 'boot',
+        phaseLabel: 'KHỞI TẠO MÔ HÌNH',
+        progress: 10,
+        statusText: 'ĐANG NẠP MÔ HÌNH DINOV2...',
+        imageUrl: imageDataUrl
+      };
       
       const phases = [
         { at:0,   label:'BOOT SEQUENCE',       text:'LOADING NEURAL MODULES...' },
         { at:15,  label:'VECTOR ENCODING',      text:'DINOV2 EXTRACTING FEATURES...' },
         { at:35,  label:'EMBEDDING COMPLETE',   text:'384-DIM VECTOR GENERATED' },
         { at:45,  label:'DATABASE QUERY',       text:'SEARCHING PGVECTOR INDEX...' },
-        { at:65,  label:'CANDIDATE POOL',       text:'TOP-20 MATCHES RETRIEVED' },
-        { at:75,  label:'VISION ANALYSIS',      text:'MULTI-MODEL INFERENCE...' },
+        { at:65,  label:'CANDIDATE POOL',       text:'TOP-10 MATCHES RETRIEVED' },
+        { at:75,  label:'TOPOLOGY ANALYSIS',    text:'HOLE TOPOLOGY & PCA ALIGNMENT...' },
         { at:85,  label:'SYNTHESIZING',         text:'REFINING FEATURES...' },
-        { at:92,  label:'RERANKING',            text:'ORCHESTRATOR SCORING...' },
-        { at:98,  label:'FINALIZING',           text:'PREPARING TOP-5 RESULTS...' }
+        { at:92,  label:'RERANKING',            text:'GEOMETRIC RE-RANKING...' },
+        { at:98,  label:'FINALIZING',           text:'PREPARING TOP-10 RESULTS...' }
       ];
       
       let pct = 0;

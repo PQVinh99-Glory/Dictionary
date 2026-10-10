@@ -1,7 +1,7 @@
 function clean(v){ return String(v ?? "").trim(); }
 function codeOf(c){ return clean(c?.code || c?.part_id || c?.id || c?.record_id); }
 
-function listCodes(rows,limit=5){
+function listCodes(rows,limit=10){
   return (rows || []).slice(0,limit).map((c,i)=>
     `${i+1}. ${codeOf(c) || "Không rõ mã"}`
   );

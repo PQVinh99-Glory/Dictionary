@@ -340,7 +340,7 @@ export async function runMorisSearch(env, config, {
   return {
     mode:"MORIS_VECTOR_CLEAR",
     summary:"Vector retrieval đủ rõ.",
-    candidates:fused.slice(0,5).map(publicCandidate),
+    candidates:fused.slice(0,10).map(publicCandidate),
     warnings,
     ai_calls:null,
     candidate_pool_hash:poolHash

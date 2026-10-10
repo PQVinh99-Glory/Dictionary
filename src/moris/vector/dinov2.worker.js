@@ -70,11 +70,12 @@ async function createExtractor() {
     post("progress", {progress});
   };
 
-  const webgpuSupported = !!self.navigator?.gpu;
+  const isMobile = /android|iphone|ipad|ipod|mobile/i.test(self.navigator?.userAgent || "");
+  const webgpuSupported = !isMobile && !!self.navigator?.gpu;
 
   if (webgpuSupported) {
     try {
-      const extractor = await pipeline(
+      const webgpuPromise = pipeline(
         "image-feature-extraction",
         MODEL_ID,
         {
@@ -84,6 +85,11 @@ async function createExtractor() {
           progress_callback
         }
       );
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("WebGPU timeout sau 10s")), 10000)
+      );
+
+      const extractor = await Promise.race([webgpuPromise, timeoutPromise]);
 
       runtimeInfo = {
         device: "webgpu",
@@ -95,7 +101,7 @@ async function createExtractor() {
       return extractor;
     } catch (error) {
       post("runtime-warning", {
-        message: `WebGPU không khởi tạo được; chuyển sang WASM q8. ${error?.message || error}`
+        message: `WebGPU không khả dụng (${error?.message || error}); chuyển sang WASM q8.`
       });
     }
   }

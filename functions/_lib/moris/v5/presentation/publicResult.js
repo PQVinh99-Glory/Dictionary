@@ -4,7 +4,7 @@ export function toPublicMorisResult(result,{debug=false}={}){
   const out = {
     ok:true,
     user_message:buildMorisUserMessage(result),
-    candidates:Array.isArray(result?.candidates) ? result.candidates.slice(0,5) : [],
+    candidates:Array.isArray(result?.candidates) ? result.candidates.slice(0,10) : [],
     decision:result?.decision || null
   };
 
