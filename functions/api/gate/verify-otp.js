@@ -17,7 +17,7 @@ import { isSystemAdminEmail } from "../../_lib/auth.js";
 
 async function findUserProfile(env, loginInput) {
   const base = env?.SUPABASE_URL;
-  const key = env?.SUPABASE_SERVICE_ROLE_KEY;
+  const key = env?.SUPABASE_SERVICE_ROLE_KEY || env?.SUPABASE_SECRET_KEY;
   if (!base || !key) return null;
   const input = String(loginInput || "").trim();
   if (!input) return null;
@@ -37,7 +37,7 @@ async function findUserProfile(env, loginInput) {
 
 async function getUserSecurity(env, userId) {
   const base = env?.SUPABASE_URL;
-  const key = env?.SUPABASE_SERVICE_ROLE_KEY;
+  const key = env?.SUPABASE_SERVICE_ROLE_KEY || env?.SUPABASE_SECRET_KEY;
   if (!base || !key) return null;
 
   try {
@@ -76,10 +76,10 @@ export async function onRequestPost({ request, env }) {
     }
 
     // 2. LỚP 2: Kiểm tra Rate Limit & Trạng thái khóa IP
-    const rateCheck = checkRateLimit(request);
+    const rateCheck = await checkRateLimit(request, env);
     if (!rateCheck.ok) {
       return new Response(JSON.stringify(rateCheck), {
-        status: rateCheck.status,
+        status: rateCheck.status || 429,
         headers: { "content-type": "application/json; charset=utf-8" }
       });
     }
@@ -93,9 +93,14 @@ export async function onRequestPost({ request, env }) {
 
     if (username) {
       // Xác thực theo từng User riêng biệt (Per-User 2FA)
-      const profile = await findUserProfile(env, username);
+      let profile = await findUserProfile(env, username);
+      if (!profile && isSystemAdminEmail(username)) {
+        // Fallback an toàn cho admin hệ thống pquangvinh1999 nếu mạng hoặc DB gặp sự cố
+        profile = { id: 'admin', email: username, is_active: true };
+      }
+
       if (!profile || profile.is_active === false) {
-        recordFailedGateAttempt(clientIp);
+        await recordFailedGateAttempt(clientIp, env);
         return new Response(JSON.stringify({ ok: false, error: UNIFORM_ERROR }), {
           status: 401,
           headers: { "content-type": "application/json; charset=utf-8" }
@@ -104,7 +109,7 @@ export async function onRequestPost({ request, env }) {
 
       const sec = await getUserSecurity(env, profile.id);
       if (sec && sec.totp_enabled === false) {
-        recordFailedGateAttempt(clientIp);
+        await recordFailedGateAttempt(clientIp, env);
         return new Response(JSON.stringify({ ok: false, error: UNIFORM_ERROR }), {
           status: 401,
           headers: { "content-type": "application/json; charset=utf-8" }
@@ -114,7 +119,7 @@ export async function onRequestPost({ request, env }) {
       const isSysAdmin = isSystemAdminEmail(profile.email);
       const secret = sec?.totp_secret || (isSysAdmin ? getTotpSecret(env) : null);
       if (!secret) {
-        recordFailedGateAttempt(clientIp);
+        await recordFailedGateAttempt(clientIp, env);
         return new Response(JSON.stringify({ ok: false, error: UNIFORM_ERROR }), {
           status: 401,
           headers: { "content-type": "application/json; charset=utf-8" }
@@ -126,14 +131,14 @@ export async function onRequestPost({ request, env }) {
       targetUsername = profile.username || profile.email;
     } else {
       // Chế độ không nhập username (Khóa admin mặc định toàn hệ thống)
-      isValid = await verifyTotp(env, code);
+      isValid = await verifyTotp(env, code, 1);
       targetUserId = "admin";
       targetUsername = "admin";
     }
 
     if (!isValid) {
       // Nhập sai mã Authenticator -> Ghi nhận lỗi và khóa vĩnh viễn nếu >= 5 lần
-      recordFailedGateAttempt(clientIp);
+      await recordFailedGateAttempt(clientIp, env);
       return new Response(JSON.stringify({
         ok: false,
         error: UNIFORM_ERROR
@@ -144,7 +149,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     // Xác thực thành công: Reset lỗi của IP
-    resetFailedGateAttempt(clientIp);
+    await resetFailedGateAttempt(clientIp, env);
 
     // Tạo phiên đăng nhập có chữ ký số HMAC-SHA256, hết hạn lúc 07:00 sáng giờ VN kế tiếp
     const session = await createGateSession(env, targetUserId);

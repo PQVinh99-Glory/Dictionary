@@ -14,7 +14,7 @@ async function isGateUserActive(env, userId) {
     return cached.active;
   }
   try {
-    const key = env?.SUPABASE_SERVICE_ROLE_KEY;
+    const key = env?.SUPABASE_SERVICE_ROLE_KEY || env?.SUPABASE_SECRET_KEY;
     const base = env?.SUPABASE_URL;
     if (!key || !base) return true;
     const res = await fetch(`${base}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=is_active&limit=1`, {

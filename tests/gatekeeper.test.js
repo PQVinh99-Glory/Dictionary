@@ -152,4 +152,57 @@ describe("Gatekeeper & Microsoft Authenticator (TOTP)", () => {
     // Thử mã sai vẫn bị từ chối
     expect(await verifyTotp({}, "999999", 1, userSecret)).toBe(false);
   });
+
+  it("/api/gate/verify-otp xác thực thành công cho pquangvinh1999@gmail.com và cấp cookie", async () => {
+    const { base32ToBytes } = await import("../functions/_lib/gatekeeper.js");
+    const { onRequestPost } = await import("../functions/api/gate/verify-otp.js");
+    const cryptoObj = (typeof crypto !== "undefined" && crypto.subtle) ? crypto : (await import("crypto")).webcrypto;
+    const keyBytes = base32ToBytes(DEFAULT_TOTP_SECRET);
+    const cryptoKey = await cryptoObj.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+    const counter = Math.floor(Math.floor(Date.now() / 1000) / 30);
+    const buf = new ArrayBuffer(8);
+    new DataView(buf).setBigUint64(0, BigInt(counter));
+    const sig = await cryptoObj.subtle.sign("HMAC", cryptoKey, buf);
+    const sigBytes = new Uint8Array(sig);
+    const offset = sigBytes[sigBytes.length - 1] & 0x0f;
+    const binary = ((sigBytes[offset] & 0x7f) << 24) | ((sigBytes[offset + 1] & 0xff) << 16) | ((sigBytes[offset + 2] & 0xff) << 8) | (sigBytes[offset + 3] & 0xff);
+    const code = (binary % 1000000).toString().padStart(6, "0");
+
+    const req = new Request("http://localhost/api/gate/verify-otp", {
+      method: "POST",
+      headers: { "content-type": "application/json", "user-agent": "test-agent" },
+      body: JSON.stringify({ username: "pquangvinh1999@gmail.com", code })
+    });
+    const res = await onRequestPost({ request: req, env: { CATALOGUE_TOTP_SECRET: DEFAULT_TOTP_SECRET } });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(res.headers.get("set-cookie")).toContain("catalogue_session=");
+  });
+
+  it("/api/gate/verify-otp xác thực thành công khi để trống username (khóa admin mặc định)", async () => {
+    const { base32ToBytes } = await import("../functions/_lib/gatekeeper.js");
+    const { onRequestPost } = await import("../functions/api/gate/verify-otp.js");
+    const cryptoObj = (typeof crypto !== "undefined" && crypto.subtle) ? crypto : (await import("crypto")).webcrypto;
+    const keyBytes = base32ToBytes(DEFAULT_TOTP_SECRET);
+    const cryptoKey = await cryptoObj.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+    const counter = Math.floor(Math.floor(Date.now() / 1000) / 30);
+    const buf = new ArrayBuffer(8);
+    new DataView(buf).setBigUint64(0, BigInt(counter));
+    const sig = await cryptoObj.subtle.sign("HMAC", cryptoKey, buf);
+    const sigBytes = new Uint8Array(sig);
+    const offset = sigBytes[sigBytes.length - 1] & 0x0f;
+    const binary = ((sigBytes[offset] & 0x7f) << 24) | ((sigBytes[offset + 1] & 0xff) << 16) | ((sigBytes[offset + 2] & 0xff) << 8) | (sigBytes[offset + 3] & 0xff);
+    const code = (binary % 1000000).toString().padStart(6, "0");
+
+    const req = new Request("http://localhost/api/gate/verify-otp", {
+      method: "POST",
+      headers: { "content-type": "application/json", "user-agent": "test-agent" },
+      body: JSON.stringify({ username: "", code })
+    });
+    const res = await onRequestPost({ request: req, env: { CATALOGUE_TOTP_SECRET: DEFAULT_TOTP_SECRET } });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+  });
 });

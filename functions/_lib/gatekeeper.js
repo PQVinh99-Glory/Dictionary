@@ -605,7 +605,7 @@ export function renderCamouflage404Html() {
             });
             var data = await res.json().catch(function() { return {}; });
             if (!res.ok || !data.ok) {
-              showMsg(data.error || 'Mã xác thực không đúng hoặc đã hết hạn.', true);
+              showMsg(data.error || 'Tên đăng nhập hoặc mã xác thực không chính xác.', true);
               btnVerify.disabled = false;
               btnVerify.textContent = 'Xác nhận & Mở cổng';
               return;
