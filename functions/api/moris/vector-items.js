@@ -39,7 +39,31 @@ export async function onRequestGet({ request, env }) {
         if (v.record_id) existingVectorKeys.add(String(v.record_id));
         if (v.object_key) existingVectorKeys.add(String(v.object_key).replace(/^\/+/, ""));
       }
-    } catch (_) {}
+    } catch (err) {
+      console.warn("vector-items: rpc kim_list_vector_record_ids failed:", err?.message || err);
+    }
+
+    if (existingVectorKeys.size === 0) {
+      try {
+        const { baseUrl, serverKey, headersForKey } = await import("../../_lib/moris/v5/connectors/supabaseService.js");
+        const key = serverKey(env);
+        const base = baseUrl(env);
+        if (key && base) {
+          const res = await fetch(`${base}/rest/v1/catalogue_image_vectors?select=record_id,object_key&is_active=eq.true&limit=1000`, {
+            headers: headersForKey(key)
+          });
+          if (res.ok) {
+            const rawVecs = await res.json();
+            if (Array.isArray(rawVecs)) {
+              for (const v of rawVecs) {
+                if (v.record_id) existingVectorKeys.add(String(v.record_id));
+                if (v.object_key) existingVectorKeys.add(String(v.object_key).replace(/^\/+/, ""));
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
 
     // 3. Tải chi tiết assets cho từng linh kiện
     const items = [];

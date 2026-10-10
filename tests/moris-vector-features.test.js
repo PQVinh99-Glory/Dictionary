@@ -181,5 +181,42 @@ describe("Moris Vector Center — Purge, Items, Duplicates & Media", () => {
     // Danh sách items chờ tách vector
     expect(html).toContain('id="itemsTableBody"');
     expect(html).toContain('id="btnBatchVectorize"');
+
+    // UI nổi: Toast và Confirm modal
+    expect(html).toContain('id="toastContainer"');
+    expect(html).toContain('id="confirmModal"');
+
+    // Bảng không chứa cột ảnh để tránh lag
+    expect(html).not.toContain('<th class="p-3">Ảnh</th>');
+
+    // Đã xóa nút "Về Catalogue" và đã xóa Section 4 tiến trình batch trùng lặp
+    expect(html).not.toContain('Về Catalogue');
+    expect(html).not.toContain('Tiến trình chạy theo Batch (Tất cả Catalogue)');
+  });
+
+  it("moris-vector-center.js không dùng alert/confirm trình duyệt, dùng UI nổi và virtual scroll 20 mã", () => {
+    const jsPath = path.resolve(__dirname, "../tools/moris-vector-center.js");
+    const js = fs.readFileSync(jsPath, "utf-8");
+
+    // Tuyệt đối không dùng alert/confirm native của trình duyệt
+    expect(js).not.toMatch(/\balert\s*\(/);
+    expect(js).not.toMatch(/\bconfirm\s*\(/);
+
+    // Có hàm UI nổi
+    expect(js).toContain("function showToast(");
+    expect(js).toContain("function showConfirm(");
+
+    // Giới hạn ban đầu 20 mã và logic cuộn về đầu trang thu gọn 20 mã
+    expect(js).toContain("visibleLimit: 20");
+    expect(js).toContain("scrollTop <= 10");
+  });
+
+  it("index.html đã bỏ header dư thừa và nút Mở tab của modal Vector AI", () => {
+    const indexPath = path.resolve(__dirname, "../index.html");
+    const html = fs.readFileSync(indexPath, "utf-8");
+
+    // Modal Vector Center không còn header dư thừa và nút Mở tab
+    expect(html).not.toContain('title="Mở trong tab riêng"');
+    expect(html).not.toContain('<h3 class="text-sm sm:text-base font-black text-slate-800 truncate">Trung tâm Vector AI</h3>');
   });
 });

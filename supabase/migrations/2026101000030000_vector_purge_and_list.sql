@@ -10,10 +10,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_me json;
+  v_ok boolean;
+  v_role text;
 BEGIN
-  v_me := public.app_me(p_session_token);
-  IF (v_me->>'ok')::boolean IS NOT TRUE OR lower(v_me->>'role_name') <> 'admin' THEN
+  SELECT ok, role_name INTO v_ok, v_role FROM public.app_me(p_session_token);
+  IF v_ok IS NOT TRUE OR lower(coalesce(v_role, '')) <> 'admin' THEN
     RAISE EXCEPTION 'Chỉ admin có quyền xóa toàn bộ vector.';
   END IF;
 
@@ -30,11 +31,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_me json;
+  v_ok boolean;
   v_result json;
 BEGIN
-  v_me := public.app_me(p_session_token);
-  IF (v_me->>'ok')::boolean IS NOT TRUE THEN
+  SELECT ok INTO v_ok FROM public.app_me(p_session_token);
+  IF v_ok IS NOT TRUE THEN
     RAISE EXCEPTION 'Phiên đăng nhập không hợp lệ.';
   END IF;
 
