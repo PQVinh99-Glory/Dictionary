@@ -400,7 +400,7 @@ async function loadItems(query = "") {
   try {
     const t = token();
     const data = await readJson(
-      `/api/moris/vector-items?session_token=${encodeURIComponent(t)}&limit=100&search=${encodeURIComponent(query)}`
+      `/api/moris/vector-items?session_token=${encodeURIComponent(t)}&limit=2000&search=${encodeURIComponent(query)}`
     );
     const items = Array.isArray(data?.items) ? data.items : [];
     state.items = items;

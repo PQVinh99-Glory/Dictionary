@@ -130,6 +130,49 @@ describe("Moris Vector Center — Purge, Items, Duplicates & Media", () => {
     globalThis.fetch = originalFetch;
   });
 
+  it("vector-items: gọi RPC tối ưu app_list_catalogue_vector_items và hỗ trợ limit lớn (ví dụ 2000)", async () => {
+    const token = makeJwt("admin");
+    const mockEnv = {
+      SUPABASE_URL: "https://test.supabase.co",
+      SUPABASE_ANON_KEY: "anon-key"
+    };
+
+    let rpcCalled = "";
+    let rpcBody = null;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockImplementation((url, opts) => {
+      const urlStr = String(url);
+      if (urlStr.includes("/rpc/app_me")) {
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, role_name: "admin" }), { status: 200 }));
+      }
+      if (urlStr.includes("/rpc/app_list_catalogue_vector_items")) {
+        rpcCalled = "app_list_catalogue_vector_items";
+        rpcBody = JSON.parse(opts?.body || "{}");
+        return Promise.resolve(new Response(JSON.stringify({
+          ok: true,
+          items: Array.from({ length: 146 }, (_, i) => ({
+            id: `p-${i}`,
+            code: `CODE-${i}`,
+            has_vector: i < 45,
+            assets: [{ asset_type: "front", image_path: `img-${i}.webp`, has_vector: i < 45 }]
+          }))
+        }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    });
+
+    const request = new Request(`https://example.com/api/moris/vector-items?session_token=${token}&limit=2000`);
+    const res = await handleVectorItems({ request, env: mockEnv });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.items.length).toBe(146);
+    expect(rpcCalled).toBe("app_list_catalogue_vector_items");
+    expect(rpcBody.p_limit).toBe(2000);
+
+    globalThis.fetch = originalFetch;
+  });
+
   it("api/media: hỗ trợ Gatekeeper cookie (catalogue_session) không cần Supabase JWT", async () => {
     const env = {
       CATALOGUE_TOTP_SECRET: DEFAULT_TOTP_SECRET,

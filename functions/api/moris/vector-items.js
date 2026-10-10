@@ -15,13 +15,34 @@ export async function onRequestGet({ request, env }) {
     const authHeader = request.headers.get("authorization") || "";
     const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
     const token = String(url.searchParams.get("session_token") || bearer || "").trim();
-    const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit") || 50), 100));
+    const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit") || 2000), 5000));
     const offset = Math.max(0, Number(url.searchParams.get("offset") || 0));
     const search = String(url.searchParams.get("search") || "").trim();
 
     await validateSession(env, token);
 
-    // 1. Lấy danh sách linh kiện
+    // Ưu tiên gọi RPC tối ưu app_list_catalogue_vector_items (1 query gom tất cả items, assets, vector status)
+    try {
+      const fastResult = await rpc(env, "app_list_catalogue_vector_items", {
+        p_session_token: token,
+        p_search: search,
+        p_limit: limit,
+        p_offset: offset
+      });
+      if (fastResult && Array.isArray(fastResult.items)) {
+        return json({
+          ok: true,
+          items: fastResult.items,
+          count: fastResult.items.length,
+          offset,
+          has_more: fastResult.items.length === limit
+        });
+      }
+    } catch (fastErr) {
+      console.warn("app_list_catalogue_vector_items unavailable, using fallback:", fastErr?.message || fastErr);
+    }
+
+    // 1. Lấy danh sách linh kiện (Fallback)
     const rows = await searchCatalogue(env, token, {
       search,
       usageSide: "all",
