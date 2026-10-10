@@ -180,6 +180,7 @@ createApp({
       camera:{ open:false, ready:false, error:'', busy:false, facing:'environment', scanning:false, previewUrl:'', maskUrl:'', scanStatus:'' },
       vectorCenter:{ open:false, loading:true },
       nav:{ open:false },
+      bulkSelection:{ active:false, selectedIds:[], busy:false },
 
       // ---- Công cụ quy đổi định lượng (PCS <-> KG) ----
       weightCalc:{
@@ -222,6 +223,12 @@ createApp({
     canConvert() { return this.role === 'admin' || this.role === 'converter'; },
     isAdmin() { return this.role === 'admin'; },
     role() { return String(this.session.user?.role_name || '').toLowerCase(); },
+
+    isAllCurrentPageSelected() {
+      const parts = this.displayedParts || [];
+      if (!parts.length) return false;
+      return parts.every(p => this.bulkSelection.selectedIds.includes(p.id));
+    },
 
     // ---------------- Quy đổi định lượng ----------------
     /** Dropdown gợi ý mã trong tab quy đổi */
@@ -1477,6 +1484,161 @@ createApp({
         if(!row?.ok) throw new Error(row?.message || 'Không xóa được.');
         this.toast('success','Đã xóa thành công.'); this.closeDetail(); await this.loadParts(true);
       } catch(e) { this.toast('error', this.readError(e)); }
+    },
+
+    // ------------------------------------------------------------------
+    // XÓA HÀNG LOẠT VÀ XÓA TẤT CẢ CATALOGUE (CHỈ ADMIN HỆ THỐNG)
+    // ------------------------------------------------------------------
+    toggleBulkSelectionMode() {
+      if (!this.isAdmin) return this.toast('error', 'Chỉ admin có quyền sử dụng chức năng này.');
+      this.bulkSelection.active = !this.bulkSelection.active;
+      if (!this.bulkSelection.active) {
+        this.bulkSelection.selectedIds = [];
+      }
+      this.$nextTick(() => this.renderIcons());
+    },
+
+    isPartSelected(id) {
+      return this.bulkSelection.selectedIds.includes(id);
+    },
+
+    togglePartSelection(id) {
+      if (!id) return;
+      const idx = this.bulkSelection.selectedIds.indexOf(id);
+      if (idx >= 0) {
+        this.bulkSelection.selectedIds.splice(idx, 1);
+      } else {
+        this.bulkSelection.selectedIds.push(id);
+      }
+      this.$nextTick(() => this.renderIcons());
+    },
+
+    toggleSelectAllCurrentPage() {
+      const parts = this.displayedParts || [];
+      if (!parts.length) return;
+      if (this.isAllCurrentPageSelected) {
+        const pageIds = new Set(parts.map(p => p.id));
+        this.bulkSelection.selectedIds = this.bulkSelection.selectedIds.filter(id => !pageIds.has(id));
+      } else {
+        const set = new Set(this.bulkSelection.selectedIds);
+        parts.forEach(p => { if (p?.id) set.add(p.id); });
+        this.bulkSelection.selectedIds = Array.from(set);
+      }
+      this.$nextTick(() => this.renderIcons());
+    },
+
+    clearBulkSelection() {
+      this.bulkSelection.selectedIds = [];
+      this.bulkSelection.active = false;
+      this.$nextTick(() => this.renderIcons());
+    },
+
+    async executeBulkDelete() {
+      if (!this.isAdmin) return this.toast('error', 'Chỉ admin có quyền xóa hàng loạt.');
+      const ids = [...this.bulkSelection.selectedIds];
+      if (!ids.length) return this.toast('info', 'Bạn chưa chọn mã linh kiện nào.');
+
+      const ok = await this.showConfirm(
+        `Xác nhận xóa vĩnh viễn ${ids.length} mã linh kiện đã chọn? Toàn bộ metadata trong Supabase và các file ảnh liên quan trên Cloudflare R2 sẽ bị xóa sạch triệt để!`,
+        {
+          title: `Xác nhận xóa hàng loạt (${ids.length} mã)`,
+          confirmText: `Xóa ${ids.length} mã`,
+          danger: true
+        }
+      );
+      if (!ok) return;
+
+      this.bulkSelection.busy = true;
+      try {
+        const res = await this.fetchWithTimeout(
+          '/api/catalogue/bulk-delete',
+          {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-session-token': await this.freshAuth()
+            },
+            body: JSON.stringify({
+              session_token: await this.freshAuth(),
+              image_ids: ids
+            })
+          },
+          60000
+        );
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.ok === false) {
+          throw new Error(data?.error || data?.message || 'Lỗi khi xóa hàng loạt.');
+        }
+
+        this.toast('success', data?.message || `Đã xóa thành công ${ids.length} mã linh kiện.`);
+        this.bulkSelection.selectedIds = [];
+        this.bulkSelection.active = false;
+        await this.loadParts(true);
+      } catch (e) {
+        this.toast('error', this.readError(e));
+      } finally {
+        this.bulkSelection.busy = false;
+        this.$nextTick(() => this.renderIcons());
+      }
+    },
+
+    async executeDeleteAll() {
+      if (!this.isAdmin) return this.toast('error', 'Chỉ admin có quyền xóa toàn bộ catalogue.');
+
+      const ok1 = await this.showConfirm(
+        'CẢNH BÁO NGUY HIỂM: Bạn đang chuẩn bị xóa TOÀN BỘ dữ liệu catalogue linh kiện! Thao tác này sẽ xóa sạch tất cả mã linh kiện, metadata, vector AI và toàn bộ file ảnh trên Cloudflare R2. Hành động này KHÔNG THỂ HOÀN TÁC!',
+        {
+          title: 'XÓA TOÀN BỘ CATALOGUE',
+          confirmText: 'Tôi hiểu rủi ro, tiếp tục',
+          danger: true
+        }
+      );
+      if (!ok1) return;
+
+      const ok2 = await this.showConfirm(
+        'XÁC NHẬN LẦN CUỐI: Toàn bộ kho catalogue và toàn bộ ảnh R2 sẽ bị làm sạch trống hoàn toàn ngay lập tức. Bạn có thật sự chắc chắn muốn xóa tất cả?',
+        {
+          title: 'Xác nhận lần 2 — XÓA SẠCH CATALOGUE',
+          confirmText: 'XÓA TOÀN BỘ VĨNH VIỄN',
+          danger: true
+        }
+      );
+      if (!ok2) return;
+
+      this.bulkSelection.busy = true;
+      try {
+        const res = await this.fetchWithTimeout(
+          '/api/catalogue/delete-all',
+          {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-session-token': await this.freshAuth()
+            },
+            body: JSON.stringify({
+              session_token: await this.freshAuth(),
+              confirm: true
+            })
+          },
+          120000
+        );
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.ok === false) {
+          throw new Error(data?.error || data?.message || 'Lỗi khi xóa toàn bộ catalogue.');
+        }
+
+        this.toast('success', data?.message || 'Đã xóa toàn bộ catalogue và làm sạch bucket R2.');
+        this.bulkSelection.selectedIds = [];
+        this.bulkSelection.active = false;
+        await this.loadParts(true);
+      } catch (e) {
+        this.toast('error', this.readError(e));
+      } finally {
+        this.bulkSelection.busy = false;
+        this.$nextTick(() => this.renderIcons());
+      }
     },
 
     // --- BULK IMPORT ---

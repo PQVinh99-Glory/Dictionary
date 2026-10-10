@@ -593,10 +593,42 @@
             <i data-lucide="refresh-cw" class="w-5 h-5"></i>
           </button>
         </div>
-        <div class="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
-          <span class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center gap-1.5"><i data-lucide="database" class="w-3.5 h-3.5 text-emerald-600"></i> {{ listStatusText }}</span>
-          <span class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1.5"><i data-lucide="cloud" class="w-3.5 h-3.5"></i> R2 CDN</span>
-          <span class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center gap-1.5"><i data-lucide="clock" class="w-3.5 h-3.5 text-blue-500"></i> {{ nowText }}</span>
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap gap-2 text-xs font-bold text-slate-500">
+            <span class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center gap-1.5"><i data-lucide="database" class="w-3.5 h-3.5 text-emerald-600"></i> {{ listStatusText }}</span>
+            <span class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1.5"><i data-lucide="cloud" class="w-3.5 h-3.5"></i> R2 CDN</span>
+            <span class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center gap-1.5"><i data-lucide="clock" class="w-3.5 h-3.5 text-blue-500"></i> {{ nowText }}</span>
+          </div>
+
+          <!-- Nút Quản trị Admin: Chọn hàng loạt & Xóa tất cả (Chỉ Admin hệ thống) -->
+          <div v-if="isAdmin" class="flex items-center gap-2">
+            <button
+              type="button"
+              @click="toggleBulkSelectionMode()"
+              :class="[
+                'btn h-9 px-3 rounded-xl text-xs font-black transition border shadow-sm flex items-center gap-1.5',
+                bulkSelection.active
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-amber-200'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+              ]"
+              :title="bulkSelection.active ? 'Tắt chế độ chọn hàng loạt' : 'Bật chế độ chọn nhiều mã để thao tác'">
+              <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
+              <span>{{ bulkSelection.active ? 'Đang chọn hàng loạt' : 'Chọn hàng loạt' }}</span>
+              <span v-if="bulkSelection.active && bulkSelection.selectedIds.length" class="ml-1 px-1.5 py-0.5 bg-white text-amber-700 rounded-full text-[10px] font-black">
+                {{ bulkSelection.selectedIds.length }}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              @click="executeDeleteAll()"
+              :disabled="bulkSelection.busy || !displayedParts.length"
+              class="btn h-9 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-black transition shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Xóa toàn bộ catalogue và làm sạch bucket R2">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5 text-red-600"></i>
+              <span>Xóa tất cả</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -633,8 +665,35 @@
 
       <!-- Danh sách - Sử dụng CSS content-visibility để tăng hiệu năng -->
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <article v-for="item in displayedParts" :key="item.id" class="catalog-card rounded-[2rem] overflow-hidden group">
-          <button @click="openDetail(item)" class="block w-full text-left h-full flex flex-col">
+        <article
+          v-for="item in displayedParts"
+          :key="item.id"
+          :class="[
+            'catalog-card rounded-[2rem] overflow-hidden group relative transition-all',
+            bulkSelection.active && isPartSelected(item.id) ? 'ring-4 ring-amber-400 border-amber-300' : ''
+          ]">
+
+          <!-- Checkbox chọn hàng loạt (chỉ hiện khi bật bulkSelection) -->
+          <div v-if="isAdmin && bulkSelection.active" class="absolute top-3 left-3 z-20">
+            <button
+              type="button"
+              @click.stop="togglePartSelection(item.id)"
+              :class="[
+                'w-8 h-8 rounded-xl flex items-center justify-center transition shadow-md border',
+                isPartSelected(item.id)
+                  ? 'bg-amber-500 border-amber-600 text-white ring-2 ring-white'
+                  : 'bg-white/95 border-slate-300 text-slate-400 hover:text-slate-600'
+              ]"
+              :aria-label="isPartSelected(item.id) ? 'Bỏ chọn' : 'Chọn mã này'">
+              <i v-if="isPartSelected(item.id)" data-lucide="check" class="w-5 h-5 stroke-[3]"></i>
+              <div v-else class="w-3.5 h-3.5 rounded-md border-2 border-slate-400"></div>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            @click="bulkSelection.active ? togglePartSelection(item.id) : openDetail(item)"
+            class="block w-full text-left h-full flex flex-col">
             <div class="checker aspect-[4/3] flex items-center justify-center overflow-hidden border-b border-slate-100 relative">
               <img v-if="partThumbUrl(item)" :src="partThumbUrl(item)" loading="lazy" decoding="async" fetchpriority="low" width="320" height="320" class="part-img max-w-[85%] max-h-[85%] object-contain transition duration-500 group-hover:scale-[1.08]" />
               <div v-else class="text-slate-300"><i data-lucide="image-off" class="w-12 h-12"></i></div>
@@ -661,6 +720,54 @@
           </button>
         </article>
       </div>
+
+      <!-- THANH THAO TÁC NỔI CHO CHỌN HÀNG LOẠT (CHỈ ADMIN) -->
+      <Transition name="fade">
+        <div
+          v-if="isAdmin && bulkSelection.active"
+          class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[95vw] sm:max-w-2xl w-full px-2 pointer-events-none">
+          <div class="pointer-events-auto glass rounded-2xl p-3 sm:p-4 shadow-2xl border border-amber-200/80 bg-white/95 backdrop-blur-xl flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0">
+                <i data-lucide="check-square" class="w-4 h-4"></i>
+              </span>
+              <div class="min-w-0">
+                <div class="text-xs sm:text-sm font-black text-slate-800">
+                  Đã chọn: <span class="text-amber-700 font-mono font-bold">{{ bulkSelection.selectedIds.length }}</span> mã
+                </div>
+                <div class="text-[11px] font-semibold text-slate-500 truncate">
+                  Trang hiện tại: {{ displayedParts.length }} mã
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                @click="toggleSelectAllCurrentPage()"
+                class="btn h-9 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black transition border border-slate-200">
+                {{ isAllCurrentPageSelected ? 'Bỏ chọn trang' : 'Chọn cả trang' }}
+              </button>
+
+              <button
+                type="button"
+                @click="clearBulkSelection()"
+                class="btn h-9 px-3 rounded-xl bg-white hover:bg-slate-50 text-slate-600 text-xs font-bold transition border border-slate-200">
+                Hủy
+              </button>
+
+              <button
+                type="button"
+                @click="executeBulkDelete()"
+                :disabled="!bulkSelection.selectedIds.length || bulkSelection.busy"
+                class="btn h-9 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black transition shadow-md shadow-red-200 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                <span>{{ bulkSelection.busy ? 'Đang xóa...' : `Xóa ${bulkSelection.selectedIds.length} mã` }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
 
       <div v-if="!morisSearch.active && (parts.length || page > 0)" class="mt-10 pb-10">
         <div class="glass rounded-[1.5rem] p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border border-slate-200 bg-white/80">
