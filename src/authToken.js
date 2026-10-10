@@ -50,6 +50,28 @@
 
   function getAccessToken() {
     try {
+      // 1. Kiểm tra tham số trên URL nếu có
+      if (typeof window !== "undefined" && window.location) {
+        var urlParam = new URLSearchParams(window.location.search).get("token");
+        if (urlParam && !isExpired(urlParam)) return urlParam;
+      }
+
+      // 2. Kiểm tra key trực tiếp trong localStorage / sessionStorage
+      var direct =
+        global.localStorage.getItem("catalogue_access_token") ||
+        global.sessionStorage.getItem("catalogue_access_token") ||
+        global.localStorage.getItem("sb_access_token");
+      if (direct && !isExpired(direct)) return direct;
+
+      // 3. Nếu đang trong iframe, thử lấy từ cửa sổ cha (parent)
+      try {
+        if (global.parent && global.parent !== global && global.parent.CatalogueAuth) {
+          var pToken = global.parent.CatalogueAuth.getAccessToken();
+          if (pToken && !isExpired(pToken)) return pToken;
+        }
+      } catch (_) {}
+
+      // 4. Kiểm tra storage key tiêu chuẩn của supabase-js
       var key = storageKey();
       if (!key) return "";
       var raw = readRaw(key);

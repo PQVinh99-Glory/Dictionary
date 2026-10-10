@@ -1,4 +1,5 @@
 import { validateSession } from "../../_lib/moris/v5/connectors/supabase.js";
+import { validateGateSession } from "../../_lib/gatekeeper.js";
 
 const BROWSER_CACHE =
   "private, max-age=3600, stale-while-revalidate=86400";
@@ -33,6 +34,22 @@ function extractToken(request) {
   ).trim();
 }
 
+async function isAuthorized(request, env) {
+  const token = extractToken(request);
+  if (token) {
+    if (await validateGateSession(env, token)) return true;
+    try {
+      await validateSession(env, token);
+      return true;
+    } catch (_) {}
+  }
+  const cookieToken = getCookie(request, "catalogue_session");
+  if (cookieToken && await validateGateSession(env, cookieToken)) {
+    return true;
+  }
+  return false;
+}
+
 function getObjectKey(params) {
   const raw = params?.path;
   const parts = Array.isArray(raw) ? raw : (raw ? [raw] : []);
@@ -56,14 +73,7 @@ function applyMediaCacheHeaders(headers) {
 }
 
 export async function onRequestGet({ request, env, params }) {
-  const token = extractToken(request);
-  if (!token) return text("Unauthorized", 401);
-
-  try {
-    await validateSession(env, token);
-  } catch (_) {
-    return text("Unauthorized", 401);
-  }
+  if (!await isAuthorized(request, env)) return text("Unauthorized", 401);
 
   if (!env.CATALOGUE_BUCKET) {
     return text("Missing R2 binding CATALOGUE_BUCKET.", 503);
@@ -108,14 +118,7 @@ export async function onRequestGet({ request, env, params }) {
 }
 
 export async function onRequestHead({ request, env, params }) {
-  const token = extractToken(request);
-  if (!token) return new Response(null, { status: 401 });
-
-  try {
-    await validateSession(env, token);
-  } catch (_) {
-    return new Response(null, { status: 401 });
-  }
+  if (!await isAuthorized(request, env)) return new Response(null, { status: 401 });
 
   if (!env.CATALOGUE_BUCKET) {
     return new Response(null, {status:503});

@@ -341,6 +341,10 @@ createApp({
   },
   async mounted() {
     window._catalogueApp = this;
+    window.CatalogueAuth = {
+      getAccessToken: () => this.session?.token || '',
+      isLoggedIn: () => !!this.session?.token
+    };
     this.setupPwa();
     this.sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
     this.updateTime(); setInterval(this.updateTime, 30000);
@@ -1415,14 +1419,19 @@ createApp({
         const primary = assets.find(a => a.asset_type==='thumb') || assets.find(a => a.asset_type==='front') || assets[0];
         if(!primary) throw new Error('Cần có ảnh mặt chính/front hoặc giữ lại ảnh cũ.');
 
+        // Tự động hiểu 2 mặt nếu có cả ảnh front và back, ngược lại là 1 mặt
+        const hasFront = assets.some(a => a.asset_type === 'front');
+        const hasBack = assets.some(a => a.asset_type === 'back');
+        const autoViewMode = (hasFront && hasBack) ? 'dual_face' : 'single_face';
+
         const saved = await this.rpcRow('app_upsert_part_metadata', {
           p_session_token:this.session.token,
           p_id:this.editor.form.id,
           p_code:code,
           p_part_id:this.editor.form.part_id || null,
           p_usage_side:this.editor.form.usage_side || 'unknown',
-          p_view_mode:this.editor.form.view_mode || 'single_face',
-          p_is_symmetric:!!this.editor.form.is_symmetric,
+          p_view_mode:autoViewMode,
+          p_is_symmetric:false,
           p_identifying_features:this.editor.form.identifying_features || null,
           p_confusing_note:this.editor.form.confusing_note || null,
           p_primary_image_path:primary.image_path,
@@ -1490,21 +1499,32 @@ createApp({
     },
 
     // ------------------------------------------------------------------
-    // VECTOR AI — trang /tools/moris-vector-center.html mở trong modal nổi
+    // VECTOR AI — trang /tools/moris-vector-center mở trong modal nổi
     // ------------------------------------------------------------------
     openVectorCenter() {
       if (this.session.user?.role_name !== 'admin') return this.toast('error', 'Bạn chưa được cấp quyền, liên hệ admin.');
       this.vectorCenter.open = true;
       this.vectorCenter.loading = true;
-      this.$nextTick(() => this.renderIcons());
+      this.$nextTick(() => {
+        const token = this.session.token || '';
+        const f = this.$refs.vectorFrame;
+        if (f && token) {
+          f.src = `/tools/moris-vector-center?token=${encodeURIComponent(token)}`;
+        }
+        this.renderIcons();
+      });
     },
     closeVectorCenter() {
       this.vectorCenter.open = false;
       const f = this.$refs.vectorFrame;
-      if (f) { try { f.src = f.src; } catch(_) {} }   // dừng JS/animation trong iframe
+      if (f) { try { f.src = '/tools/moris-vector-center'; } catch(_) {} }
     },
     openVectorCenterTab() {
-      try { window.open('/tools/moris-vector-center', '_blank', 'noopener'); }
+      try {
+        const token = this.session.token || '';
+        const url = `/tools/moris-vector-center?token=${encodeURIComponent(token)}`;
+        window.open(url, '_blank', 'noopener');
+      }
       catch(_) { this.toast('error', 'Không mở được tab mới.'); }
     },
 

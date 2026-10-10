@@ -1,6 +1,6 @@
 import { readMorisConfig } from "../../_lib/moris/v5/runtime/config.js";
 import { validateSession } from "../../_lib/moris/v5/connectors/supabase.js";
-import { rpcService } from "../../_lib/moris/v5/connectors/supabaseService.js";
+import { rpcService, baseUrl, serverKey, headersForKey } from "../../_lib/moris/v5/connectors/supabaseService.js";
 import {
   json,
   readJson,
@@ -103,6 +103,28 @@ export async function onRequestPost({request,env}) {
     for (const row of rows) {
       assertProfile(row?.embedding_profile, config);
 
+      if (body?.prevent_duplicate) {
+        try {
+          const key = serverKey(env);
+          const base = baseUrl(env);
+          const checkUrl = `${base}/rest/v1/catalogue_image_vectors?record_id=eq.${encodeURIComponent(row?.record_id)}&asset_type=eq.${encodeURIComponent(row?.asset_type || "front")}&is_active=eq.true&limit=1`;
+          const checkRes = await fetch(checkUrl, { headers: headersForKey(key) });
+          if (checkRes.ok) {
+            const existingRows = await checkRes.json();
+            if (Array.isArray(existingRows) && existingRows.length > 0) {
+              results.push({
+                ok: false,
+                already_exists: true,
+                record_id: String(row?.record_id || ""),
+                asset_type: String(row?.asset_type || "front"),
+                error: `Ảnh ${row?.asset_type || "mặt"} của mã này đã có vector trước đó. Bỏ qua để tránh trùng lặp.`
+              });
+              continue;
+            }
+          }
+        } catch (_) {}
+      }
+
       try {
         const id = await rpcService(
           env,
@@ -167,8 +189,10 @@ export async function onRequestPost({request,env}) {
       results.find(x => !x.ok)?.error || null;
 
     if (written === 0 && failed > 0) {
+      const allAlreadyExists = results.every(x => x.already_exists);
       return json({
         ok:false,
+        already_exists: allAlreadyExists,
         error:
           firstError ||
           "Không ghi được vector nào vào Supabase.",
@@ -176,7 +200,7 @@ export async function onRequestPost({request,env}) {
         written,
         failed,
         results
-      },502);
+      }, allAlreadyExists ? 409 : 502);
     }
 
     return json({

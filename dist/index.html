@@ -860,25 +860,11 @@
             </div>
           </div>
           
-          <div class="grid sm:grid-cols-3 gap-5">
-            <div>
-              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Vị trí lắp</label>
-              <select v-model="editor.form.usage_side" class="input h-12 cursor-pointer">
-                <option value="unknown">Chưa xác định</option><option value="left">Bên trái</option><option value="right">Bên phải</option><option value="both">Cả hai</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Kiểu ảnh</label>
-              <select v-model="editor.form.view_mode" class="input h-12 cursor-pointer">
-                <option value="single_face">1 mặt</option><option value="dual_face">2 mặt (Front/Back)</option><option value="detail_set">Có ảnh chi tiết</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Cấu trúc</label>
-              <select v-model="editor.form.is_symmetric" class="input h-12 cursor-pointer bg-emerald-50 border-emerald-200 text-emerald-800">
-                <option :value="false">Không đối xứng</option><option :value="true">Đối xứng 2 mặt</option>
-              </select>
-            </div>
+          <div>
+            <label class="block text-xs font-black tracking-widest text-slate-500 uppercase mb-1.5 ml-1">Vị trí lắp</label>
+            <select v-model="editor.form.usage_side" class="input h-12 cursor-pointer">
+              <option value="unknown">Chưa xác định</option><option value="left">Bên trái</option><option value="right">Bên phải</option><option value="both">Cả hai</option>
+            </select>
           </div>
           
           <div>

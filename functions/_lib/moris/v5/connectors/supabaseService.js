@@ -1,8 +1,8 @@
-function baseUrl(env) {
+export function baseUrl(env) {
   return String(env.SUPABASE_URL || "").replace(/\/+$/," ").trim();
 }
 
-function serverKey(env) {
+export function serverKey(env) {
   return String(
     env.SUPABASE_SECRET_KEY ||
     env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -10,7 +10,7 @@ function serverKey(env) {
   ).trim();
 }
 
-function headersForKey(key){
+export function headersForKey(key){
   const headers={
     "content-type":"application/json",
     "apikey":key

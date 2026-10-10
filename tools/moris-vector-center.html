@@ -3,138 +3,289 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Moris — Trung tâm Vector</title>
+  <title>Moris — Trung tâm Vector AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Bộ màu hệ thống: Wine Red & Sand đồng bộ với app chính -->
+  <script>
+    (function () {
+      var wine = {
+        50:'#FDF2F4', 100:'#FBE3E8', 200:'#F6C3CD', 300:'#EE97AB', 400:'#DE5A7C',
+        500:'#C21341', 600:'#7F011F', 700:'#690119', 800:'#520114', 900:'#3B010E', 950:'#260009'
+      };
+      var sand = {
+        50:'#FDFBF6', 100:'#FAF4E8', 200:'#F5EBD0', 300:'#EEDFB6', 400:'#E3CB8E',
+        500:'#D6B463', 600:'#C7971B', 700:'#A67A12', 800:'#855E10', 900:'#6B4A13'
+      };
+      tailwind.config = { theme: { extend: { colors: {
+        emerald: wine, green: wine, teal: wine, indigo: wine, violet: wine, cyan: wine, lime: sand
+      } } } };
+    })();
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    :root{
-      font-family:'Aptos Narrow',Calibri,Carlito,'Segoe UI',system-ui,sans-serif;
-      color:#0f172a;
+    *, ::before, ::after {
+      font-family: 'Aptos Narrow', Calibri, Carlito, 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+    }
+    code, pre, pre * {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    }
+    body {
+      color: #0f172a;
       background:
-        radial-gradient(circle at top left,#FBE3E8 0,transparent 34%),
-        linear-gradient(180deg,#FDFBF6,#FAF4E8);
+        radial-gradient(circle at top left, rgba(127,1,31,.12), transparent 38%),
+        radial-gradient(circle at top right, rgba(199,151,27,.12), transparent 35%),
+        linear-gradient(135deg, #FDFBF6, #F9F3E7 48%, #F5EBD0);
+      min-height: 100vh;
     }
-    *{box-sizing:border-box}
-    body{margin:0;padding:20px;min-height:100vh}
-    .wrap{max-width:1040px;margin:auto}
-    .top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px}
-    .card{
-      background:rgba(255,255,255,.94);
-      border:1px solid #EFE0E4;
-      border-radius:24px;
-      padding:20px;
-      box-shadow:0 18px 50px rgba(15,23,42,.08)
+    .glass {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.08);
     }
-    h1{margin:0;font-size:26px}
-    h2{margin:0 0 12px;font-size:18px}
-    p{color:#64748b}
-    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-    .kpi{padding:14px;border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc}
-    .kpi span{display:block;color:#64748b;font-size:12px;font-weight:800}
-    .kpi b{display:block;font-size:24px;color:#7F011F;margin-top:4px}
-    .layout{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;margin-top:16px}
-    button,a.btn{
-      border:0;border-radius:14px;padding:12px 16px;
-      font-weight:850;cursor:pointer;text-decoration:none;
-      display:inline-flex;align-items:center;justify-content:center
+    .checker {
+      background-color: rgba(255, 255, 255, 0.7);
+      background-image:
+        linear-gradient(45deg, rgba(203, 213, 225, 0.3) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(203, 213, 225, 0.3) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(203, 213, 225, 0.3) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(203, 213, 225, 0.3) 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
     }
-    .primary{background:#7F011F;color:#fff}
-    .secondary{background:#e2e8f0;color:#334155}
-    .danger{background:#fee2e2;color:#b91c1c}
-    button:disabled{opacity:.45;cursor:not-allowed}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .bar{height:14px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin:14px 0}
-    .bar>div{height:100%;background:#C21341;width:0;transition:width .2s}
-    pre{
-      white-space:pre-wrap;background:#0f172a;color:#FBE3E8;
-      padding:14px;border-radius:16px;max-height:330px;overflow:auto
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      border-radius: 1rem;
+      font-weight: 800;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+      white-space: nowrap;
     }
-    .status{
-      padding:12px 14px;border-radius:14px;background:#f8fafc;
-      border:1px solid #e2e8f0;font-weight:750;color:#475569
-    }
-    .good{color:#7F011F}
-    .bad{color:#b91c1c}
-    .warn{color:#b45309}
-    code{background:#f1f5f9;padding:2px 6px;border-radius:7px}
-    @media(max-width:800px){
-      .grid{grid-template-columns:repeat(2,1fr)}
-      .layout{grid-template-columns:1fr}
-      body{padding:10px}
-    }
+    .btn:active { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
   </style>
 </head>
-<body>
-<div class="wrap">
-  <div class="top">
-    <div>
-      <h1>Moris — Trung tâm Vector</h1>
-      <p>Quản lý model, coverage và tạo vector cho toàn bộ ảnh catalogue.</p>
-    </div>
-    <a class="btn secondary" href="/">Về Catalogue</a>
-  </div>
+<body class="p-4 sm:p-6">
+<div class="max-w-5xl mx-auto space-y-6">
 
-  <div class="card">
-    <div class="grid">
-      <div class="kpi"><span>Encoder DINOv2</span><b id="ready">—</b></div>
-      <div class="kpi"><span>SKU đã có vector</span><b id="records">0</b></div>
-      <div class="kpi"><span>Tổng vector ảnh</span><b id="vectors">0</b></div>
-      <div class="kpi"><span>Cursor catalogue</span><b id="offset">0</b></div>
-    </div>
-  </div>
-
-  <div class="layout">
-    <div class="card">
-      <h2>1. Model DINOv2</h2>
-      <div id="runtime" class="status">Chưa khởi tạo model.</div>
-      <div class="bar"><div id="modelBar"></div></div>
-      <div class="row">
-        <button id="loadModel" class="primary">Nạp model DINOv2</button>
-        <button id="testModel" class="secondary" disabled>Test model</button>
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-2xl bg-rose-700/10 border border-rose-700/20 flex items-center justify-center text-rose-800 shadow-sm">
+        <i data-lucide="orbit" class="w-6 h-6"></i>
       </div>
-      <p>
-        Ưu tiên <code>WebGPU/fp16</code>, fallback
-        <code>WASM/q8</code>. Model chạy trong Web Worker.
+      <div>
+        <h1 class="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Moris — Trung tâm Vector AI</h1>
+        <p class="text-xs font-bold text-slate-500">Quản lý mô hình DINOv2, tách vector và giám sát độ phủ vector hình ảnh</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="btnOpenPurgeModal" class="btn h-10 px-4 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 text-xs uppercase tracking-wider font-black shadow-sm">
+        <i data-lucide="trash-2" class="w-4 h-4"></i>Xóa sạch toàn bộ Vector
+      </button>
+      <a class="btn h-10 px-4 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs uppercase tracking-wider font-black shadow-sm" href="/">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>Về Catalogue
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+    <div class="glass rounded-2xl p-4 border border-slate-200/80">
+      <span class="block text-[11px] font-black uppercase tracking-wider text-slate-400">Encoder DINOv2</span>
+      <b id="ready" class="block text-2xl font-black text-slate-800 mt-1">—</b>
+    </div>
+    <div class="glass rounded-2xl p-4 border border-slate-200/80">
+      <span class="block text-[11px] font-black uppercase tracking-wider text-slate-400">SKU đã có vector</span>
+      <b id="records" class="block text-2xl font-black text-emerald-700 mt-1">0</b>
+    </div>
+    <div class="glass rounded-2xl p-4 border border-slate-200/80">
+      <span class="block text-[11px] font-black uppercase tracking-wider text-slate-400">Tổng vector ảnh</span>
+      <b id="vectors" class="block text-2xl font-black text-rose-800 mt-1">0</b>
+    </div>
+    <div class="glass rounded-2xl p-4 border border-slate-200/80">
+      <span class="block text-[11px] font-black uppercase tracking-wider text-slate-400">Cursor Catalogue</span>
+      <b id="offset" class="block text-2xl font-black text-slate-800 mt-1">0</b>
+    </div>
+  </div>
+
+  <!-- Grid 2 Cột: Model & Coverage -->
+  <div class="grid md:grid-cols-2 gap-5">
+    <!-- Cột 1: Model DINOv2 -->
+    <div class="glass rounded-[2rem] p-5 border border-slate-200/80 flex flex-col justify-between space-y-4">
+      <div>
+        <h2 class="text-base font-black text-slate-800 flex items-center gap-2 mb-3">
+          <i data-lucide="cpu" class="w-5 h-5 text-indigo-600"></i>1. Mô hình nhúng DINOv2
+        </h2>
+        <div id="runtime" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
+          Chưa khởi tạo model.
+        </div>
+        <div class="h-2 bg-slate-100 rounded-full overflow-hidden mt-3">
+          <div id="modelBar" class="h-full bg-rose-700 w-0 transition-all duration-200"></div>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 pt-2">
+        <button id="loadModel" class="btn h-10 px-4 bg-rose-800 hover:bg-rose-900 text-white text-xs font-black uppercase tracking-wider shadow-sm">
+          <i data-lucide="download-cloud" class="w-4 h-4"></i>Nạp model DINOv2
+        </button>
+        <button id="testModel" class="btn h-10 px-4 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-black uppercase tracking-wider shadow-sm" disabled>
+          <i data-lucide="play" class="w-4 h-4"></i>Test model
+        </button>
+      </div>
+    </div>
+
+    <!-- Cột 2: Coverage Supabase -->
+    <div class="glass rounded-[2rem] p-5 border border-slate-200/80 flex flex-col justify-between space-y-4">
+      <div>
+        <h2 class="text-base font-black text-slate-800 flex items-center gap-2 mb-3">
+          <i data-lucide="database" class="w-5 h-5 text-emerald-600"></i>2. Độ phủ Vector trong Database
+        </h2>
+        <div id="coverage" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 leading-relaxed">
+          Đang đọc trạng thái vector...
+        </div>
+      </div>
+      <div class="flex items-center gap-2 pt-2">
+        <button id="refreshStatus" class="btn h-10 px-4 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-black uppercase tracking-wider shadow-sm">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>Làm mới trạng thái
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3: Danh sách mã đồng bộ chờ tách vector -->
+  <div class="glass rounded-[2rem] p-5 sm:p-6 border border-slate-200/80 space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+      <div>
+        <h2 class="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2">
+          <i data-lucide="layers" class="w-5 h-5 text-rose-800"></i>3. Danh sách linh kiện & Trạng thái Vector
+        </h2>
+        <p class="text-xs font-bold text-slate-500">Đồng bộ tự động khi thêm ảnh mới. Tách hàng loạt hoặc chọn từng mã chỉ định.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnBatchVectorize" class="btn h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider shadow-sm">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>Tách vector hàng loạt
+        </button>
+        <button id="btnRefreshItems" class="btn h-10 px-3 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold shadow-sm" title="Tải lại danh sách">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Thanh tìm kiếm & lọc -->
+    <div class="flex items-center gap-3">
+      <div class="relative flex-1">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+        <input id="itemSearchInput" type="text" placeholder="Tìm theo mã hàng..."
+          class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-700" />
+      </div>
+      <span id="itemsCountBadge" class="text-xs font-bold text-slate-500 shrink-0">Đang tải...</span>
+    </div>
+
+    <!-- Bảng danh sách items -->
+    <div class="overflow-x-auto max-h-[360px] overflow-y-auto scrollbar-soft rounded-2xl border border-slate-200">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-slate-50 text-slate-500 uppercase font-black tracking-wider text-[10px] sticky top-0 border-b border-slate-200 z-10">
+          <tr>
+            <th class="p-3">Ảnh</th>
+            <th class="p-3">Mã sản phẩm</th>
+            <th class="p-3">Vị trí</th>
+            <th class="p-3">Trạng thái Vector</th>
+            <th class="p-3 text-right">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="itemsTableBody" class="divide-y divide-slate-100 bg-white font-semibold text-slate-700">
+          <tr>
+            <td colspan="5" class="p-6 text-center text-slate-400 font-bold">Đang tải dữ liệu danh sách mã...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section 4: Chạy Reindex toàn bộ theo cursor -->
+  <div class="glass rounded-[2rem] p-5 sm:p-6 border border-slate-200/80 space-y-4">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <h2 class="text-base font-black text-slate-800 flex items-center gap-2">
+          <i data-lucide="activity" class="w-5 h-5 text-indigo-600"></i>4. Tiến trình chạy theo Batch (Tất cả Catalogue)
+        </h2>
+        <p class="text-xs font-bold text-slate-500">Tự động lưu cursor vào bộ nhớ trình duyệt, có thể tạm dừng và tiếp tục bất cứ lúc nào.</p>
+      </div>
+    </div>
+
+    <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+      <div id="jobBar" class="h-full bg-rose-700 w-0 transition-all duration-200"></div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <div id="jobStatus" class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600">
+        Sẵn sàng.
+      </div>
+      <div id="batchDiag" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 shrink-0">
+        Chưa chạy batch.
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2 pt-2">
+      <button id="start" class="btn h-10 px-4 bg-rose-800 hover:bg-rose-900 text-white text-xs font-black uppercase tracking-wider shadow-sm">
+        <i data-lucide="play" class="w-4 h-4"></i>Bắt đầu / Tiếp tục
+      </button>
+      <button id="pause" class="btn h-10 px-4 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-black uppercase tracking-wider shadow-sm" disabled>
+        <i data-lucide="pause" class="w-4 h-4"></i>Tạm dừng
+      </button>
+      <button id="reset" class="btn h-10 px-4 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 text-xs font-black uppercase tracking-wider shadow-sm">
+        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>Reset offset
+      </button>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+      <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+        <span class="text-[10px] uppercase font-bold text-slate-400 block">Đã embed</span>
+        <b id="processed" class="text-lg font-black text-slate-800">0</b>
+      </div>
+      <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+        <span class="text-[10px] uppercase font-bold text-slate-400 block">Đã ghi DB</span>
+        <b id="written" class="text-lg font-black text-emerald-700">0</b>
+      </div>
+      <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+        <span class="text-[10px] uppercase font-bold text-slate-400 block">Lỗi / Bỏ qua</span>
+        <b id="failed" class="text-lg font-black text-rose-600">0</b>
+      </div>
+      <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+        <span class="text-[10px] uppercase font-bold text-slate-400 block">Batch số</span>
+        <b id="batchNo" class="text-lg font-black text-slate-800">0</b>
+      </div>
+    </div>
+
+    <pre id="log" class="text-xs font-mono p-4 bg-slate-900 text-rose-100 rounded-2xl max-h-56 overflow-y-auto whitespace-pre-wrap"></pre>
+  </div>
+
+</div>
+
+<!-- ================= MODAL XÁC NHẬN XÓA TOÀN BỘ VECTOR ================= -->
+<div id="purgeModal" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md p-4 hidden items-center justify-center">
+  <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-rose-100 space-y-4">
+    <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+      <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+    </div>
+    <div class="text-center space-y-2">
+      <h3 class="text-lg font-black text-slate-800">Xác nhận xóa sạch toàn bộ Vector?</h3>
+      <p class="text-xs font-semibold text-slate-500 leading-relaxed">
+        CẢNH BÁO: Thao tác này sẽ <strong class="text-rose-700">XÓA SẠCH 100% vector</strong> hiện có trong bảng <code>catalogue_image_vectors</code>. Sau khi xóa bạn có thể thoải mái tạo lại vector mới để kiểm tra chất lượng mô hình.
       </p>
     </div>
-
-    <div class="card">
-      <h2>2. Coverage Supabase</h2>
-      <div id="coverage" class="status">Chưa đọc trạng thái vector.</div>
-      <div class="row" style="margin-top:12px">
-        <button id="refreshStatus" class="secondary">Làm mới trạng thái</button>
-      </div>
-      <p>
-        Profile phải khớp tuyệt đối giữa ảnh cũ và ảnh query.
-      </p>
+    <div class="flex gap-3 pt-2">
+      <button id="btnCancelPurge" class="btn flex-1 h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase tracking-wider rounded-xl">
+        Hủy bỏ
+      </button>
+      <button id="btnConfirmPurge" class="btn flex-1 h-11 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md shadow-rose-200">
+        Xác nhận xóa sạch
+      </button>
     </div>
-  </div>
-
-  <div class="card" style="margin-top:16px">
-    <h2>3. Tạo vector cho ảnh đã có sẵn</h2>
-    <p>
-      Chạy tuần tự theo batch. Có thể tạm dừng, đóng tab và tiếp tục sau;
-      offset được lưu trong trình duyệt.
-    </p>
-
-    <div class="bar"><div id="jobBar"></div></div>
-    <div id="jobStatus" class="status">Sẵn sàng.</div>
-    <div id="batchDiag" class="status" style="margin-top:10px">
-      Chưa chạy batch.
-    </div>
-
-    <div class="row" style="margin-top:12px">
-      <button id="start" class="primary">Bắt đầu / Tiếp tục</button>
-      <button id="pause" class="secondary" disabled>Tạm dừng</button>
-      <button id="reset" class="danger">Reset offset</button>
-    </div>
-
-    <div class="grid" style="margin-top:14px">
-      <div class="kpi"><span>Đã embed</span><b id="processed">0</b></div>
-      <div class="kpi"><span>Đã ghi</span><b id="written">0</b></div>
-      <div class="kpi"><span>Lỗi</span><b id="failed">0</b></div>
-      <div class="kpi"><span>Batch</span><b id="batchNo">0</b></div>
-    </div>
-
-    <pre id="log"></pre>
   </div>
 </div>
 

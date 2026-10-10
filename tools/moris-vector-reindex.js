@@ -36,11 +36,23 @@ function sync() {
 }
 
 function sessionToken() {
-  const token = CatalogueAuth.getAccessToken();
-  if (!token) throw new Error(
-    "Chưa có session. Hãy đăng nhập app Catalogue trước."
-  );
-  return token;
+  if (typeof window !== "undefined" && window.location) {
+    const urlToken = new URLSearchParams(window.location.search).get("token");
+    if (urlToken) return urlToken;
+  }
+  const direct = localStorage.getItem("catalogue_access_token") || sessionStorage.getItem("catalogue_access_token");
+  if (direct) return direct;
+  try {
+    const value = (typeof CatalogueAuth !== "undefined" && CatalogueAuth?.getAccessToken) ? CatalogueAuth.getAccessToken() : "";
+    if (value) return value;
+  } catch (_) {}
+  try {
+    if (window.parent && window.parent !== window && window.parent.CatalogueAuth) {
+      const pVal = window.parent.CatalogueAuth.getAccessToken();
+      if (pVal) return pVal;
+    }
+  } catch (_) {}
+  throw new Error("Chưa có session. Hãy đăng nhập app Catalogue trước.");
 }
 
 function mediaUrl(key) {
