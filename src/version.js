@@ -2,13 +2,13 @@
 // PHIÊN BẢN HỆ THỐNG — CATALOGUE AI
 // =======================================================================
 // Quy tắc đặt phiên bản theo chỉ định (Semantic Versioning):
-// - Phiên bản hiện tại: Version 6.5.0
+// - Phiên bản hiện tại: Version 6.6.0
 // - Sửa lỗi nhỏ không thêm tính năng: Tăng số cuối (+0.0.1) -> Ví dụ 6.1.2
 // - Thêm tính năng mới vẫn tương thích bản cũ: Sửa số giữa (+0.1.0) -> Ví dụ 6.3.0
 // - Thay đổi lớn có thể không tương thích: Thay đổi số đầu (+1.0.0) -> Ví dụ 7.0.0
 // =======================================================================
 
-const APP_VERSION = '6.5.0';
+const APP_VERSION = '6.6.0';
 const APP_NAME = 'Catalogue';
 
 /**

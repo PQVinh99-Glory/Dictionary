@@ -2,14 +2,14 @@
   "system": {
     "project": "Catalogue AI (Dictionary)",
     "stack": "Vue 3 CDN + Cloudflare Pages Functions + Supabase (pgvector) + Cloudflare R2",
-    "updated_at": "2026-10-19T06:50:00Z",
+    "updated_at": "2026-10-20T08:45:00Z",
     "memory_version": "2.9.0",
     "status": "in_progress"
   },
   "current_session": {
-    "active_task": "confusing_pairs_mention_autocomplete",
-    "last_checkpoint": "Khai báo cặp dễ nhầm lẫn (@mention) trong Ghi chú chống nhầm lẫn (confusing_note) + Hard-negative activation trong Moris search. Đã hoàn thành: module confusingPairs.js (extractConfusingSkus, arePartsConfusingPair, evaluateHardNegativeCondition, detectConfusingPairInTopCandidates); cảnh báo chuyên gia trong userMessage.js, publicResult.js và orchestrator.js; autocomplete dropdown trong index.html và app.js (loadEditorCatalogueCodes, filterMentionSuggestions, onConfusingNoteInput/Keydown/Blur/selectMention); 2 test suites mới (tests/moris-confusing-pairs.test.js 19 tests, tests/moris-confusing-note-mention.test.js 11 tests); full npm test 62 files / 608 tests pass 100%; tsc 0; build 47 files; version 6.5.0.",
-    "resumption_prompt": "Đã hoàn thành tính năng @mention gợi ý mã dễ nhầm lẫn trong Editor và kích hoạt cảnh báo hard-negative trong Moris search (62 test files / 608 tests pass 100%). Sẵn sàng commit và báo cáo.",
+    "active_task": "hole_sample_ban_oval_main_release",
+    "last_checkpoint": "Đưa mẫu 'Lỗ bán oval' lên main: chỉ giữ thay đổi ban_oval (ảnh + migration 20261020072401 + từ điển 11 tag + test/audit), bump version 6.6.0, full 62 files/610 tests pass 100%; Phase 1 DB taxonomy KHÔNG đưa lên main. Production đã có DB 15 rows + R2 ban-oval.png; Functions chưa deploy nên production chưa nhận tag ban_oval.",
+    "resumption_prompt": "Nếu cần Moris production nhận text 'bán oval', deploy Cloudflare Pages Functions từ main version 6.6.0. Không bật MORIS_HOLE_FORMAT_BOOST_ENABLED trước khi đo EVAL-01 trên ảnh thật. Phase 1 DB taxonomy không thuộc phạm vi main release này.",
     "tech_debt_register": "docs/moris-v6/TECH_DEBT_REGISTER.md"
   },
   "tasks": [
@@ -570,11 +570,29 @@
       "production_writes": 0,
       "deployed": false,
       "commit_created": true
+    },
+    {
+      "id": "task_38_hole_sample_ban_oval",
+      "title": "Bổ sung ảnh 'Lỗ bán oval' vào hệ thống Mẫu lỗ phổ biến + từ điển tham chiếu định dạng lỗ của Moris (boost-only, giữ flag OFF)",
+      "status": "applied_production_shipped_main",
+      "completed_at": "2026-10-20T07:47:00Z",
+      "diagnostics": {
+        "owner_decisions": "Ảnh gốc Simple/lỗ bán oval.png: crop sát vùng lỗ + resize 600px; là định dạng riêng 'ban_oval', xếp sau Lỗ oval cong (sort_order 45). Phiên đầu chốt code+migration+test; sau đó chủ dự án yêu cầu push DB để đồng bộ frontend nên đã upload R2 + db push; KHÔNG deploy Functions.",
+        "image_processing": "decode PNG gốc 1448x1086 (652KB, viền đen ~200px) -> bbox chủ thể 1043x750 + pad 4% -> resize area-average 600x444 -> PNG RGBA 130KB, giữ style trắng-trên-nền-đen như 14 mẫu cũ.",
+        "architecture_check": "moris_hole_samples đã có schema/RLS từ 20261019180000; chỉ thêm 1 dòng idempotent, không đổi schema/policy. UI hiện có tự đọc bảng nên không cần sửa index.html/app.js. Camera classifier không có bin bán oval nên chỉ tham chiếu qua text/query tag; không bịa classifier mới."
+      },
+      "solution": "1) Ảnh: tools/png-decode.mjs + script crop/resize one-off, ghi đè Simple/lỗ bán oval.png (bản gốc lưu /tmp/opencode/ban-oval-original.png). 2) Migration mới supabase/migrations/20261020072401_hole_sample_ban_oval.sql: insert ('ban-oval','Lỗ bán oval','ban_oval','hole-samples/ban-oval.png',45) on conflict update, không đổi RLS. 3) functions/_lib/moris/v5/retrieval/holeFormatReference.js: HOLE_FORMAT_TAGS + HOLE_FORMAT_NAMES thêm ban_oval; FORMAT_PATTERNS thêm /\\b(?:ban|semi|half)[\\s-]+oval\\b/ trước oval_cong/oval; 'Lỗ bán oval' suy ra ['ban_oval','oval'] nhất quán oval_cong. 4) tools/audit-moris-hole-samples.mjs: EXPECTED thêm mẫu lỗ bán oval (không bin hình học). 5) Tests: cập nhật moris-hole-format-reference (11 tag + suy từ text), moris-hole-samples (Simple 15 ảnh/11 định dạng + contract migration mới sort 45).",
+      "evidence": "Audit tools/audit-moris-hole-samples.mjs: 15/15 text PASS; geometry_bins 0/9 (giữ nguyên lý do ảnh mẫu là crop miệng lỗ, không phải linh kiện chứa lỗ). Focused 5 files 57/57 pass. Full npm test 62 files/610 tests pass 100%. npx tsc --noEmit exit 0. npm run build 47 files exit 0. Production 2026-10-20: db push áp 20261020072401 (chỉ migration này; 3 migration Moris V6 vẫn pending cố ý); probe service_role 15 rows đúng sort_order, ban-oval=45; anon 0 rows (RLS giữ nguyên). R2 PUT catalogue-images/hole-samples/ban-oval.png HTTP 200, size 130305, content-type image/png, cache-control immutable; list + public URL HEAD 200.",
+      "production_writes": "1 migration áp production (20261020072401 — thêm dòng ban-oval, không đổi schema/RLS); 1 object R2 hole-samples/ban-oval.png (130305 bytes); không sửa dữ liệu catalogue; chưa deploy Functions.",
+      "deployed": false,
+      "commit_created": true,
+      "pending": "Deploy Cloudflare Pages Functions để production nhận tag ban_oval trong holeFormatReference; flag MORIS_HOLE_FORMAT_BOOST_ENABLED vẫn OFF chờ đo ảnh thật (EVAL-01).",
+      "production_evidence": "2026-10-20: supabase migration list remote có 20261020072401; PostgREST service_role 15 rows, anon [] ; R2 list + public URL 200."
     }
   ],
   "verification": {
-    "total_unit_tests": 608,
-    "passing_tests": 608,
+    "total_unit_tests": 610,
+    "passing_tests": 610,
     "failing_tests": 0,
     "typescript_exit_code": 0,
     "build_exit_code": 0,
@@ -582,9 +600,9 @@
     "build_files": 47,
     "local_e2e_passed": 12,
     "staging": "skipped_by_owner",
-    "evidence": "npm test 2026-10-19 sau Gate D + tracking box (55 files/525 tests pass 100%); tsc --noEmit exit 0; npm run build 46 files exit 0; chi tiết: task_30_gate_d_size_editor_and_tracking_box, task_29_test_backlog_t2_t7_profile01_r2_02, task_28_m28_hardening_tests_and_push Phiên 2026-10-19 (push DB): 4 migration áp production + 5 repair history + version 6.2.0; probe production OK (xem task_31_gate_d_applied_production). Phiên tracking upgrade 2026-10-19: component merge + 600ms + 60fps overlay + viền 1.5px; full 55 files/530 pass (xem task_32_tracking_upgrade_merge_600ms_60fps). Phiên S1.1 2026-10-19: full 55 files/537 pass; migration 20261019120000 đã push + commit 75bc8ec. Phiên mẫu lỗ 2026-10-19: full 59 files/569 pass; migration 20261019180000 + 14 ảnh R2; commit 4e13b02 + e63e99a. Phiên UI #7–#9 2026-10-19: full 59 files/575 pass. Phiên khôi phục ses_eae5 (PROFILE-01, EVAL-01, Simple audit, xóa image 2/): full 60 files/578 pass 100%; version 6.5.0 (xem task_36). Phiên confusing_pairs @mention: full 62 files/608 tests pass 100%; build 47 files (xem task_37).",
-    "app_version": "6.5.0",
-    "production_migrations_applied": 6,
+    "evidence": "npm test 2026-10-19 sau Gate D + tracking box (55 files/525 tests pass 100%); tsc --noEmit exit 0; npm run build 46 files exit 0; chi tiết: task_30_gate_d_size_editor_and_tracking_box, task_29_test_backlog_t2_t7_profile01_r2_02, task_28_m28_hardening_tests_and_push Phiên 2026-10-19 (push DB): 4 migration áp production + 5 repair history + version 6.2.0; probe production OK (xem task_31_gate_d_applied_production). Phiên tracking upgrade 2026-10-19: component merge + 600ms + 60fps overlay + viền 1.5px; full 55 files/530 pass (xem task_32_tracking_upgrade_merge_600ms_60fps). Phiên S1.1 2026-10-19: full 55 files/537 pass; migration 20261019120000 đã push + commit 75bc8ec. Phiên mẫu lỗ 2026-10-19: full 59 files/569 pass; migration 20261019180000 + 14 ảnh R2; commit 4e13b02 + e63e99a. Phiên UI #7–#9 2026-10-19: full 59 files/575 pass. Phiên khôi phục ses_eae5 (PROFILE-01, EVAL-01, Simple audit, xóa image 2/): full 60 files/578 pass 100%; version 6.5.0 (xem task_36). Phiên confusing_pairs @mention: full 62 files/608 tests pass 100%; build 47 files (xem task_37). Phiên bổ sung mẫu lỗ bán oval 2026-10-20: full 62 files/610 tests pass 100%; tsc 0; build 47 files; audit text 15/15 (xem task_38). Phiên đồng bộ mẫu lỗ bán oval 2026-10-20: db push 20261020072401 + R2 hole-samples/ban-oval.png; probe production service_role 15 rows/anon 0; full 62 files/610 tests pass; tsc 0; build 47 files (xem task_38). Phiên main release 2026-10-20: chỉ đưa ban_oval lên main, bỏ Phase 1 DB taxonomy; version 6.6.0; full 62 files/610 tests pass.",
+    "app_version": "6.6.0",
+    "production_migrations_applied": 7,
     "migration_history_repaired": 5,
     "production_migrations_pending_by_design": [
       "20261016024931",
@@ -1077,6 +1095,18 @@
       "production_writes": 0,
       "deployed": false,
       "commit_created": false
+    },
+    "hole_samples_ban_oval_2026_10_20": {
+      "decision": "Thêm 'Lỗ bán oval' là định dạng riêng ban_oval, xếp sau oval cong (sort_order 45); tham chiếu mềm boost-only như 10 định dạng trước, flag vẫn OFF.",
+      "asset": "Simple/lỗ bán oval.png -> crop bbox + pad 4% + resize 600x444 (130KB); R2 catalogue-images/hole-samples/ban-oval.png đã upload 2026-10-20, public 200.",
+      "db_migration": "supabase/migrations/20261020072401_hole_sample_ban_oval.sql — 1 dòng idempotent, không đổi schema/RLS; applied_production_2026-10-20.",
+      "dictionary": "holeFormatReference.js: 11 tag, FORMAT_PATTERNS nhận 'bán oval'/'semi oval'/'half oval'; text suy ra ['ban_oval','oval'].",
+      "evidence": "audit text 15/15 PASS; full npm test 62 files/610 pass; tsc 0; build 47 files; version 6.6.0; production probe 15 rows (ban-oval 45), anon 0; R2 object 130305 bytes public 200.",
+      "main_release": "Chỉ ban_oval lên main (ảnh + migration + từ điển + test/audit); Phase 1 DB taxonomy không đưa lên main.",
+      "pending": [
+        "deploy Cloudflare Pages Functions để production nhận ban_oval",
+        "đo ảnh thật trước khi bật MORIS_HOLE_FORMAT_BOOST_ENABLED"
+      ]
     }
   },
   "resource_control": {

@@ -6,15 +6,15 @@
  * `identifying_features` của ứng viên. CHỈ CỘNG (boost), KHÔNG BAO GIỜ PHẠT hay loại trừ —
  * "không quá khắc khe, chỉ tham khảo" (chủ dự án chốt).
  *
- * Nguồn nhãn: bảng moris_hole_samples (14 ảnh mẫu R2 hole-samples/, 10 định dạng).
+ * Nguồn nhãn: bảng moris_hole_samples (15 ảnh mẫu R2 hole-samples/, 11 định dạng).
  * Mọi thay đổi hành vi xếp hạng phải nằm sau feature flag `holeFormatBoost` (mặc định OFF)
  * và có đo lường trên dữ liệu thật trước khi bật (hiến pháp AGENTS.md).
  */
 import { cleanFeatureText, removeVietnameseAccents } from "./featureMatcher.js";
 
-/** 10 định dạng lỗ có mẫu tham chiếu (khớp format_tag trong moris_hole_samples). */
+/** 11 định dạng lỗ có mẫu tham chiếu (khớp format_tag trong moris_hole_samples). */
 export const HOLE_FORMAT_TAGS = Object.freeze([
-  "tron", "vuong", "oval", "oval_cong", "dai",
+  "tron", "vuong", "oval", "oval_cong", "ban_oval", "dai",
   "chu_nhat", "chu_l", "tam_giac", "rang_cua", "gai_moc"
 ]);
 
@@ -24,6 +24,7 @@ export const HOLE_FORMAT_NAMES = Object.freeze({
   vuong: "Lỗ vuông",
   oval: "Lỗ oval",
   oval_cong: "Lỗ oval cong",
+  ban_oval: "Lỗ bán oval",
   dai: "Lỗ dài",
   chu_nhat: "Lỗ chữ nhật",
   chu_l: "Lỗ chữ L",
@@ -39,6 +40,7 @@ export const HOLE_FORMAT_NAMES = Object.freeze({
  * mô tả kích thước ("thân dài 20mm", "rãnh dầu"...).
  */
 const FORMAT_PATTERNS = [
+  { tag: "ban_oval", match: /\b(?:ban|semi|half)[\s-]+oval\b/ },
   { tag: "oval_cong", match: /\boval\s+cong\b/ },
   { tag: "chu_nhat", match: /\b(?:chu nhat|rectangle)\b/ },
   { tag: "chu_l", match: /\bchu\s+l\b/ },

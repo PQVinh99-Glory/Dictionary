@@ -1,15 +1,16 @@
 # Moris V6 — Technical Debt Register (Sổ nợ kỹ thuật)
 
-Cập nhật: 2026-10-19 (phiên **Mẫu lỗ phổ biến + Moris Phase 1 tham chiếu định dạng** — 14 ảnh R2 + bảng `moris_hole_samples` + menu full-screen, boost-only flag OFF; trước đó: Gate D **applied production** + S1.1 width nullable + commit/push `75bc8ec`/`cc004b8`). Mục đích: điểm vào nhanh cho **agent phiên kế tiếp** —
+Cập nhật: 2026-10-20 (thêm mẫu **Lỗ bán oval** `ban_oval` — 15 ảnh/11 định dạng; migration `20261020072401` **đã áp production**, R2 `hole-samples/ban-oval.png` **đã upload**; code/test đã lên main, **Functions chưa deploy**; Phase 1 DB taxonomy giữ local, không đưa lên main. Trước đó 2026-10-19: **Mẫu lỗ phổ biến + Moris Phase 1 tham chiếu định dạng** — 14 ảnh R2 + bảng `moris_hole_samples` + menu full-screen, boost-only flag OFF; Gate D **applied production** + S1.1 width nullable + commit/push `75bc8ec`/`cc004b8`). Mục đích: điểm vào nhanh cho **agent phiên kế tiếp** —
 liệt kê toàn bộ nợ kỹ thuật đang mở, kèm bằng chứng `file:line`/log, blocker, hành động kế tiếp và **test cần viết**.
 Tài liệu này bổ sung cho `docs/moris-v6/TECH_DEBT_ROADMAP.md` (thứ tự gate M06–M26) và `state.json` (`tasks[]`, `moris_v6`).
 
-**Trạng thái nền hiện tại (đã kiểm chứng 2026-10-19):**
+**Trạng thái nền hiện tại (đã kiểm chứng 2026-10-20):**
 
-- `npm test` → **59 files / 575 tests pass 100%**; `npx tsc --noEmit` exit 0; `npm run build` **46 files** exit 0 (đã loại `.ts` khỏi dist — BUILD-01). Version app **6.5.0** (chưa deploy).
+- `npm test` → **62 files / 610 tests pass 100%**; `npx tsc --noEmit` exit 0; `npm run build` **47 files** exit 0 (đã loại `.ts` khỏi dist — BUILD-01). Version app **6.6.0** (chưa deploy).
 - Migration `20261019120000_size_contract_s11_optional_width.sql` (S1.1 width nullable) + `20261019180000_catalogue_hole_samples.sql` (`moris_hole_samples` + seed 14) **đã áp production 2026-10-19** (ủy quyền `db push`); verify read-only: dims 200/400, samples 14 rows, anon `[]`.
 - M27 (subject lock + khung vuông tracking) + M28 (size contract/gate + Gate D migration/RPC + size editor) + M30 (B14/B15 + purge R2) đã xong **local**; đã commit (`7a67784` tracking, `75bc8ec` S1.1, `cc004b8` docs) + push 2 remote; **app chưa deploy**.
 - Mẫu lỗ phổ biến (2026-10-19): R2 `hole-samples/` 14 object + `moris_hole_samples` RLS read-only + menu full-screen — đã commit `4e13b02` + checkpoint `e63e99a`, push 2 remote; chưa deploy.
+- Mẫu lỗ bán oval (2026-10-20): thêm định dạng `ban_oval` + ảnh `Simple/lỗ bán oval.png` crop 600×444; migration `20261020072401_hole_sample_ban_oval.sql` (sort_order 45) **đã áp production**; R2 `hole-samples/ban-oval.png` (130.305 bytes) **đã upload**; code/test 62 files/610 pass; **Functions chưa deploy** — xem `state.json` task_38.
 - Cải tiến UI #7–#9 (2026-10-19, yêu cầu chủ dự án): nhảy nhanh số trang catalogue + sửa text modal camera + fix ô size camera + tag đỏ nhắc nhập size — **verified local (59/575, version 6.5.0), chưa commit, chưa deploy** (chờ chủ dự án test production #6).
 - R2 purge đã thực thi theo phê duyệt: **376/376 object (11.14MB)**; monitor read-only 2026-10-19 xác nhận bucket còn **1170 objects/32.22MB**; orphan còn **77 (chỉ `parts/`)**; missing 0.
 - Gate D (M28) **ĐÃ ÁP PRODUCTION 2026-10-19** (chủ dự án ủy quyền agent chạy `npx supabase db push` sau review SQL): `20261019090000_catalogue_part_dimensions_gate_d.sql` (bảng + RPC `app_upsert_part_dimensions`/`app_get_part_dimensions` + trigger dọn dims) + proposal `20261017090000` + cascade delete `2026101200020000` + reset flag `2026101000040000` đã lên DB; verify read-only: bảng `catalogue_part_dimensions` 200, 2 RPC tồn tại (token sai → UNAUTHORIZED). **App/frontend vẫn chưa deploy**; version app hiện hành **6.5.0** (chờ deploy).

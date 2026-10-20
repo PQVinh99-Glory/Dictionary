@@ -107,16 +107,41 @@ describe('Migration + R2 contract — từ điển mẫu lỗ', () => {
     expect(sorts[sorts.length - 1]).toBe(100);
   });
 
-  it('thư mục Simple/ đủ 14 ảnh nguồn (10 định dạng sau khi gom biến thể)', () => {
+  it('thư mục Simple/ đủ 15 ảnh nguồn (11 định dạng sau khi gom biến thể)', () => {
     const dir = join(ROOT, 'Simple');
     expect(existsSync(dir)).toBe(true);
     const { readdirSync } = require('node:fs');
     const pngs = readdirSync(dir).filter((f) => /\.png$/i.test(f));
-    expect(pngs.length).toBe(14);
+    expect(pngs.length).toBe(15);
     const bases = new Set(pngs.map((f) => f.replace(/\.png$/i, '').replace(/\s*\(\d+\)$/, '').toLowerCase()));
-    expect(bases.size).toBe(10);
-    for (const name of ['lỗ tròn', 'lỗ vuông', 'lỗ oval', 'lỗ oval cong', 'lỗ dài', 'lỗ chữ nhật', 'lỗ chữ l', 'lỗ tam giác', 'lỗ răng cưa', 'lỗ gài móc']) {
+    expect(bases.size).toBe(11);
+    for (const name of ['lỗ tròn', 'lỗ vuông', 'lỗ oval', 'lỗ oval cong', 'lỗ bán oval', 'lỗ dài', 'lỗ chữ nhật', 'lỗ chữ l', 'lỗ tam giác', 'lỗ răng cưa', 'lỗ gài móc']) {
       expect(bases.has(name)).toBe(true);
     }
+  });
+});
+
+describe('Migration bổ sung — Lỗ bán oval (chủ dự án chốt 2026-10-20)', () => {
+  const migrationPath = 'supabase/migrations/20261020072401_hole_sample_ban_oval.sql';
+
+  it('thêm đúng 1 mẫu ban_oval idempotent, không đổi schema/RLS', () => {
+    expect(existsSync(join(ROOT, migrationPath))).toBe(true);
+    const sql = read(migrationPath);
+
+    expect(sql).toContain("('ban-oval', 'Lỗ bán oval', 'ban_oval', 'hole-samples/ban-oval.png', 45)");
+    expect(sql).toContain('on conflict (slug) do update set');
+    expect(sql).not.toContain('create policy');
+    expect(sql).not.toContain('enable row level security');
+
+    const seeds = sql.match(/\('(?:[a-z0-9-]+)',\s+'[^']+',\s+'[a-z_]+',\s+'hole-samples\/[a-z0-9-]+\.png',\s+\d+\)/g) || [];
+    expect(seeds.length).toBe(1);
+  });
+
+  it('sort_order 45 nằm giữa oval cong (40) và dài (51)', () => {
+    const sql = read(migrationPath);
+    expect(sql).toMatch(/'ban_oval'[\s\S]*45/);
+    const base = read('supabase/migrations/20261019180000_catalogue_hole_samples.sql');
+    expect(base).toMatch(/\('oval-cong',\s+'Lỗ oval cong',\s+'oval_cong',\s+'hole-samples\/oval-cong\.png',\s+40\)/);
+    expect(base).toMatch(/\('dai',\s+'Lỗ dài',\s+'dai',\s+'hole-samples\/dai\.png',\s+51\)/);
   });
 });

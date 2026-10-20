@@ -26,33 +26,33 @@ describe('PWA & Versioning — Đặc tả và cấu hình', () => {
     }
   });
 
-  it('src/version.js — phiên bản hiện tại là 6.5.0 và tuân thủ quy tắc tăng phiên bản', async () => {
+  it('src/version.js — phiên bản hiện tại là 6.6.0 và tuân thủ quy tắc tăng phiên bản', async () => {
     const versionMod = await import('../src/version.js');
-    expect(versionMod.APP_VERSION).toBe('6.5.0');
+    expect(versionMod.APP_VERSION).toBe('6.6.0');
 
     // Quy tắc người dùng yêu cầu:
     // 1) Sửa lỗi nhỏ không thêm tính năng: tăng số cuối 0.0.1
-    expect(versionMod.bumpPatch('6.5.0')).toBe('6.5.1');
+    expect(versionMod.bumpPatch('6.6.0')).toBe('6.6.1');
     expect(versionMod.bumpPatch('6.1.9')).toBe('6.1.10');
 
     // 2) Thêm tính năng mới vẫn tương thích bản cũ: sửa số giữa 0.1.0
-    expect(versionMod.bumpMinor('6.5.0')).toBe('6.6.0');
+    expect(versionMod.bumpMinor('6.6.0')).toBe('6.7.0');
 
     // 3) Thay đổi lớn có thể không tương thích: thay đổi số đầu 1.0.0
-    expect(versionMod.bumpMajor('6.5.0')).toBe('7.0.0');
+    expect(versionMod.bumpMajor('6.6.0')).toBe('7.0.0');
 
     // So sánh phiên bản
-    expect(versionMod.compareVersions('6.5.1', '6.5.0')).toBeGreaterThan(0);
-    expect(versionMod.compareVersions('6.5.0', '6.3.5')).toBeGreaterThan(0);
-    expect(versionMod.compareVersions('6.5.0', '6.5.0')).toBe(0);
+    expect(versionMod.compareVersions('6.6.1', '6.6.0')).toBeGreaterThan(0);
+    expect(versionMod.compareVersions('6.6.0', '6.3.5')).toBeGreaterThan(0);
+    expect(versionMod.compareVersions('6.6.0', '6.6.0')).toBe(0);
   });
 
-  it('version.json tại root và dist khớp với phiên bản 6.5.0', () => {
+  it('version.json tại root và dist khớp với phiên bản 6.6.0', () => {
     const rootVer = JSON.parse(read('version.json'));
-    expect(rootVer.version).toBe('6.5.0');
+    expect(rootVer.version).toBe('6.6.0');
     if (existsSync(join(ROOT, 'dist/version.json'))) {
       const distVer = JSON.parse(read('dist/version.json'));
-      expect(distVer.version).toBe('6.5.0');
+      expect(distVer.version).toBe('6.6.0');
       expect(distVer.name).toBe('Catalogue');
     }
   });

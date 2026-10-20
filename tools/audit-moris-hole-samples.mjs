@@ -13,6 +13,7 @@ const dir = resolve(import.meta.dirname, '..', 'Simple');
 const EXPECTED = [
   [/^lỗ tròn/i, 'tron', 'circle'],
   [/^lỗ vuông/i, 'vuong', 'square'],
+  [/^lỗ bán oval/i, 'ban_oval', null],
   [/^lỗ oval cong/i, 'oval_cong', 'oval'],
   [/^lỗ oval/i, 'oval', 'oval'],
   [/^lỗ dài/i, 'dai', 'slot'],

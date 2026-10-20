@@ -12,9 +12,9 @@ import { readMorisConfig } from '../functions/_lib/moris/v5/runtime/config.js';
 import { buildMorisUserMessage, MORIS_PUBLIC_MESSAGES } from '../functions/_lib/moris/v5/presentation/userMessage.js';
 
 describe('holeFormatReference — từ điển mẫu lỗ (chủ dự án chốt 2026-10-19)', () => {
-  it('10 định dạng khớp format_tag trong moris_hole_samples + tên hiển thị tiếng Việt', () => {
+  it('11 định dạng khớp format_tag trong moris_hole_samples + tên hiển thị tiếng Việt', () => {
     expect(HOLE_FORMAT_TAGS).toEqual([
-      'tron', 'vuong', 'oval', 'oval_cong', 'dai',
+      'tron', 'vuong', 'oval', 'oval_cong', 'ban_oval', 'dai',
       'chu_nhat', 'chu_l', 'tam_giac', 'rang_cua', 'gai_moc'
     ]);
     for (const tag of HOLE_FORMAT_TAGS) {
@@ -27,6 +27,8 @@ describe('holeFormatReference — từ điển mẫu lỗ (chủ dự án chốt
     expect(inferFormatTagsFromText('1 lỗ dài')).toEqual(['dai']);
     expect(inferFormatTagsFromText('2 lỗ dài (1)')).toEqual(['dai']);
     expect(inferFormatTagsFromText('Lỗ oval cong')).toEqual(['oval_cong', 'oval']);
+    expect(inferFormatTagsFromText('Lỗ bán oval')).toEqual(['ban_oval', 'oval']);
+    expect(inferFormatTagsFromText('2 lỗ bán-oval')).toEqual(['ban_oval', 'oval']);
     expect(inferFormatTagsFromText('2 lỗ chữ nhật')).toEqual(['chu_nhat']);
     expect(inferFormatTagsFromText('1 lỗ chữ L')).toEqual(['chu_l']);
     expect(inferFormatTagsFromText('3 lỗ tam giác')).toEqual(['tam_giac']);
