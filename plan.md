@@ -434,6 +434,8 @@ Before continuing, read [docs/moris-v6/HANDOFF.md](docs/moris-v6/HANDOFF.md). It
 
 ### Triển khai pipeline — checkpoint cục bộ 2026-10-21
 
+- [x] UI Moris: thay biểu tượng não ở header chat box bằng avatar người dùng cung cấp; ảnh nguồn được lưu trong `assets/` và được build sang `dist/`. Browser render 44×44 trên viewport dọc/ngang; 69 file/665 test pass. Nghiệm thu trực quan trên thiết bị thật chờ owner.
+
 - [x] P00 hoàn tất contract/schema: owner bỏ gate 122 mã đã xóa và queue57 lịch sử; snapshot production SELECT 2026-10-21 02:50:18 UTC: 545 mã, 6 có length, 0 width, hybrid active 1103 vector/544 record, CLS active 1069/534. Manifest camera có validator/hash ảnh+mask; ảnh và thiết bị thật chờ owner nghiệm thu production. 64 file/622 test pass, tsc0, build47; không ghi DB/deploy.
 - [x] P01 phần diagnostics: debug admin ghi RPC thực gọi/ok/error, giữ profile khi fallback; audit exact object-key hybrid 544/545 front/thumb, 5/5 back, 10/10 detail (2026-10-21 02:53:12 UTC). P01 chưa hoàn tất vì thiếu freshness byte/ETag, raw camera replay và trace frontend đầy đủ; full 64 file/622 test pass, tsc0, build47.
 - [ ] P01 baseline production đang biến động: SELECT 02:56:01 UTC chỉ còn 44 hybrid active/19 record, 0 CLS (so với 1103 hybrid +1069 CLS lúc 02:50). Chờ owner xác nhận rebuild/ổn định rồi đo lại; không dùng snapshot trước làm accuracy baseline.

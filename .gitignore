@@ -29,6 +29,7 @@ assets/*
 !assets/icon-512.png
 !assets/icon-512-maskable.png
 !assets/apple-touch-icon.png
+!assets/Moris_avatar.png
 
 # Dependencies (cài lại bằng `npm install`)
 node_modules/

@@ -2,14 +2,14 @@
   "system": {
     "project": "Catalogue AI (Dictionary)",
     "stack": "Vue 3 CDN + Cloudflare Pages Functions + Supabase (pgvector) + Cloudflare R2",
-    "updated_at": "2026-10-21T06:44:47Z",
+    "updated_at": "2026-10-21T06:56:40Z",
     "memory_version": "2.9.0",
     "status": "in_progress"
   },
   "current_session": {
-    "active_task": "p02_camera_landscape_layout_orientation_fix_owner_acceptance_pending",
-    "last_checkpoint": "2026-10-21 06:44 UTC camera landscape fix: Redmi K70E symptom reproduced with Chromium mobile viewport 844x390 (capture at y702 before fix). New two-column layout keeps preview and capture simultaneously visible at 640x320–900x393; Android stale orientation API handled by visible landscape viewport while keyboard focus retains physical orientation. Build, tsc, full test suite 69 files/665 tests, and browser viewport render pass; capture enabled in browser fixture when lock ready. Owner acceptance on actual Redmi K70E and iPhone Safari pending; no claim of physical-device pass.",
-    "resumption_prompt": "P02 camera landscape layout and orientation regression fixed in code; owner still needs physical Redmi K70E and iPhone Safari acceptance. Full suite 665/665 local tests pass and Chromium viewport render checked. Continue P13 accuracy and P10 owner tests separately; do not rerun owner-completed 236-vector batch. Book-slide intermittent issue deferred by owner.",
+    "active_task": "moris_header_avatar_replaced_owner_visual_acceptance_pending",
+    "last_checkpoint": "2026-10-21 06:56 UTC replaced Moris chat header brain icon with owner-provided transparent Moris_avatar.png; source asset in assets/ and build output in dist/assets/. Bumped PWA version 6.6.3. Browser rendered image at 44x44 on portrait 393x852 and landscape 844x390 with natural 1566x2000 and object-fit cover. Build 48 files and full 69 file/665 test suite pass. Device visual acceptance pending owner.",
+    "resumption_prompt": "Moris chat header avatar updated and tests passed. Owner should visually confirm on actual device after production deploy. P02 Redmi K70E/iPhone Safari camera acceptance still pending. Do not rerun owner-completed 236-vector batch; book-slide issue deferred pending repro.",
     "tech_debt_register": "docs/moris-v6/TECH_DEBT_REGISTER.md",
     "plan_file": "Plan_pipeline_moris.md",
     "release_audit": "docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md"
