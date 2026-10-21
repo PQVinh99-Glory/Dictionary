@@ -2,14 +2,14 @@
   "system": {
     "project": "Catalogue AI (Dictionary)",
     "stack": "Vue 3 CDN + Cloudflare Pages Functions + Supabase (pgvector) + Cloudflare R2",
-    "updated_at": "2026-10-21T06:18:36Z",
+    "updated_at": "2026-10-21T06:29:08Z",
     "memory_version": "2.9.0",
     "status": "in_progress"
   },
   "current_session": {
-    "active_task": "p13_owner_pilot_verified_center_filter_harness_labels",
-    "last_checkpoint": "2026-10-21 owner Vector Center pilot completed for five views: production read-only measured 3445170001 2/2, 3433410101 5/5, 3430590001 thumb 2, provenance+ETag present; active rows 1110 unchanged, exact legacy zero remaining 231 across 149 SKUs. These are algorithm outputs, not ground truth. Owner removed full manual-label gate; individual errors will be debugged when observed. Fixed Center search race and progressive/concurrent page loading, batch gated on full list; Moris labels changed to Harness. Book-slide failure not reproduced locally; owner will provide details later, no speculative fix. No production vector writes by agent.",
-    "resumption_prompt": "Read AGENTS.md, Plan_pipeline_moris.md, owner acceptance doc. Pilot was performed by owner; 231 exact legacy-zero views remain. Owner does not want to manually label all catalogue images. Confirm production deployment of Center filter/Harness labels before owner continues batch. Investigate specific hole-count errors only when observed. Book-slide intermittent failure postponed at owner request pending precise repro; do not pursue speculatively.",
+    "active_task": "p13_legacy_zero_batch_completed_accuracy_pending",
+    "last_checkpoint": "2026-10-21 06:28 UTC owner reported Center batch 231 written/0 skipped/0 errors. Production read-only: all 236 original zero assets matched by exact record/type/key now have geometry_v1 optical provenance, reliable quality, source ETag, valid hole_count/aspect_ratio/centroids; stored count/ratio/centroid length match local replay 236/236. Zero legacy 0/1/[] rows remain, active index stable 1110 rows/546 SKUs, duplicate active keys 0. 874 other positive pre-V6 vectors lack provenance/ETag. No claim of image-level accuracy; 33 raw/canonical disagreements remain targeted analysis. No agent production vector writes.",
+    "resumption_prompt": "Read AGENTS.md, Plan_pipeline_moris.md and owner acceptance. P13 legacy-zero repair batch is DONE by owner and independently verified read-only (236/236 repaired, 1110 active stable); do not rerun it. Accuracy on real labeled images, 33 raw/canonical disagreements, camera/ranking acceptance, and 874 old positive vectors without provenance remain distinct work. Intermittent book-slide issue deferred at owner request pending repro; do not fix speculatively.",
     "tech_debt_register": "docs/moris-v6/TECH_DEBT_REGISTER.md",
     "plan_file": "Plan_pipeline_moris.md",
     "release_audit": "docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md"
@@ -823,6 +823,19 @@
       "evidence": "Production read-only 1110 active, 231 exact legacy zero, 5 provenance; Chromium fixture search/clear/80-row load and create/edit save book-menu smoke; npm test 69 files/663 pass; tsc 0; build 47 files; git diff --check 0",
       "production_vector_writes_by_agent": 0,
       "deferred": "Book-slide intermittent issue not reproducible; owner to supply precise case; no speculative code changes"
+    },
+    {
+      "id": "p13_owner_legacy_zero_batch_verified_2026_10_21",
+      "title": "Xác minh batch sửa 231 vector zero cũ sau owner thực hiện",
+      "status": "completed_read_only_verified_accuracy_pending",
+      "completed_at": "2026-10-21T06:29:08Z",
+      "evidence": "Owner UI: 231 written/0 skipped/0 errors. Production REST read-only: 236/236 original zero assets active with geometry_v1/provenance/ETag/reliable quality and valid count/ratio/centroids, 236/236 count/ratio/centroid length match local replay; legacy zero 0, active rows 1110/546 SKUs, duplicate active keys 0. Local npm test 69 files/663 pass; tsc 0; git diff --check 0.",
+      "production_vector_writes_by_agent": 0,
+      "remaining": [
+        "33 raw/canonical disagreements require targeted accuracy study if observed",
+        "874 other positive legacy vectors lack provenance/ETag",
+        "real camera and ranking owner acceptance pending"
+      ]
     }
   ],
   "verification": {
