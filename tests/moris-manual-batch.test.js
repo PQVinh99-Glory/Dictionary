@@ -1,5 +1,5 @@
 import {describe,it,expect,vi} from 'vitest';
-import {selectAssets,previewBatch,createPauseControl,runManualBatch} from '../src/moris/vector/manualBatch.js';
+import {selectAssets,onlyLegacyZeroAssets,previewBatch,createPauseControl,runManualBatch} from '../src/moris/vector/manualBatch.js';
 const item={id:'a',code:'A',assets:['missing','stale','ready','failed'].map((vector_status,i)=>({image_path:i+'.png',vector_status}))};
 const jobs=n=>Array.from({length:n},(_,i)=>({item:{id:String(i),code:String(i)},asset:{image_path:i+'.png'}}));
 describe('manual preview/batch control',()=>{
@@ -7,6 +7,14 @@ describe('manual preview/batch control',()=>{
   expect(selectAssets(item,'skip').map(r=>r.vector_status)).toEqual(['missing']);
   expect(selectAssets(item,'stale').map(r=>r.vector_status)).toEqual(['stale']);
   expect(previewBatch([item],'replace')).toMatchObject({assets:4,skus:1,missing:1,new_rows_min:1,new_rows_max:4});
+ });
+ it('selects only legacy zero assets for a controlled repair batch',()=>{
+  const mixed=[{id:'a',assets:[{image_path:'front.webp',legacy_hole_zero:true},
+   {image_path:'thumb.webp',legacy_hole_zero:false}]},{id:'b',assets:[{image_path:'other.webp',legacy_hole_zero:true}]}];
+  const selected=onlyLegacyZeroAssets(mixed);
+  expect(previewBatch(selected,'replace')).toMatchObject({assets:2,skus:2});
+  expect(selected[0].assets.map(a=>a.image_path)).toEqual(['front.webp']);
+  expect(mixed[0].assets).toHaveLength(2);
  });
  it('0jobs does nothing and unconfirmed1job rejects before work',async()=>{
   const writeAsset=vi.fn();expect(await runManualBatch({jobs:[],confirmed:true,writeAsset})).toMatchObject({written:0,failed:0});

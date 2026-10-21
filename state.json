@@ -2,14 +2,14 @@
   "system": {
     "project": "Catalogue AI (Dictionary)",
     "stack": "Vue 3 CDN + Cloudflare Pages Functions + Supabase (pgvector) + Cloudflare R2",
-    "updated_at": "2026-10-21T05:17:00Z",
+    "updated_at": "2026-10-21T05:42:36Z",
     "memory_version": "2.9.0",
     "status": "in_progress"
   },
   "current_session": {
-    "active_task": "pipeline_production_owner_acceptance_pending",
-    "last_checkpoint": "2026-10-21 05:16 UTC: DB four migrations applied after backup/dry-run; post-check 1110 vectors/546 SKUs/236 legacy zero, provenance columns ready, anon writer/scoped denied, scoped 180mm RPC returns 3448000001 front/thumb. Commit 1c159a213db29bf92628ea2ad7ae71a451262011 pushed upstream/main PQVinh99-Glory/Dictionary. Cloudflare Pages production deployment f1476641-356f-4f50-aa7c-797efc0796ea success matching SHA; production scoped/keyed flags true. Local tests 69/659, tsc/build/diff pass. Owner camera/ranking GT and confirmed Vector Center replace of 236 legacy rows pending; no direct vector writes.",
-    "resumption_prompt": "Read AGENTS.md, Plan_pipeline_moris.md, docs/moris-v6/evidence/pipeline-owner-acceptance.md and P13 audit. DB migrations and main deploy are DONE; do not repeat. Production Pages SHA 1c159a2 successful. 236 legacy zero rows remain until owner-confirmed Vector Center replace; 33 raw/canonical disagreements need per-view GT. Ask owner for results/labels after they test Android/iPhone production; do not invent accuracy.",
+    "active_task": "p13_vector_center_legacy_zero_repair_release",
+    "last_checkpoint": "2026-10-21: Production read-only 1110 active vectors, 236 exact legacy zero, 0 geometry provenance. Added Vector Center repair_zero mode selecting only active exact 0/1/[] without geometry_evidence, avoiding general stale mode that would rebuild all pre-V6 assets. Full npm test 69 files/662 tests pass; tsc 0; build 47 files; no production vector writes. Owner pilot + image GT and 33 raw/canonical disagreements pending.",
+    "resumption_prompt": "Read AGENTS.md, Plan_pipeline_moris.md, docs/moris-v6/evidence/pipeline-owner-acceptance.md. Verify repair_zero deployment before directing owner to use it. Pilot selected assets in Vector Center, then obtain image-level closed-hole GT before broad batch. Do not direct-update vector data. Owner device/camera ranking acceptance remains pending.",
     "tech_debt_register": "docs/moris-v6/TECH_DEBT_REGISTER.md",
     "plan_file": "Plan_pipeline_moris.md",
     "release_audit": "docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md"
@@ -805,6 +805,15 @@
         "Owner per-view closed-hole labels for 33 raw/canonical disagreements and true-zero controls",
         "Owner Android Chrome/iPhone Safari camera, size, ranking, latency acceptance on production"
       ]
+    },
+    {
+      "id": "p13_vector_center_legacy_zero_repair_mode",
+      "title": "Chế độ Trung tâm Vector AI chỉ sửa vector lỗ 0 cũ",
+      "status": "completed_local_verified_owner_acceptance_pending",
+      "completed_at": "2026-10-21T05:42:36Z",
+      "evidence": "npm test 69 files/662 tests pass; tsc --noEmit exit 0; build 47 files; git diff --check exit 0",
+      "production_vector_writes": 0,
+      "owner_pending": "Pilot closed-hole count by view; review 33 raw/canonical disagreements before full batch; Android/iPhone camera and ranking acceptance"
     }
   ],
   "verification": {

@@ -1,4 +1,4 @@
-import { selectAssets, previewBatch, createPauseControl, runManualBatch } from "/src/moris/vector/manualBatch.js";
+import { selectAssets, onlyLegacyZeroAssets, previewBatch, createPauseControl, runManualBatch } from "/src/moris/vector/manualBatch.js";
 import {
   initDinov2,
   embedImageDinov2,
@@ -433,15 +433,19 @@ async function loadItems(query = "") {
 
 function writeMode() {
   const value=$("vectorWriteMode")?.value;
-  return ["replace","stale"].includes(value) ? value : "skip";
+  return value==="repair_zero" ? "replace" : ["replace","stale"].includes(value) ? value : "skip";
 }
 
-function selectedAssets(item, mode) { return selectAssets(item,mode); }
+function legacyZeroOnly(){return $("vectorWriteMode")?.value==="repair_zero";}
+function selectedAssets(item, mode) {
+  const selected=selectAssets(item,mode);
+  return legacyZeroOnly()?selected.filter(asset=>asset.legacy_hole_zero===true):selected;
+}
 function previewText(preview) {
   return `${preview.skus} mã, ${preview.assets} ảnh RGB; ${preview.missing} ảnh thiếu, tối đa ${preview.possibly_replaced} vector cần thay. Dự kiến thêm ${preview.new_rows_min}–${preview.new_rows_max} hàng vật lý tùy phiên bản hiện có. Không xóa lịch sử.`;
 }
 function showBatchPreview(){
- const preview=previewBatch(state.items,writeMode());
+ const preview=previewBatch(legacyZeroOnly()?onlyLegacyZeroAssets(state.items):state.items,writeMode());
  if($("batchPreview"))$("batchPreview").textContent=previewText(preview);
  return preview;
 }

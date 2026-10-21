@@ -1,5 +1,5 @@
 import {describe,it,expect,vi} from 'vitest';
-import { classifyAsset, summarizeAssets, geometryWarning, inspectVectorItems } from '../functions/_lib/moris/v5/vector/assetStatus.js';
+import { classifyAsset, summarizeAssets, geometryWarning, isLegacyZeroGeometry, inspectVectorItems } from '../functions/_lib/moris/v5/vector/assetStatus.js';
 const profile={model:'test',modelVersion:'1',preprocessVersion:'1',profile:'cls'};
 const asset={asset_type:'front',image_path:'a.webp'};
 const vector={asset_type:'front',object_key:'a.webp',is_active:true,view_variant:'canon_rgb_v2',embedding_model:'test',embedding_model_version:'1',preprocess_version:'1',embedding_profile:'cls',source_etag:'"v1"'};
@@ -17,7 +17,16 @@ describe('M05 asset freshness',()=>{
  it('warns that legacy zero/default geometry is ambiguous',()=>{
   const old={...vector,source_etag:null,hole_count:0,aspect_ratio:1,hole_centroids:[]};
   expect(classifyAsset(asset,[old],profile,options).geometry_warning).toBe('legacy_geometry_ambiguous');
+  expect(classifyAsset(asset,[old],profile,options).legacy_hole_zero).toBe(true);
   expect(geometryWarning(old)).toBe('legacy_geometry_ambiguous');
+  expect(isLegacyZeroGeometry({...old,hole_count:2})).toBe(false);
+  expect(isLegacyZeroGeometry({...old,geometry_evidence:{quality:{reliable:true}}})).toBe(false);
+ });
+ it('keeps the repair marker when an R2 HEAD was not attempted',()=>{
+  const old={...vector,source_etag:null,hole_count:0,aspect_ratio:1,hole_centroids:[]};
+  expect(classifyAsset(asset,[old],profile,{currentKeys:['a.webp']})).toMatchObject({
+   vector_status:'failed',legacy_hole_zero:true
+  });
  });
  it('accepts complete measured zero with provenance and empty centroids',()=>{
   expect(geometryWarning({...vector,hole_count:0,aspect_ratio:2,hole_centroids:[],geometry_evidence:{quality:{reliable:true}}})).toBeNull();

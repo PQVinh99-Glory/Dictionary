@@ -16,8 +16,14 @@ export function geometryWarning(vector) {
     ? 'legacy_geometry_ambiguous' : null;
 }
 
+export function isLegacyZeroGeometry(vector) {
+  return !!vector && !vector.geometry_evidence && vector.hole_count === 0 &&
+    vector.aspect_ratio === 1 && Array.isArray(vector.hole_centroids) &&
+    vector.hole_centroids.length === 0;
+}
+
 export function classifyAsset(asset, vectors, profile, { etag, failed = false, currentKeys = [] } = {}) {
-  if (failed || !etag) return { vector_status:'failed', vector_reason:'source_or_index_unavailable' };
+  if (failed) return { vector_status:'failed', vector_reason:'source_or_index_unavailable' };
   const key=String(asset.image_path || '').replace(/^\/+/, '');
   const sameType=vectors.filter(v=>v.asset_type===asset.asset_type && v.is_active);
   const source=sameType.filter(v=>v.object_key===key);
@@ -25,9 +31,12 @@ export function classifyAsset(asset, vectors, profile, { etag, failed = false, c
     v.embedding_model_version===profile.modelVersion && v.preprocess_version===profile.preprocessVersion && v.embedding_profile===profile.profile);
   if (exact) {
     const warning=geometryWarning(exact);
-    if (!exact.source_etag) return {vector_status:'stale',vector_reason:'source_version_unknown',geometry_warning:warning};
-    return exact.source_etag===etag ? {vector_status:'ready',vector_reason:'profile_and_source_match',geometry_warning:warning} : {vector_status:'stale',vector_reason:'source_changed',geometry_warning:warning};
+    const legacy_hole_zero=isLegacyZeroGeometry(exact);
+    if (!etag) return {vector_status:'failed',vector_reason:'source_or_index_unavailable',geometry_warning:warning,legacy_hole_zero};
+    if (!exact.source_etag) return {vector_status:'stale',vector_reason:'source_version_unknown',geometry_warning:warning,legacy_hole_zero};
+    return exact.source_etag===etag ? {vector_status:'ready',vector_reason:'profile_and_source_match',geometry_warning:warning,legacy_hole_zero} : {vector_status:'stale',vector_reason:'source_changed',geometry_warning:warning,legacy_hole_zero};
   }
+  if (!etag) return {vector_status:'failed',vector_reason:'source_or_index_unavailable'};
   if (source.length) return {vector_status:'stale',vector_reason:'profile_or_variant_changed'};
   if (sameType.some(v=>!currentKeys.includes(v.object_key))) return {vector_status:'stale',vector_reason:'source_key_changed'};
   return {vector_status:'missing',vector_reason:'no_vector'};

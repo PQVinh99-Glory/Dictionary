@@ -1,4 +1,4 @@
-import {selectAssets,previewBatch,createPauseControl,runManualBatch} from '../src/moris/vector/manualBatch.js';
+import {selectAssets,onlyLegacyZeroAssets,previewBatch,createPauseControl,runManualBatch} from '../src/moris/vector/manualBatch.js';
 import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
@@ -11,13 +11,13 @@ function center({ missingModal = false } = {}) {
   const get = id => { if (missingModal && id === 'confirmModal') return null; if (!elements.has(id)) elements.set(id, element()); return elements.get(id); };
   const fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true, items: [], status: {} })));
   const embed = vi.fn(async () => ({ probes: [{ view_variant: 'canon_rgb_v2', embedding: [1], profile: {} }] }));
-  const sandbox = { selectAssets,previewBatch,createPauseControl,runManualBatch, document: { getElementById: get, createElement: element }, window: { location: { search: '' } },
+  const sandbox = { selectAssets,onlyLegacyZeroAssets,previewBatch,createPauseControl,runManualBatch, document: { getElementById: get, createElement: element }, window: { location: { search: '' } },
     localStorage: { getItem: () => 'test.jwt.token' }, sessionStorage: { getItem: () => '' },
     location: { origin: 'http://localhost' }, URL, URLSearchParams, fetch, console, setTimeout: vi.fn(), clearTimeout() {},
     initDinov2: vi.fn(async () => ({})), embedImageDinov2: embed, embedImageDinov2Variants: embed,
     onDinov2Progress() {}, renderParts() {}, upsertVectorsChunked: args => upsertVectorsChunked({...args, fetchImpl:fetch}) };
   const source = readFileSync('tools/moris-vector-center.js','utf8').replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
-  vm.runInNewContext(source+'\nglobalThis.api = { state, vectorizeSingleItem, batchVectorizePending, showConfirm };', sandbox);
+  vm.runInNewContext(source+'\nglobalThis.api = { state, vectorizeSingleItem, batchVectorizePending, showBatchPreview, showConfirm };', sandbox);
   return { ...sandbox.api, get, embed, fetch };
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -41,6 +41,19 @@ describe('M03 explicit Center intent', () => {
   it('missing confirmation modal fails closed', async () => {
     const c=center({missingModal:true});
     expect(await c.showConfirm('title','body')).toBe(false);
+  });
+  it('repair-zero preview excludes healthy and unmeasured legacy assets before confirmation',async()=>{
+    const c=center();await tick();
+    c.get('vectorWriteMode').value='repair_zero';
+    c.state.items=[{id:'part',code:'ABC',assets:[
+      {asset_type:'front',image_path:'front.webp',legacy_hole_zero:true},
+      {asset_type:'thumb',image_path:'thumb.webp',legacy_hole_zero:false}
+    ]}];
+    expect(c.showBatchPreview()).toMatchObject({assets:1,skus:1});
+    const work=c.batchVectorizePending();
+    c.get('btnConfirmCancel').onclick();await work;
+    expect(c.embed).not.toHaveBeenCalled();
+    expect(c.fetch.mock.calls.some(([url])=>url.includes('upsert'))).toBe(false);
   });
   it('confirmed single selects only that item', async () => {
     const c=center(); await tick();

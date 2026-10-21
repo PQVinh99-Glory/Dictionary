@@ -1,6 +1,9 @@
 export function selectAssets(item,mode){
  return (item.assets||[]).filter(a=>a.image_path && (mode==='replace'||(mode==='stale'?a.vector_status==='stale':(a.vector_status?a.vector_status==='missing':!a.has_vector))));
 }
+export function onlyLegacyZeroAssets(items){
+ return (items||[]).map(item=>({...item,assets:(item.assets||[]).filter(asset=>asset.legacy_hole_zero===true)}));
+}
 export function previewBatch(items,mode){
  if(!['skip','stale','replace'].includes(mode))throw Error('Invalid batch mode');
  const jobs=items.flatMap(item=>selectAssets(item,mode).map(asset=>({item,asset})));
