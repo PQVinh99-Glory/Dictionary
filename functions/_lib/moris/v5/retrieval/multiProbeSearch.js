@@ -30,14 +30,14 @@ export function fuseProbeHits(perProbe,{topK=60,rrfK=20}={}) {
     .slice(0,Math.max(1,Math.min(100,topK)));
 }
 
-export async function searchMultiProbeVectorIndex(env,config,probes,{topK,rrfK=20}={}){
+export async function searchMultiProbeVectorIndex(env,config,probes,{topK,rrfK=20,onRpc}={}){
   const perProbe=[];
   const seen=new Set();
   for(const probe of (Array.isArray(probes)?probes:[]).slice(0,3)){
     const fingerprint=JSON.stringify(probe.vector);
     if(seen.has(fingerprint))continue;
     seen.add(fingerprint);
-    const hits=await searchVectorIndex(env,config,probe.vector,topK||config.vector.topK);
+    const hits=await searchVectorIndex(env,config,probe.vector,topK||config.vector.topK,{onRpc});
     perProbe.push({probe_id:probe.probe_id||`probe_${perProbe.length}`,hits});
   }
   return fuseProbeHits(perProbe,{topK:topK||config.vector.topK,rrfK});

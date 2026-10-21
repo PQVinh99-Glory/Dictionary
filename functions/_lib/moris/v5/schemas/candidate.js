@@ -21,6 +21,7 @@ export function publicCandidate(row) {
     query_quality:row?.query_quality || null,
     geometric_warning:row?.geometric_warning || null,
     view_evidence:row?.view_evidence || [],
+    retrieval_channels:row?.retrieval_channels || [],
     best_view_evidence:row?.best_view_evidence || null,
     score_source:row?.score_source || null,
     reason:row?.reason || null,
@@ -30,6 +31,7 @@ export function publicCandidate(row) {
     hole_count:row?.hole_count == null ? null : Number(row.hole_count),
     aspect_ratio:row?.aspect_ratio == null ? null : Number(row.aspect_ratio),
     size_status:row?.size_status || null,
-    size_evidence:row?.size_evidence || null
+    size_evidence:row?.size_evidence || null,
+    selection_group:row?.selection_group || null
   };
 }

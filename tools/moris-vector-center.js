@@ -322,7 +322,7 @@ function renderItemsSlice() {
 
     const labels = {ready:"Sẵn sàng",missing:"Chưa có vector",stale:"Cần cập nhật",partial:"Chưa đủ ảnh",failed:"Chưa xác minh được"};
     const statusBadge = `<span class="text-xs font-bold">${labels[item.vector_status] || "Chưa xác minh được"}</span>` +
-      (item.assets || []).map(a => `<div class="text-[10px]">${escapeHtml(a.asset_type)}: ${labels[a.vector_status] || "Chưa xác minh được"} <button class="btn-vectorize-asset underline" data-id="${escapeHtml(item.id)}" data-key="${escapeHtml(a.image_path)}" data-type="${escapeHtml(a.asset_type)}">Xử lý ảnh này</button></div>`).join("");
+      (item.assets || []).map(a => `<div class="text-[10px]">${escapeHtml(a.asset_type)}: ${labels[a.vector_status] || "Chưa xác minh được"}${a.geometry_warning ? ` <span class="text-amber-700 font-bold" title="${a.geometry_warning === 'legacy_geometry_ambiguous' ? 'Dữ liệu cũ không phân biệt được số 0 với chưa đo' : 'Thiếu hoặc chưa xác minh đủ dữ liệu hình học'}">⚠ Kiểm tra lỗ/tỷ lệ/tâm lỗ</span>` : ''} <button class="btn-vectorize-asset underline" data-id="${escapeHtml(item.id)}" data-key="${escapeHtml(a.image_path)}" data-type="${escapeHtml(a.asset_type)}">Xử lý ảnh này</button></div>`).join("");
     const actionBtn = `<button data-id="${escapeHtml(item.id)}" class="btn-vectorize-item btn h-8 px-3 text-xs bg-rose-700 text-white">Tạo / cập nhật</button>`;
 
     return `

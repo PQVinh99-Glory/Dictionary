@@ -10,7 +10,7 @@
  * Mọi thay đổi hành vi xếp hạng phải nằm sau feature flag `holeFormatBoost` (mặc định OFF)
  * và có đo lường trên dữ liệu thật trước khi bật (hiến pháp AGENTS.md).
  */
-import { cleanFeatureText, removeVietnameseAccents } from "./featureMatcher.js";
+import { cleanFeatureText, removeVietnameseAccents, parseIdentifyingFeaturesAST } from "./featureMatcher.js";
 
 /** 11 định dạng lỗ có mẫu tham chiếu (khớp format_tag trong moris_hole_samples). */
 export const HOLE_FORMAT_TAGS = Object.freeze([
@@ -69,7 +69,8 @@ export function inferFormatTagsFromText(text) {
   for (const { tag, match } of FORMAT_PATTERNS) {
     if (match.test(norm) && !tags.includes(tag)) tags.push(tag);
   }
-  return tags;
+  // Leaf oval labels không được tự nhân đôi thành nhãn parent oval.
+  return tags.filter(tag => tag !== 'oval' || (!tags.includes('ban_oval') && !tags.includes('oval_cong')));
 }
 
 const COUNT_KEY_TO_TAG = Object.freeze({
@@ -97,11 +98,32 @@ export function holeFormatsFromCounts(counts) {
   return tags;
 }
 
+const COUNT_WORDS = Object.freeze({
+  tron:'tron',vuong:'vuong',oval:'oval',oval_cong:'oval cong',ban_oval:'ban oval',
+  dai:'dai',chu_nhat:'chu nhat',chu_l:'chu l',tam_giac:'tam giac',
+  rang_cua:'rang cua',gai_moc:'gai moc'
+});
+
+function explicitFormatCounts(text) {
+  const norm = normalizeFormatText(text);
+  const counts = {...parseIdentifyingFeaturesAST(text).shapeCounts};
+  for (const [tag, phrase] of Object.entries(COUNT_WORDS)) {
+    // Leaf labels need an explicit number next to "lỗ"; unnumbered prose is unknown.
+    const pattern = new RegExp(`(?:^|\\W)(\\d+)\\s+lo\\s+${phrase.replace(/ /g,'\\s+')}\\b`, 'g');
+    let match;
+    while ((match = pattern.exec(norm)) !== null) {
+      if (tag === 'tron' || tag === 'vuong' || tag === 'oval' || tag === 'chu_nhat' || tag === 'tam_giac') continue;
+      counts[tag] = (counts[tag] || 0) + Number(match[1]);
+    }
+  }
+  return counts;
+}
+
 /**
  * Đối chiếu mềm: đánh dấu ứng viên có định dạng lỗ khớp query.
  * CHỈ đánh dấu khi khớp; ứng viên không khớp KHÔNG nhận cờ (boost-only, không phạt).
  */
-export function applyHoleFormatBoost({ rows, queryTags, delta = 0.05 } = {}) {
+export function applyHoleFormatBoost({ rows, queryTags, queryCounts = null, delta = 0.05 } = {}) {
   const list = Array.isArray(rows) ? rows : [];
   const querySet = new Set(Array.isArray(queryTags) ? queryTags.filter(t => HOLE_FORMAT_TAGS.includes(t)) : []);
   if (!querySet.size) {
@@ -111,7 +133,13 @@ export function applyHoleFormatBoost({ rows, queryTags, delta = 0.05 } = {}) {
   const matchedPerTag = {};
   const out = list.map(row => {
     const tags = inferFormatTagsFromText(row?.identifying_features);
-    const matched = tags.filter(t => querySet.has(t));
+    const counts = explicitFormatCounts(row?.identifying_features);
+    const matched = tags.filter(t => {
+      if (!querySet.has(t)) return false;
+      const expected = queryCounts?.[t];
+      if (Number.isInteger(expected) && expected > 0) return counts[t] === expected;
+      return true;
+    });
     if (!matched.length) return row;
     for (const t of matched) matchedPerTag[t] = (matchedPerTag[t] || 0) + 1;
     return {
@@ -128,6 +156,7 @@ export function applyHoleFormatBoost({ rows, queryTags, delta = 0.05 } = {}) {
     evidence: {
       version: "hole_format_ref_v1",
       query_tags: [...querySet],
+      count_mode: queryCounts ? 'exact_when_provided' : 'tag_only',
       matched_count: matchedCount,
       delta: Number(delta),
       matched_per_tag: matchedPerTag

@@ -1,15 +1,15 @@
 import { assessImageResult } from "./presentation/imageDecision.js";
 import { comparePatches } from "./retrieval/patchVerifier.js";
 import { compareContour } from "./retrieval/contourVerifier.js";
-import { exactLookup, hydrateVectorHits } from "./connectors/catalogue.js";
+import { exactLookup, hydrateVectorHits, filterVisibleCatalogueIds } from "./connectors/catalogue.js";
 import {
   searchCatalogue,
   scanCatalogue
 } from "./connectors/supabase.js";
 import { canonicalizeImage } from "./preprocess/canonicalize.js";
 import { encodeQueryImage } from "./vector/encoder.js";
-import { searchVectorIndex } from "./vector/search.js";
-import { searchMultiProbeVectorIndex } from "./retrieval/multiProbeSearch.js";
+import { searchVectorIndex, searchScopedVectorIndex } from "./vector/search.js";
+import { searchMultiProbeVectorIndex, fuseProbeHits } from "./retrieval/multiProbeSearch.js";
 import {
   strongTextResult,
   rankMetadata,
@@ -23,10 +23,12 @@ import { analyzeStructuralEvidence } from "./retrieval/structuralEvidence.js";
 import { fuseCandidateScore } from "./retrieval/scoreFusion.js";
 import { collectGeometryEvidence } from "./retrieval/geometricReranker.js";
 import { finalizeCandidatePool } from "./retrieval/candidatePool.js";
+import { selectPrimaryRescue } from "./retrieval/primaryRescue.js";
 import { collapseBestVectorHitPerRecord } from "./retrieval/vectorHitCollapse.js";
 import {
   applySizeGate,
-  loadCandidateDims
+  loadCandidateDims,
+  loadLengthShortlist
 } from "./retrieval/sizeGate.js";
 import {
   applyHoleFormatBoost,
@@ -281,9 +283,11 @@ export async function runMorisSearch(env, config, {
   const retrievalLimit=Math.min(100,config.vector.topK*2);
   let hits=[];
   let encodedSource="single";
+  let encodedProbes=null;
+  let encodedVector=null;
 
   if(suppliedProbes.length){
-    const encodedProbes=[];
+    encodedProbes=[];
     for(const probe of suppliedProbes){
       const encoded = await encodeQueryImage(env, config, {
         canonicalImage:prep.canonicalImage,
@@ -295,12 +299,6 @@ export async function runMorisSearch(env, config, {
         vector:encoded.vector
       });
     }
-    hits = await searchMultiProbeVectorIndex(
-      env,
-      config,
-      encodedProbes,
-      {topK:retrievalLimit}
-    );
     encodedSource="multi_probe";
   }else{
     const encoded = await encodeQueryImage(env, config, {
@@ -308,16 +306,55 @@ export async function runMorisSearch(env, config, {
       suppliedEmbedding:query.query_embedding,
       suppliedProfile:query.embedding_profile
     });
-    hits = await searchVectorIndex(
-      env,
-      config,
-      encoded.vector,
-      retrievalLimit
-    );
+    encodedVector=encoded.vector;
     encodedSource=encoded.source;
   }
 
   trace(ctx,"vector_search",{source:encodedSource});
+  const onRpc=attempt=>ctx.vector_rpc_attempts.push(attempt);
+  let scopedEvidence = null;
+  let scopedHits = [];
+  if (config.features.scopedSizeSearch === true && query.size) {
+    const shortlist = await loadLengthShortlist(env, query.size);
+    scopedEvidence = {status:shortlist.status, length_candidate_count:shortlist.rows.length};
+    trace(ctx,'length_shortlist',scopedEvidence);
+    if (shortlist.status === 'complete' && shortlist.rows.length) {
+      // Session-checked keyed RPC owns visibility; never trust size-table IDs alone.
+      const visible = await filterVisibleCatalogueIds(env,token,
+        shortlist.rows.map(row=>row.record_id),query.filters);
+      if (visible.status === 'complete') {
+        const ids = visible.ids;
+        scopedEvidence.visible_candidate_count = ids.length;
+        if (ids.length) {
+          const probes = encodedProbes || [{probe_id:'primary',vector:encodedVector}];
+          const perProbe = [];
+          let allAvailable = true;
+          for (const probe of probes.slice(0,3)) {
+            const result = await searchScopedVectorIndex(env,config,probe.vector,ids,retrievalLimit,{onRpc});
+            if (result.status !== 'ok') allAvailable = false;
+            perProbe.push({probe_id:probe.probe_id,hits:result.hits});
+          }
+          if (allAvailable) {
+            scopedHits = encodedProbes
+              ? fuseProbeHits(perProbe,{topK:retrievalLimit})
+              : perProbe[0].hits;
+            scopedEvidence.status = 'matched';
+            scopedEvidence.vector_hit_count = scopedHits.length;
+          } else scopedEvidence.status = 'scoped_rpc_unavailable';
+        }
+      } else scopedEvidence.status = 'catalogue_visibility_unavailable';
+    }
+  }
+  hits = encodedProbes
+    ? await searchMultiProbeVectorIndex(env,config,encodedProbes,{topK:retrievalLimit,onRpc})
+    : await searchVectorIndex(env,config,encodedVector,retrievalLimit,{onRpc});
+  // Same exact profile/cosine space, best view wins per record after union.
+  hits = [
+    ...hits.map(hit=>({...hit,retrieval_channels:['global_ann']})),
+    ...scopedHits.map(hit=>({...hit,retrieval_channels:['length_scoped']}))
+  ];
+  if (scopedEvidence) ctx.size_shortlist_evidence = scopedEvidence;
+  trace(ctx,"vector_results",{count:hits.length});
 
   const usefulHits = hits.filter(
     h => Number(h?.raw_vector_similarity ?? h?.similarity ?? 0) >=
@@ -337,6 +374,7 @@ export async function runMorisSearch(env, config, {
       summary:"Không có ứng viên vector đạt ngưỡng.",
       candidates:[],
       warnings:ctx.warnings,
+      ...(scopedEvidence ? {size_shortlist_evidence:scopedEvidence} : {}),
       ai_calls:null
     };
   }
@@ -349,7 +387,9 @@ export async function runMorisSearch(env, config, {
     env,
     token,
     collapsedHits,
-    {maxRows:config.limits.maxScanRows,filters:query.filters}
+    {maxRows:config.limits.maxScanRows,filters:query.filters,
+      keyed:config.features.keyedHydration === true,
+      onStatus:status=>{ctx.hydration_status=status;}}
   );
 
   // M28 Size Gate (S1, query-side only): lọc theo kích thước sau hydrate,
@@ -379,23 +419,8 @@ export async function runMorisSearch(env, config, {
     ? {}
     : {size_evidence:sizeGate.evidence};
 
-  if (
-    hydrated.length > 0 &&
-    sizeGate.evidence.status === "applied" &&
-    !sizeGate.candidates.length
-  ) {
-    return {
-      mode:"MORIS_SIZE_GATE_NO_MATCH",
-      summary:"Các ứng viên tìm thấy đều khác kích thước ngoài dung sai.",
-      candidates:[],
-      warnings:ctx.warnings,
-      ...sizeEvidenceAttach,
-      ai_calls:null
-    };
-  }
-
   let metadataRanked = rankMetadata(
-    sizeGate.candidates,
+    [...sizeGate.candidates, ...(sizeGate.rescueCandidates || [])],
     query.message,
     {excludeHoleEvidence:true}
   );
@@ -410,7 +435,7 @@ export async function runMorisSearch(env, config, {
       ...holeFormatsFromCounts(query.hole_formats),
       ...inferFormatTagsFromText(query.message)
     ])];
-    const applied = applyHoleFormatBoost({ rows: metadataRanked, queryTags });
+    const applied = applyHoleFormatBoost({ rows: metadataRanked, queryTags, queryCounts:query.hole_formats });
     metadataRanked = applied.rows;
     holeFormatEvidence = applied.evidence;
   }
@@ -478,16 +503,11 @@ export async function runMorisSearch(env, config, {
     )
   ];
 
-  // Moris: chỉ dùng retrieval vector + metadata (không LLM).
-  const {candidates:skuCandidates} = await finalizeCandidatePool(geometricRanked,{limit:10});
-  const sortedCandidates = skuCandidates
-    .map(row=>publicCandidate({...row,query_quality:query.geometry?.quality}))
-    .sort((a, b) => {
-      const scoreA = Number(a?.match_score ?? a?.final_score ?? a?.vector_similarity ?? 0);
-      const scoreB = Number(b?.match_score ?? b?.final_score ?? b?.vector_similarity ?? 0);
-      return scoreB - scoreA;
-    })
-    .slice(0, 10);
+  const selected = await selectPrimaryRescue(geometricRanked,{
+    hasQuerySize:Boolean(query.size),sizeGateEnabled:config.features.sizeGate!==false,
+    sizeStatus:sizeGate.evidence.status,limit:10
+  });
+  const sortedCandidates=selected.map(row=>publicCandidate({...row,query_quality:query.geometry?.quality}));
 
   const confusingPairNotice = detectConfusingPairInTopCandidates(sortedCandidates, 3);
   if (confusingPairNotice?.active) {
@@ -497,12 +517,14 @@ export async function runMorisSearch(env, config, {
   const decision=assessImageResult(sortedCandidates,{quality:query.geometry?.quality,
     orientationAmbiguous:orientationWarnings(query.message,resolverPool).length>0});
   return {
-    mode:decision.status==='needs_review'?"MORIS_VECTOR_AMBIGUOUS":"MORIS_VECTOR_SUGGESTIONS",
+    mode:decision.status==='no_match'?'MORIS_VECTOR_NO_MATCH':
+      decision.status==='needs_review'?"MORIS_VECTOR_AMBIGUOUS":"MORIS_VECTOR_SUGGESTIONS",
     summary:"Ứng viên theo điểm so khớp; cần đối chiếu trước khi xác nhận mã.",
     decision,
     candidates:sortedCandidates,
     warnings,
     ...sizeEvidenceAttach,
+    ...(scopedEvidence ? {size_shortlist_evidence:scopedEvidence} : {}),
     ...(holeFormatEvidence ? {hole_format_evidence:holeFormatEvidence} : {}),
     ...(confusingPairNotice ? {confusing_pair_evidence:confusingPairNotice} : {}),
     ai_calls:null,

@@ -13,14 +13,10 @@
  *  - Hình vuông KHÔNG special case: shape_class = 'square' chỉ khi
  *    |L-W| / max(L,W) <= 5% (dùng để hiển thị/nhóm, không dùng để tính);
  *    thiếu cạnh ngắn -> shape_class = null (không kết luận).
- *  - Metric d_max = max theo cạnh của |delta| / max(q,c), thử thêm bản hoán vị
- *    (L,W) <-> (W,L) để bắt lỗi người dùng đo nhầm cạnh (chỉ khi có đủ 2 cạnh).
- *  - Dung sai theo NGUỒN đo (S1.1, chủ dự án chốt 2026-10-19):
- *      * số đo nhập tay (source/method = 'user' hoặc không rõ): 10% hoặc sàn 3mm
- *        (sai số nhập tay ±5% mỗi bên -> chênh 2 bên tới ~10% vẫn phải khớp);
- *      * số đo kiểm chuẩn (caliper/marker_photo/erp/camera_measured — cả 2 bên):
- *        5% hoặc sàn 2mm;
- *      * chỉ khi CẢ HAI bên đều verified mới dùng mức chặt.
+ *  - V1.2: cạnh dài là điều kiện lọc; d_max = |L_candidate-L_query|/L_query.
+ *    Cạnh ngắn chỉ là evidence hỗ trợ, không veto cạnh dài hợp lệ.
+ *  - Chủ dự án chốt 2026-10-21: tất cả nguồn đo cùng ngưỡng 5% theo L_query,
+ *    không có sàn mm. Hợp đồng S1.1 trước đây 10%/3mm đã được thay thế.
  *  - Trạng thái trung tính (Q8): thiếu cạnh dài query hoặc thiếu dims catalogue
  *    thì KHÔNG lọc (fail-open), chỉ ghi evidence.
  *
@@ -28,17 +24,17 @@
  * ============================================================================
  */
 
-export const SIZE_CONTRACT_VERSION = 'size_contract_v1_1';
+export const SIZE_CONTRACT_VERSION = 'size_contract_v1_2';
 
 export const DEFAULT_SIZE_TOLERANCE = Object.freeze({
   relative: 0.05,
-  floorMm: 2
+  floorMm: 0
 });
 
-/** Dung sai theo nguồn đo (S1.1): nhập tay rộng hơn số đo kiểm chuẩn. */
+/** Giữ hai nhãn nguồn để tương thích payload cũ; ngưỡng V1.2 như nhau. */
 export const SIZE_TOLERANCE_BY_SOURCE = Object.freeze({
-  verified: Object.freeze({ relative: 0.05, floorMm: 2 }),
-  manual: Object.freeze({ relative: 0.10, floorMm: 3 })
+  verified: Object.freeze({ relative: 0.05, floorMm: 0 }),
+  manual: Object.freeze({ relative: 0.05, floorMm: 0 })
 });
 
 export const SIZE_VERIFIED_METHODS = Object.freeze(['caliper', 'marker_photo', 'erp']);
@@ -105,7 +101,7 @@ export function shapeClass(lengthMm, widthMm) {
   return diff <= SIZE_SQUARE_CLASS_MAX_DIFF ? 'square' : 'rect';
 }
 
-/** Dung sai 2 tầng: tầng tương đối hoặc sàn tuyệt đối, lấy giá trị lớn hơn. */
+/** Ngưỡng tuyệt đối theo tỷ lệ query; mặc định không có sàn mm. */
 export function toleranceForEdge(refMm, tolerance = DEFAULT_SIZE_TOLERANCE) {
   const ref = toFiniteNumber(refMm);
   if (ref == null || ref <= 0) return null;
@@ -122,10 +118,9 @@ export function isVerifiedMeasurement(side) {
 }
 
 /**
- * Chọn dung sai cho một phép so khớp (S1.1).
+ * Chọn dung sai cho một phép so khớp (V1.2).
  * - explicit (tham số tolerance truyền thẳng) luôn thắng (test/override).
- * - Chỉ khi CẢ HAI bên là số đo kiểm chuẩn mới dùng mức chặt 5%/2mm;
- *   còn lại (nhập tay/không rõ) dùng mức rộng 10%/3mm.
+ * - Các nguồn đo đều dùng 5% không sàn mm theo quyết định 2026-10-21.
  */
 export function resolveSizeTolerance(querySide, candidateSide, explicit) {
   const relative = toFiniteNumber(explicit?.relative);
@@ -144,7 +139,7 @@ function compareEdges(queryPair, candidatePair, tolerance) {
     const q = queryPair[key];
     const c = candidatePair[key];
     const delta = Math.abs(q - c);
-    const ref = Math.max(q, c);
+    const ref = q;
     const allowed = Math.max(tol.relative * ref, tol.floorMm);
     return {
       key,
@@ -153,14 +148,10 @@ function compareEdges(queryPair, candidatePair, tolerance) {
       ok: delta <= allowed + 1e-9
     };
   });
-  const dMax = Math.max(
-    ...edges.map((edge) => round(edge.delta) / Math.max(
-      queryPair[edge.key],
-      candidatePair[edge.key]
-    ))
-  );
+  const longEdge = edges[0];
+  const dMax = longEdge.delta / queryPair.length_mm;
   return {
-    ok: edges.every((edge) => edge.ok),
+    ok: longEdge.ok,
     partial: !hasWidth,
     d_max: round(dMax),
     edges
@@ -168,8 +159,7 @@ function compareEdges(queryPair, candidatePair, tolerance) {
 }
 
 /**
- * Khoảng cách chuẩn hoá d_max với hoán vị (L,W) <-> (W,L) (§10.3).
- * Thiếu cạnh ngắn -> chỉ tính trên cạnh dài.
+ * Khoảng cách cạnh dài chuẩn hoá theo L_query. Cạnh ngắn không tham gia gate.
  * Trả về null nếu một trong hai cặp không hợp lệ.
  */
 export function sizeDistance(queryPair, candidatePair) {
@@ -182,14 +172,7 @@ export function sizeDistance(queryPair, candidatePair) {
     candidatePair?.width_mm ?? candidatePair?.widthMm
   );
   if (!q || !c) return null;
-  const identity = compareEdges(q, c, DEFAULT_SIZE_TOLERANCE);
-  if (identity.partial) return identity.d_max;
-  const swapped = compareEdges(
-    q,
-    { length_mm: c.width_mm, width_mm: c.length_mm },
-    DEFAULT_SIZE_TOLERANCE
-  );
-  return Math.min(identity.d_max, swapped.d_max);
+  return compareEdges(q, c, DEFAULT_SIZE_TOLERANCE).d_max;
 }
 
 /**
@@ -222,20 +205,8 @@ export function evaluateSizeMatch(queryPair, candidatePair, tolerance) {
   const tol = resolveSizeTolerance(queryPair, candidatePair, tolerance);
   const identity = compareEdges(q, c, tol);
 
-  let chosen = identity;
-  let permutation = 'identity';
-
-  if (!identity.partial) {
-    const swappedPair = { length_mm: c.width_mm, width_mm: c.length_mm };
-    const swapped = compareEdges(q, swappedPair, tol);
-    if (!identity.ok && swapped.ok) {
-      chosen = swapped;
-      permutation = 'swapped';
-    } else if (!identity.ok && !swapped.ok && swapped.d_max < identity.d_max) {
-      chosen = swapped;
-      permutation = 'swapped';
-    }
-  }
+  const chosen = identity;
+  const permutation = 'identity';
 
   return {
     status: chosen.ok ? (chosen.partial ? 'match_partial' : 'match') : 'mismatch',

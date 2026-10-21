@@ -60,7 +60,7 @@ describe('M04 manual write contract (mock transport; SQL separately tested)',()=
   const result=await upsertVectorsChunked({vectors:Array.from({length:21},()=>vector()),confirmed:true,fetchImpl});
   expect(result).toMatchObject({written:0,skipped:21,chunks:2});
  });
- it('falls back to kim_upsert_catalogue_image_vector when v6 provenance RPC is missing in schema cache',async()=>{
+ it('fails closed when v6 provenance RPC is missing instead of writing false zero through legacy RPC',async()=>{
   let fallbackCalled=false;
   vi.stubGlobal('fetch',vi.fn(async(url,options)=>{
    if(url.endsWith('app_me')) return Response.json({ok:true,role_name:'editor'});
@@ -80,7 +80,7 @@ describe('M04 manual write contract (mock transport; SQL separately tested)',()=
   }));
   const res=await send([vector()]);
   const data=await res.json();
-  expect(fallbackCalled).toBe(true);
-  expect(data).toMatchObject({ok:true,written:1,failed:0});
+  expect(fallbackCalled).toBe(false);
+  expect(data).toMatchObject({ok:false,written:0,failed:1});
  });
 });

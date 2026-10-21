@@ -1,6 +1,21 @@
 import { baseUrl, serverKey, headersForKey } from '../connectors/supabaseService.js';
 import { readMorisConfig } from '../runtime/config.js';
 
+export function geometryWarning(vector) {
+  if (!vector) return null;
+  if (vector.geometry_evidence) {
+    const g=vector.geometry_evidence;
+    return g.quality?.reliable === true && Number.isInteger(vector.hole_count) &&
+      Number.isFinite(vector.aspect_ratio) && vector.aspect_ratio > 0 &&
+      Array.isArray(vector.hole_centroids) && vector.hole_centroids.length === vector.hole_count
+      ? null : 'geometry_incomplete';
+  }
+  // Legacy zero/1/[] are database defaults, not proof of a hole-free square part.
+  return vector.hole_count === 0 || vector.aspect_ratio === 1 ||
+    !Array.isArray(vector.hole_centroids) || vector.hole_centroids.length === 0
+    ? 'legacy_geometry_ambiguous' : null;
+}
+
 export function classifyAsset(asset, vectors, profile, { etag, failed = false, currentKeys = [] } = {}) {
   if (failed || !etag) return { vector_status:'failed', vector_reason:'source_or_index_unavailable' };
   const key=String(asset.image_path || '').replace(/^\/+/, '');
@@ -9,8 +24,9 @@ export function classifyAsset(asset, vectors, profile, { etag, failed = false, c
   const exact=source.find(v=>v.view_variant==='canon_rgb_v2' && v.embedding_model===profile.model &&
     v.embedding_model_version===profile.modelVersion && v.preprocess_version===profile.preprocessVersion && v.embedding_profile===profile.profile);
   if (exact) {
-    if (!exact.source_etag) return {vector_status:'stale',vector_reason:'source_version_unknown'};
-    return exact.source_etag===etag ? {vector_status:'ready',vector_reason:'profile_and_source_match'} : {vector_status:'stale',vector_reason:'source_changed'};
+    const warning=geometryWarning(exact);
+    if (!exact.source_etag) return {vector_status:'stale',vector_reason:'source_version_unknown',geometry_warning:warning};
+    return exact.source_etag===etag ? {vector_status:'ready',vector_reason:'profile_and_source_match',geometry_warning:warning} : {vector_status:'stale',vector_reason:'source_changed',geometry_warning:warning};
   }
   if (source.length) return {vector_status:'stale',vector_reason:'profile_or_variant_changed'};
   if (sameType.some(v=>!currentKeys.includes(v.object_key))) return {vector_status:'stale',vector_reason:'source_key_changed'};
@@ -37,8 +53,15 @@ export async function inspectVectorItems(env, items) {
     for(let start=0;start<items.length;start+=50) {
       const ids=items.slice(start,start+50).map(i=>'"'+String(i.id).replaceAll('\\','\\\\').replaceAll('"','\\"')+'"');
       for(let offset=0;;offset+=1000) {
-        const query=new URLSearchParams({select:'record_id,asset_type,object_key,view_variant,embedding_model,embedding_model_version,preprocess_version,embedding_profile,is_active,source_etag',record_id:`in.(${ids.join(',')})`,is_active:'eq.true',order:'id.asc',limit:'1000',offset:String(offset)});
-        const res=await fetch(`${base}/rest/v1/catalogue_image_vectors?${query}`,{headers:headersForKey(key)});
+        const params={record_id:`in.(${ids.join(',')})`,is_active:'eq.true',order:'id.asc',limit:'1000',offset:String(offset)};
+        const fields='record_id,asset_type,object_key,view_variant,embedding_model,embedding_model_version,preprocess_version,embedding_profile,is_active,hole_count,aspect_ratio,hole_centroids';
+        const request=select=>fetch(`${base}/rest/v1/catalogue_image_vectors?${new URLSearchParams({...params,select})}`,{headers:headersForKey(key)});
+        let res=await request(`${fields},source_etag,geometry_evidence`);
+        if(!res.ok) {
+          const error=await res.json().catch(()=>({}));
+          if(res.status!==400 || error.code!=='42703') throw new Error('Vector metadata unavailable');
+          res=await request(fields);
+        }
         if(!res.ok) throw new Error('Vector metadata unavailable');
         const rows=await res.json();if(!Array.isArray(rows)) throw new Error('Invalid vector metadata');
         vectors.push(...rows);if(rows.length<1000) break;

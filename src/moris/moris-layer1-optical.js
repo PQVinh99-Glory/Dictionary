@@ -272,8 +272,12 @@ export function segmentForegroundAndHoles(rgba, width, height) {
         flags.push("subject_touches_edge");
     if (rawPartPixels && clipped / rawPartPixels > 0.1)
         flags.push("foreground_highlights_clipped");
+    // Catalogue alpha cutouts are generated from complete parts and tightly cropped.
+    // Border contact alone does not invalidate closed cavities visible in this view.
+    // Camera/JPEG masks keep the strict border gate for full-object capture.
+    const nonBlockingAlphaEdge = isTransparentCutout && flags.every(flag => flag === "subject_touches_edge");
     const maskQuality = {
-        version: "mask_quality_v1", reliable: flags.length === 0, flags,
+        version: "mask_quality_v1", reliable: flags.length === 0 || nonBlockingAlphaEdge, flags,
         foregroundFraction: rawPartPixels / total, borderSpread: bgSpread
     };
     const avgMetalLuma = rawPartPixels > 0 ? metalLumaSum / rawPartPixels : 100;
@@ -385,7 +389,10 @@ export function segmentForegroundAndHoles(rgba, width, height) {
     // 4. Identify enclosed internal cavities (labels[idx] === 0)
     // Lowered threshold: 0.04% of foreground area (fgArea * 0.0004) to preserve small locating holes
     const minHoleArea = Math.max(8, Math.round(fgArea * 0.0004));
-    const maxHoleArea = Math.round(fgArea * 0.45);
+    // Transparent catalogue cutouts encode a hole as an enclosed alpha cavity.
+    // A large slot may have more area than the surrounding metal; its topology,
+    // not a foreground-area cap, distinguishes it from an open edge notch.
+    const maxHoleArea = isTransparentCutout ? total : Math.round(fgArea * 0.45);
     const holeMasks = new Uint8Array(total);
     const visitedHole = new Uint8Array(total);
     const holes = [];
@@ -1247,7 +1254,9 @@ export function processLayer1Optical(rawRgba, rawWidth, rawHeight) {
         }
     }
     const minCanonicalHoleArea = Math.max(2, Math.round(canonicalFgArea * 0.0004));
-    const maxCanonicalHoleArea = Math.round(canonicalFgArea * 0.45);
+    const maxCanonicalHoleArea = seg.diagnostics.segmentationMode === "cutout_alpha"
+        ? 224 * 224
+        : Math.round(canonicalFgArea * 0.45);
     const visitedCanonicalHole = new Uint8Array(224 * 224);
     const canonicalHoles = [];
     const chQueue = new Int32Array(224 * 224);

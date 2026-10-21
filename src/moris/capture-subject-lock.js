@@ -435,6 +435,19 @@ export function selectSubject(mask, width, height, seed, options = {}) {
   };
 }
 
+/** ROI của frame chụp thật; bbox là pixel inclusive từ mask cuối, không dùng box EMA trên UI. */
+export function paddedSubjectRoi(bbox, width, height, paddingFraction = 0.08) {
+  if (!bbox || !Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) return null;
+  const { x0, y0, x1, y1 } = bbox;
+  if (![x0, y0, x1, y1].every(Number.isFinite) || x0 < 0 || y0 < 0 || x1 >= width || y1 >= height || x1 < x0 || y1 < y0) return null;
+  const pad = Math.max(6, Math.ceil(Math.max(x1 - x0 + 1, y1 - y0 + 1) * paddingFraction));
+  const left = Math.max(0, Math.floor(x0 - pad));
+  const top = Math.max(0, Math.floor(y0 - pad));
+  const right = Math.min(width, Math.ceil(x1 + 1 + pad));
+  const bottom = Math.min(height, Math.ceil(y1 + 1 + pad));
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
 /** Grayscale-style morphology on a binary mask: 'dilate' grows, 'erode' shrinks (8-neighborhood). */
 function morphMask(mask, width, height, mode) {
   const total = width * height;
@@ -794,6 +807,23 @@ export function computeReadiness(state, options = {}) {
   const ready = inFrame && singleSubject && stable && lowSpecular && sharp;
 
   return { ready, checks, guidance };
+}
+
+/** Ảnh tải lên chỉ có một frame: dùng bốn quality checks, không bịa nhãn ổn định đa khung. */
+export function assessStillSubject(analysis, sharpness, options = {}) {
+  const t = { ...DEFAULT_SUBJECT_LOCK_THRESHOLDS, ...options };
+  const live = computeReadiness({
+    ...(analysis?.stats || {}),
+    stableCount: t.stableFrames,
+    sharpness
+  }, options);
+  const { stable: _unused, ...checks } = live.checks;
+  return {
+    ready: Object.values(checks).every(Boolean),
+    checks,
+    guidance: live.guidance,
+    temporal_stability: 'not_applicable_static'
+  };
 }
 
 /**

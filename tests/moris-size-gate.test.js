@@ -1,5 +1,5 @@
 import {describe,it,expect,vi,afterEach} from 'vitest';
-import {applySizeGate,loadCandidateDims} from '../functions/_lib/moris/v5/retrieval/sizeGate.js';
+import {applySizeGate,loadCandidateDims,loadLengthShortlist} from '../functions/_lib/moris/v5/retrieval/sizeGate.js';
 import {validateMorisQuery} from '../functions/_lib/moris/v5/schemas/query.js';
 import {publicCandidate} from '../functions/_lib/moris/v5/schemas/candidate.js';
 import {readMorisConfig} from '../functions/_lib/moris/v5/runtime/config.js';
@@ -50,7 +50,8 @@ describe('M28 Size Gate — fail-open & lọc theo dung sai',()=>{
     expect(out.rejected[0]).toMatchObject({id:'b',code:'B2'});
     expect(out.evidence).toMatchObject({status:'applied',matched_count:1,unknown_count:1,rejected_count:1});
     expect(out.evidence.rejected).toHaveLength(1);
-    expect(out.warnings[0]).toContain('loại 1 mã');
+    expect(out.warnings[0]).toContain('chuyển 1 mã');
+    expect(out.rescueCandidates).toMatchObject([{id:'b',size_status:'outside_tolerance'}]);
   });
 
   it('dims lưu ngược thứ tự vẫn khớp sau chuẩn hoá; record_id được nhận diện',()=>{
@@ -90,7 +91,7 @@ describe('M28 Size Gate — fail-open & lọc theo dung sai',()=>{
     expect(partialReject.rejected).toHaveLength(1);
   });
 
-  it('dung sai nhập tay: 20cm vs 18cm (lệch 10%) vẫn khớp; verified giữ mức chặt',()=>{
+  it('dung sai nhập tay và verified đều 5% theo cạnh dài query',()=>{
     const manualMatch=applySizeGate({
       candidates:[{id:'a'},{id:'b'}],
       querySize:{length_mm:200,width_mm:100,source:'user'},
@@ -99,7 +100,8 @@ describe('M28 Size Gate — fail-open & lọc theo dung sai',()=>{
         ['b',{length_mm:180,width_mm:100,method:'caliper'}]
       ])
     });
-    expect(manualMatch.candidates.map(c=>c.id)).toEqual(['a','b']);
+    expect(manualMatch.candidates).toHaveLength(0);
+    expect(manualMatch.rejected).toHaveLength(2);
 
     const verifiedStrict=applySizeGate({
       candidates:[{id:'a'}],
@@ -110,18 +112,18 @@ describe('M28 Size Gate — fail-open & lọc theo dung sai',()=>{
     expect(verifiedStrict.rejected).toHaveLength(1);
   });
 
-  it('biên sàn nhập tay 3mm: khớp đúng 3.0mm, lệch 3.1mm bị loại (linh kiện nhỏ)',()=>{
+  it('vật nhỏ: đúng 5% khớp, vượt 5% bị loại, không có sàn mm',()=>{
     const inRange=applySizeGate({
       candidates:[{id:'a'}],
       querySize:{length_mm:20,width_mm:20},
-      dimsById:new Map([['a',{length_mm:23,width_mm:23}]])
+      dimsById:new Map([['a',{length_mm:21,width_mm:20}]])
     });
     expect(inRange.candidates[0].size_status).toBe('match');
 
     const outRange=applySizeGate({
       candidates:[{id:'a'}],
       querySize:{length_mm:20,width_mm:20},
-      dimsById:new Map([['a',{length_mm:23.1,width_mm:23}]])
+      dimsById:new Map([['a',{length_mm:21.01,width_mm:20}]])
     });
     expect(outRange.candidates).toHaveLength(0);
     expect(outRange.rejected).toHaveLength(1);
@@ -135,6 +137,31 @@ describe('M28 Size Gate — fail-open & lọc theo dung sai',()=>{
     expect(out.rejected).toHaveLength(12);
     expect(out.evidence.rejected).toHaveLength(10);
     expect(out.evidence.rejected_count).toBe(12);
+  });
+});
+
+describe('P06 length shortlist — read-only trước ANN',()=>{
+  it('180mm truy vấn đúng biên 171–189, không cần width',async()=>{
+    const urls=[];
+    vi.stubGlobal('fetch',vi.fn(async(url)=>{urls.push(new URL(url));return Response.json([{record_id:'target',length_mm:180,width_mm:null}]);}));
+    const result=await loadLengthShortlist(env,{length_mm:180},{pageSize:20});
+    expect(result.status).toBe('complete');
+    expect(result.rows.map(row=>row.record_id)).toEqual(['target']);
+    expect(urls[0].searchParams.get('and')).toBe('(length_mm.gte.171,length_mm.lte.189)');
+  });
+
+  it('không coi danh sách đã vượt budget là đầy đủ',async()=>{
+    vi.stubGlobal('fetch',vi.fn(async()=>Response.json([{record_id:'a'},{record_id:'b'}])));
+    const result=await loadLengthShortlist(env,{length_mm:180},{maxRows:2,pageSize:2});
+    expect(result.status).toBe('budget_exceeded');
+    expect(result.rows).toEqual([]);
+  });
+
+  it('thiếu secret hoặc lỗi bảng trả unavailable, không tuyên bố size match',async()=>{
+    expect((await loadLengthShortlist({SUPABASE_URL:env.SUPABASE_URL},{length_mm:180})).status).toBe('dims_unavailable');
+    vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:404})));
+    expect((await loadLengthShortlist(env,{length_mm:180})).status).toBe('dims_unavailable');
+    expect((await loadLengthShortlist(env,{length_mm:NaN})).status).toBe('not_provided');
   });
 });
 
@@ -203,12 +230,13 @@ describe('M28 loadCandidateDims — fail-open trước bảng proposal (Gate D)'
   });
 
   it('giới hạn tối đa 100 id/request',async()=>{
-    let captured='';
-    vi.stubGlobal('fetch',vi.fn(async(url)=>{captured=String(url);return Response.json([]);}));
+    const captured=[];
+    vi.stubGlobal('fetch',vi.fn(async(url)=>{captured.push(String(url));return Response.json([]);}));
     const ids=Array.from({length:150},(_,i)=>`r${i}`);
     await loadCandidateDims(env,'tok',ids);
-    const param=new URL(captured).searchParams.get('record_id');
-    expect(param.split(',')).toHaveLength(100);
+    expect(captured).toHaveLength(2);
+    expect(new URL(captured[0]).searchParams.get('record_id').split(',')).toHaveLength(100);
+    expect(new URL(captured[1]).searchParams.get('record_id').split(',')).toHaveLength(50);
   });
 
   it('thiếu SUPABASE_URL -> null (không lọc)',async()=>{
@@ -266,9 +294,9 @@ describe('M28 tích hợp schema/config/presentation',()=>{
       mode:'MORIS_VECTOR_SUGGESTIONS',
       candidates:[{code:'A'}],
       decision:{reasons:[]},
-      size_evidence:{status:'applied',rejected_count:3,tolerance:{relative:0.10,floorMm:3}}
+      size_evidence:{status:'applied',rejected_count:3,tolerance:{relative:0.05,floorMm:0}}
     });
     expect(filtered).toContain('loại 3 mã');
-    expect(filtered).toContain('±10%');
+    expect(filtered).toContain('±5%');
   });
 });

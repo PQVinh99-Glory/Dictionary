@@ -6,6 +6,7 @@ export function assessImageResult(candidates,{quality=null,orientationAmbiguous=
  const margin=first!=null&&second!=null?Math.max(0,first-second):null;
  const reasons=[];
  if(quality?.reliable===false)reasons.push('low_quality');
+ if(candidates[0]?.selection_group?.startsWith('rescue_'))reasons.push('size_unverified');
  if(orientationAmbiguous)reasons.push('orientation_uncertain');
  if(margin!==null&&margin<.03)reasons.push('close_candidates');
  if(first===null)reasons.push('missing_score');

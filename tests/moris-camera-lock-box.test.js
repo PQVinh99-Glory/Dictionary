@@ -99,7 +99,7 @@ describe('index.html — text hướng dẫn camera mới (2026-10-19, chủ d�
   it('câu hướng dẫn + nhãn tiến trình mới thay thế câu cũ', () => {
     expect(html).toContain('Điều chỉnh camera sao cho khung tracking vừa khớp chủ thể');
     expect(html).toContain('Đang quét, tái tạo vector và nhận diện vật thể...');
-    expect(html).toContain('đặt vật thể vừa khung trên nền TRẮNG');
+    expect(html).toContain('Giữ trọn vật thể trong khung camera trên nền TRẮNG');
     expect(html).toContain('Chờ tracking khóa chủ thể trong khung vàng rồi chụp.');
     expect(html).toContain('nếu không tìm ra bằng tracking hãy bấm "Tải ảnh từ máy"');
     expect(html).toContain('Nhập chiều dài để Harness sàng lọc chuẩn hơn');
@@ -116,5 +116,43 @@ describe('index.html — text hướng dẫn camera mới (2026-10-19, chủ d�
     expect(idx).toBeGreaterThan(-1);
     const block = html.slice(idx, idx + 400);
     expect(block).toContain('bg-red-50');
+  });
+});
+
+describe('P02 — camera landscape dùng toàn bộ frame', () => {
+  it('tap ở 25% khung map tới 25% frame sensor và bỏ qua letterbox', () => {
+    const video={videoWidth:1920,videoHeight:1080,getBoundingClientRect:()=>({left:0,top:0,width:1600,height:900})};
+    const ctx={camera:{ready:true,busy:false,scanning:false,lock:{stableCount:3,samples:3,agreement:.9}},$refs:{camVideo:video}};
+    methods.handleCameraTap.call(ctx,{clientX:400,clientY:450});
+    expect(ctx.camera.lock.seed).toEqual({fx:.25,fy:.5});
+    expect(ctx.camera.lock.stableCount).toBe(0);
+  });
+
+  it('video lấy aspect ratio thật và yêu cầu reset tracker khi đổi kích thước', () => {
+    const ctx={camera:{frameAspect:'16 / 9',ready:false},$refs:{camVideo:{videoWidth:1280,videoHeight:960}},resetCameraLock:vi.fn()};
+    methods.updateCameraFrameAspect.call(ctx);
+    expect(ctx.camera.frameAspect).toBe('1280 / 960');
+    expect(ctx.resetCameraLock).toHaveBeenCalledOnce();
+  });
+
+  it('UI camera mở rộng landscape, video không crop bằng object-fit cover', () => {
+    const html=readFileSync('index.html','utf8');
+    expect(html).toContain('max-w-6xl');
+    expect(html).toContain('aspectRatio: camera.frameAspect');
+    expect(html).toContain('style="object-fit:contain;"');
+    expect(html).toContain('Xoay ngang điện thoại');
+    expect(html).not.toContain('aspect-ratio:1000/410');
+  });
+
+  it('nút chụp bị khóa khi chưa tracking trọn vật hoặc máy còn dọc', () => {
+    const html=readFileSync('index.html','utf8');
+    expect(html).toContain('camera.landscapeHint || (camera.lock.enabled && !camera.lock.ready)');
+    const ctx={
+      camera:{ready:true,busy:false,scanning:false,landscapeHint:false,lock:{ready:false,guidance:['Lùi máy']}},
+      $refs:{camVideo:{videoWidth:1920,videoHeight:1080}},toast:vi.fn()
+    };
+    methods.captureCamera.call(ctx);
+    expect(ctx.toast).toHaveBeenCalledWith('warning','Lùi máy');
+    expect(ctx.camera.busy).toBe(false);
   });
 });

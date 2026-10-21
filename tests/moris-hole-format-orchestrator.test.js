@@ -7,7 +7,7 @@ vi.mock('../functions/_lib/moris/v5/connectors/catalogue.js',()=>({
   hydrateVectorHits:vi.fn(async()=>[
     {id:'a',record_id:'a',part_id:'A',raw_vector_similarity:.94,identifying_features:'3 lỗ tròn',
      hole_count:5,quality:{reliable:true}},
-    {id:'b',record_id:'b',part_id:'B',raw_vector_similarity:.938,identifying_features:'2 lỗ dài (1)',
+    {id:'b',record_id:'b',part_id:'B',raw_vector_similarity:.938,identifying_features:'1 lỗ dài',
      hole_count:9,quality:{reliable:true}},
     {id:'c',record_id:'c',part_id:'C',raw_vector_similarity:.88,identifying_features:'lỗ oval cong',
      hole_count:4,quality:{reliable:true}}

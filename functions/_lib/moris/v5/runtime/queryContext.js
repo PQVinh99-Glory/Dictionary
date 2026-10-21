@@ -16,6 +16,7 @@ export async function createQueryContext({
     image_hash:imageHash,
     filter_hash:filterHash,
     started_at:new Date().toISOString(),
+    started_monotonic_ms:performance.now(),
     stage:"created",
     embedding_profile:{
       model:config.vector.model,
@@ -25,6 +26,7 @@ export async function createQueryContext({
       dimension:config.vector.dimension
     },
     ai_calls:null,
+    vector_rpc_attempts:[],
     warnings:[],
     trace:[]
   };

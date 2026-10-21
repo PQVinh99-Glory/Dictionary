@@ -2,15 +2,17 @@
   "system": {
     "project": "Catalogue AI (Dictionary)",
     "stack": "Vue 3 CDN + Cloudflare Pages Functions + Supabase (pgvector) + Cloudflare R2",
-    "updated_at": "2026-10-20T08:45:00Z",
+    "updated_at": "2026-10-21T05:05:00Z",
     "memory_version": "2.9.0",
     "status": "in_progress"
   },
   "current_session": {
-    "active_task": "hole_sample_ban_oval_main_release",
-    "last_checkpoint": "Đưa mẫu 'Lỗ bán oval' lên main: chỉ giữ thay đổi ban_oval (ảnh + migration 20261020072401 + từ điển 11 tag + test/audit), bump version 6.6.0, full 62 files/610 tests pass 100%; Phase 1 DB taxonomy KHÔNG đưa lên main. Production đã có DB 15 rows + R2 ban-oval.png; Functions chưa deploy nên production chưa nhận tag ban_oval.",
-    "resumption_prompt": "Nếu cần Moris production nhận text 'bán oval', deploy Cloudflare Pages Functions từ main version 6.6.0. Không bật MORIS_HOLE_FORMAT_BOOST_ENABLED trước khi đo EVAL-01 trên ảnh thật. Phase 1 DB taxonomy không thuộc phạm vi main release này.",
-    "tech_debt_register": "docs/moris-v6/TECH_DEBT_REGISTER.md"
+    "active_task": "pipeline_main_release_after_db_migration",
+    "last_checkpoint": "2026-10-21 05:15 UTC: full tests 69/659, tsc/build/diff pass. PostgreSQL17/pgvector V6/scoped local fixtures pass. Supabase CLI dry-run listed exactly 4 pending migrations; backed up public schema/data to /tmp (hashes in release audit); db push applied all four. Post-check 1110 active vectors/546 SKUs, 236 legacy zeros/0 provenance, anon writer/scoped denied, scoped RPC 180mm returns front/thumb 3448000001. wrangler.toml scoped/keyed true for next main release. No vector replace or Git push yet.",
+    "resumption_prompt": "Read AGENTS.md and docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md POST-AUDIT update. DB migrations already applied 2026-10-21; do not reapply. Stage only intended code/docs/tests/dist/migration, scan for secrets, commit only after full test pass, push upstream/main PQVinh99-Glory/Dictionary, verify Pages deploy and owner test debt. 236 legacy zero rows unchanged until owner-confirmed Vector Center replace; do not direct-update vectors.",
+    "tech_debt_register": "docs/moris-v6/TECH_DEBT_REGISTER.md",
+    "plan_file": "Plan_pipeline_moris.md",
+    "release_audit": "docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md"
   },
   "tasks": [
     {
@@ -334,9 +336,9 @@
         "Q14": "Chờ kết quả pilot 20 mã trước khi index back/detail hàng loạt"
       },
       "p0_verification_readonly": {
-        "method": "Supabase PostgREST read-only (service role) — không ghi production",
         "3421750001": "id 9db3f19c-aec9-47ab-8cdb-ca94e1e90763; assets: thumb + front + back + detail×2; 7 vector rows (thumb×2, front×2, back, detail×2)",
         "3421760001": "id 4b54eb77-7219-4303-bf7a-07f529456a2d; assets: chỉ thumb + front; 4 vector rows (thumb×2, front×2)",
+        "method": "Supabase PostgREST read-only (service role) — không ghi production",
         "conclusion": "Xác nhận lời chủ dự án; chốt mâu thuẫn M18 snapshot 16-10 — catalogue đã có multi-view cho một phần mã nhưng CHƯA đồng đều; theo fairness §11.3 multi-view chưa được vào ranking."
       },
       "remaining_m30": [
@@ -588,15 +590,230 @@
       "commit_created": true,
       "pending": "Deploy Cloudflare Pages Functions để production nhận tag ban_oval trong holeFormatReference; flag MORIS_HOLE_FORMAT_BOOST_ENABLED vẫn OFF chờ đo ảnh thật (EVAL-01).",
       "production_evidence": "2026-10-20: supabase migration list remote có 20261020072401; PostgREST service_role 15 rows, anon [] ; R2 list + public URL 200."
+    },
+    {
+      "id": "task_39_uplevel_feasibility_review",
+      "title": "Khảo sát tính khả thi Plan_uplevel, đối chiếu code/data và kiểm chứng local",
+      "status": "completed_review_only",
+      "completed_at": "2026-10-21T00:43:38Z",
+      "report": "docs/moris-v6/UPLEVEL_FEASIBILITY_REVIEW.md",
+      "owner_decision": "Bắt buộc chụp trọn vật; không triển khai partial_allowed. Hiện nút chụp chưa enforce camera.lock.ready.",
+      "findings": [
+        "Hard-negative queue thực tế 2 approved/55 rejected, tất cả có curator/reviewed_at; Plan ghi 0/57 đã cũ.",
+        "private/ không có; chưa tái lập query camera thật 3448000001.",
+        "Size gate manual mismatch vẫn hard reject, all-rejected trả empty; cần policy mới.",
+        "U2 cần phân biệt crop capture và thay canonicalizer/version.",
+        "Candidate union thiếu contract missing vector score; hydrate hiện scan catalogue."
+      ],
+      "evidence": {
+        "npm_test": "62 files / 610 tests pass outside sandbox; sandbox 607 pass / 3 EPERM spawn failures",
+        "typescript": "npx --no-install tsc --noEmit exit 0",
+        "build": "npm run build exit 0, 47 files",
+        "logs": [
+          "docs/moris-v6/evidence/uplevel-feasibility-tests-sandbox.log",
+          "docs/moris-v6/evidence/uplevel-feasibility-tests.log"
+        ],
+        "parser": "U4 three example strings executed, totals 2/2/3 respectively"
+      },
+      "pending": [
+        "Ảnh query thật và dataset camera có nhãn",
+        "Thiết bị mục tiêu và latency budget",
+        "Chốt policy ảnh tải từ máy và dung sai size trước khi triển khai"
+      ],
+      "production_writes": 0,
+      "deployed": false,
+      "commit_created": false,
+      "implementation_started": false
+    },
+    {
+      "id": "task_40_uplevel_live_readonly_diagnosis",
+      "title": "Đối chiếu hai screenshot và kiểm tra live Supabase/API ca 3448000001",
+      "status": "completed_review_only",
+      "completed_at": "2026-10-21T00:55:39Z",
+      "owner_authorization": "Cho phép dùng Supabase CLI/API với .env để khảo sát dữ liệu chỉ đọc; image.png và image copy.png là bằng chứng ca lỗi",
+      "evidence": {
+        "report": "docs/moris-v6/UPLEVEL_FEASIBILITY_REVIEW.md section 9",
+        "live_catalogue": 545,
+        "with_features_nonempty": 326,
+        "with_dims": 6,
+        "with_both_dims": 0,
+        "legacy_active_vectors": 1069,
+        "legacy_records": 534,
+        "hybrid_active_vectors": 1103,
+        "hybrid_records": 544,
+        "target": "180mm width null method user confidence .9; 2 hybrid active, no legacy; self-query RPC rank1 cosine1",
+        "api_get": "PostgREST via .env HTTP200 confirms 180mm",
+        "size_select": "180mm manual tolerance returns target as only compatible dimensioned record",
+        "logs": "docs/moris-v6/evidence/uplevel-live-*.json"
+      },
+      "finding": "Local .env cls/v2 cannot retrieve hybrid-only target if used at runtime; production historical profile not verified. Current size gate cannot rescue target outside ANN. Screenshot confirms top10 miss, not original query payload.",
+      "limitations": [
+        "No original request/camera bytes; no exact replay",
+        "9 screenshot candidates found now; transcribed second code 3410640001 not found",
+        "CLI unavailable; used Supabase connector + API GET"
+      ],
+      "production_writes": 0,
+      "vector_writes": 0,
+      "deployed": false,
+      "commit_created": false
+    },
+    {
+      "id": "task_41_uplevel_profile_and_length_direction",
+      "title": "Đánh giá CLS vs hybrid và hướng phát triển length-first theo Plan_uplevel",
+      "status": "completed_review_only",
+      "completed_at": "2026-10-21T01:04:16Z",
+      "owner_decisions": [
+        "Cạnh dài là ưu tiên nghiệp vụ; cạnh ngắn hỗ trợ, không bắt buộc có dữ liệu",
+        "Giữ yêu cầu chụp trọn vật từ phiên trước"
+      ],
+      "recommendation": "Hybrid hiện hữu làm baseline kỹ thuật; harness độc lập profile; length-first recall union và feature evidence, width optional/neutral khi thiếu. CLS là đối chứng, chưa dual-profile online hoặc đổi descriptor. Đây là đề xuất, chưa thay runtime.",
+      "evidence": {
+        "report": "docs/moris-v6/UPLEVEL_DIRECTION_DECISION.md",
+        "historical_audit": "docs/moris-v6/evidence/uplevel-profile-evidence-audit.json",
+        "key_finding": "M22 global dùng hybrid, không phải CLS; chưa có same-query/candidate-set A/B đủ để kết luận hybrid thắng CLS",
+        "focused_tests": "3 files / 39 tests pass; profile-contract, size-gate, size-gate-orchestrator",
+        "test_log": "docs/moris-v6/evidence/uplevel-direction-tests.log",
+        "external_primary_source": "https://github.com/facebookresearch/dinov2/blob/main/MODEL_CARD.md"
+      },
+      "limitations": [
+        "Không có raw camera dataset để thực hiện A/B mới",
+        "Không dùng historical phase-a 6 ảnh so trực tiếp M22 124 ảnh",
+        "Không đo accuracy mới; profile coverage dựa live task40"
+      ],
+      "production_writes": 0,
+      "vector_writes": 0,
+      "deployed": false,
+      "commit_created": false,
+      "implementation_started": false
+    },
+    {
+      "id": "task_42_harness_capture_hole_research",
+      "title": "Nghiên cứu concept camera landscape, crop/hậu kỳ, sàng lọc sớm và nhận dạng lỗ/khoét theo từ điển",
+      "status": "completed_research_only",
+      "completed_at": "2026-10-21T01:35:05Z",
+      "owner_scope": "Thông tin tiếp nhận và nghiên cứu sâu; không yêu cầu thực thi camera/code/vector/training",
+      "owner_decisions": [
+        "Cầm điện thoại ngang, camera landscape, giữ control/UI; cả Android và iPhone Safari",
+        "Nhận dạng cả lỗ kín và khoét hở ở mép",
+        "Cạnh dài nhập tay lệch không quá5% được chấp nhận; cập nhật hướng manual10% trước đây, chưa đổi code",
+        "Width chỉ hỗ trợ; chụp trọn vật; hybrid-only rebuild là ý định tương lai chưa authorization",
+        "Răng cưa hiếm/không biến thể: chỉ nhận dạng tương đương mẫu, không cần đếm từng răng",
+        "Size<=5%: nếu đủ10 ứng viên đạt điều kiện thì không đưa nhóm phụ; nếu thiếu mới bổ sung cứu sinh, phải note rõ lý do và score"
+      ],
+      "findings": [
+        "Tracking mask không phải encoder input; capture center-crop1000:410 rồi optical tự segment lại",
+        "Optical có padding6% và clamp p98/median/CLAHE thật nhưng segmentation chạy trước clamp; chưa chứng minh chất lượng ảnh thật",
+        "moris_hole_samples không được search dùng để visual-match ảnh mẫu; module chỉ tags và bỏ count",
+        "Pure function demonstration query4circle boosts both2circle and4circle identically; illustrative not real-photo eval",
+        "Enclosed-hole floodfill không nhận khoét hở thông ra mép; cần nhánh outer-contour",
+        "Browser variants hybrid thật, health/profile cần trace xuyên suốt để chứng minh deployed runtime; includeGray không tự thành2probes khi allowMirror=false"
+      ],
+      "evidence": {
+        "report": "docs/moris-v6/HARNESS_CAPTURE_HOLE_RESEARCH.md",
+        "tests": "5 files/65 tests pass",
+        "logs": [
+          "docs/moris-v6/evidence/harness-capture-hole-research-tests.log",
+          "docs/moris-v6/evidence/harness-contract-observations.log"
+        ],
+        "external_sources": [
+          "https://developer.mozilla.org/en-US/docs/Web/API/ScreenOrientation/lock",
+          "https://docs.opencv.org/4.x/d9/d8b/tutorial_py_contours_hierarchy.html",
+          "https://github.com/facebookresearch/sam2",
+          "https://github.com/facebookresearch/dinov2/blob/main/MODEL_CARD.md",
+          "https://arxiv.org/abs/2005.11401"
+        ]
+      },
+      "pending": [
+        "Raw camera labels, instance masks/closed-open, Android/Safari verification",
+        "Định nghĩa denominator/sàn mm và quality threshold trước code; top10 rescue policy đã chốt"
+      ],
+      "production_writes": 0,
+      "vector_writes": 0,
+      "trained": false,
+      "deployed": false,
+      "commit_created": false,
+      "implementation_started": false
+    },
+    {
+      "id": "task_43_replace_uplevel_with_pipeline_plan",
+      "title": "Thay Plan_uplevel.md bằng Plan_pipeline_moris.md theo nghiên cứu và quyết định owner",
+      "status": "completed_documentation_only",
+      "completed_at": "2026-10-21T02:12:59Z",
+      "owner_authorization": "Loại bỏ Plan_uplevel.md và setup markdown plan chi tiết Plan_pipeline_moris.md; không yêu cầu triển khai code",
+      "changes": [
+        "Deleted Plan_uplevel.md",
+        "Created Plan_pipeline_moris.md:13 phases P00–P12, contracts, dependencies, files, tests, evidence, rollback, release boundaries",
+        "Updated current-session/state/checklist and marked research documents as historical references"
+      ],
+      "evidence": {
+        "npm_test": "62 files/610 tests pass, exit0",
+        "test_log": "docs/moris-v6/evidence/pipeline-plan-documentation-tests.log",
+        "documentation": "13 unique phase headings, all implementation checkboxes pending; explicit referenced file paths checked; old plan absent",
+        "diff_check": "git diff --check pass"
+      },
+      "active_plan": "Plan_pipeline_moris.md",
+      "implementation_started": false,
+      "production_writes": 0,
+      "vector_writes": 0,
+      "deployed": false,
+      "commit_created": false
+    },
+    {
+      "id": "task_44_pipeline_implementation_checkpoint",
+      "title": "Bắt đầu pipeline Moris theo Plan_pipeline_moris P00/P01/P02/P03/P06/P07",
+      "status": "in_progress",
+      "started_at": "2026-10-21T02:29:25Z",
+      "completed_local_subtasks": [
+        "5% theo query, không sàn mm, client/server parity và boundary tests",
+        "Admin-gated debug và monotonic stage timings",
+        "Landscape request/fallback, full sensor preview/tracking/tap/capture",
+        "P02 lifecycle: stale getUserMedia/play/fullscreen after close cannot reactivate camera; stream tracks stopped and tracker reset",
+        "P03 final-mask padded ROI crop, still-upload quality gate, bounded capture provenance, reliable hole-count gating",
+        "Capture readiness gate và revalidation frame cuối",
+        "Loại fallback hybrid query sang CLS index",
+        "P04 optical closed-hole count consistency diagnostic (không đổi preprocess)",
+        "P05 exact explicit hole count matching + oval leaf suppression; boost vẫn OFF",
+        "P06/P08 bounded length shortlist trước ANN, scoped RPC proposal và local target-outside-ANN test; feature flag OFF chờ deploy",
+        "P09 primary rồi unknown rồi outside rescue, API/UI giữ thứ tự và ghi lý do",
+        "P07 hybrid code audit; P08 session-filtered ID/keyed hydration RPC proposals and 101-ID local tests",
+        "P09 primary0/7/10 selection and API/UI comparator tests",
+        "P10 owner acceptance protocol; P11 conditional model decision; P12 release review packet",
+        "P13 last read-only SQL/R2 survey and two-asset optical replay proving NULL→legacy0 path"
+      ],
+      "evidence": "docs/moris-v6/evidence/pipeline-p04-p09-local.md; docs/moris-v6/evidence/pipeline-p13-hole-zero-audit.md; final 69 files/651 tests pass; tsc0/build47/diff check. P13 snapshot 1110 hybrid active/236 zero, 68 front positive/thumb zero; two asset replay. No production writes.",
+      "remaining": [
+        "Owner confirms hybrid rebuild stable, freezes catalogue/profile/asset freshness and supplies labeled camera/GT set",
+        "Owner production Android/iPhone camera, hole/open-notch and Top10 acceptance; set thresholds before holdout",
+        "Review/EXPLAIN/deploy three RPC proposals and enable scoped/keyed flags in authorized release; no DB changes yet",
+        "P13 measure false-zero rate over labeled sample and decide nullable provenance migration/metadata rebuild",
+        "P11 classifier/detector only if labeled perception errors justify",
+        "P12 backup/restore, controlled rollout and owner sign-off"
+      ],
+      "production_writes": 0,
+      "deployed": false,
+      "commit_created": false
+    },
+    {
+      "id": "task_p13_hole_zero_local_fix_20261021",
+      "title": "Sửa nguyên nhân 236 zero geometry legacy và cảnh báo Vector Center",
+      "status": "local_verified_pending_production",
+      "evidence": "docs/moris-v6/evidence/pipeline-p13-hole-zero-audit.md; docs/moris-v6/evidence/pipeline-p13-zero-asset-replay.csv; focused 37/37 and 47/47; final full suite 69/659, tsc exit0, build47, git diff --check exit0; local PG17/pgvector vector/provenance/catalogue DB fixtures pass (retry, nullable zero, ACL, backup/restore, stable paging); scoped/keyed SQL proposal local fixture pass",
+      "production_writes": "4 schema/RPC migrations applied; 0 vector data writes",
+      "deployed": false,
+      "remaining": [
+        "Commit/push main and verify Pages deployment",
+        "Owner-confirmed Vector Center replace for affected assets",
+        "Owner-labeled hole GT and Android/iPhone production acceptance"
+      ]
     }
   ],
   "verification": {
-    "total_unit_tests": 610,
-    "passing_tests": 610,
+    "total_unit_tests": 636,
+    "passing_tests": 636,
     "failing_tests": 0,
     "typescript_exit_code": 0,
     "build_exit_code": 0,
-    "unit_files": 62,
+    "unit_files": 66,
     "build_files": 47,
     "local_e2e_passed": 12,
     "staging": "skipped_by_owner",

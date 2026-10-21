@@ -4,11 +4,11 @@
  * MORIS M28 — SIZE CONTRACT & SIZE GATE (S1.1, query-side only, fail-open)
  *
  * Phần hợp đồng kích thước mirror 1:1 với src/moris/size-contract.js
- * (quy ước §10.3, dung sai theo nguồn S1.1 2026-10-19, Q5/Q8/Q9 chủ dự án):
+ * (quy ước cạnh dài V1.2 chủ dự án chốt 2026-10-21):
  *  - cạnh dài bắt buộc, cạnh ngắn tùy chọn; thiếu cạnh ngắn -> 'match_partial'
  *    (chỉ đối chiếu cạnh dài, KHÔNG loại trừ).
- *  - dung sai: nhập tay 10%/sàn 3mm; kiểm chuẩn (caliper/marker_photo/erp/
- *    camera_measured, cả 2 bên) 5%/sàn 2mm.
+ *  - mọi nguồn đo cùng 5% tính trên L_query, không sàn mm;
+ *    cạnh ngắn chỉ là evidence hỗ trợ, không veto cạnh dài hợp lệ.
  *
  * Gate được chèn sau hydrate ANN, trước rankMetadata/structural/fusion (§5.5-5):
  *  - query thiếu size           -> status 'not_provided', không lọc (fail-open)
@@ -18,17 +18,19 @@
  * ============================================================================
  */
 
-export const SIZE_CONTRACT_VERSION = 'size_contract_v1_1';
+import {headersForKey, serverKey} from '../connectors/supabaseService.js';
+
+export const SIZE_CONTRACT_VERSION = 'size_contract_v1_2';
 
 export const DEFAULT_SIZE_TOLERANCE = Object.freeze({
   relative: 0.05,
-  floorMm: 2
+  floorMm: 0
 });
 
-/** Dung sai theo nguồn đo (S1.1): nhập tay rộng hơn số đo kiểm chuẩn. */
+/** Giữ hai nhãn nguồn để tương thích payload cũ; ngưỡng V1.2 như nhau. */
 export const SIZE_TOLERANCE_BY_SOURCE = Object.freeze({
-  verified: Object.freeze({ relative: 0.05, floorMm: 2 }),
-  manual: Object.freeze({ relative: 0.10, floorMm: 3 })
+  verified: Object.freeze({ relative: 0.05, floorMm: 0 }),
+  manual: Object.freeze({ relative: 0.05, floorMm: 0 })
 });
 
 export const SIZE_VERIFIED_METHODS = Object.freeze(['caliper', 'marker_photo', 'erp']);
@@ -104,7 +106,7 @@ export function shapeClass(lengthMm, widthMm) {
   return diff <= SIZE_SQUARE_CLASS_MAX_DIFF ? 'square' : 'rect';
 }
 
-/** Dung sai 2 tầng: tầng tương đối hoặc sàn tuyệt đối, lấy giá trị lớn hơn. */
+/** Ngưỡng tuyệt đối theo tỷ lệ query; mặc định không có sàn mm. */
 export function toleranceForEdge(refMm, tolerance = DEFAULT_SIZE_TOLERANCE) {
   const ref = toFiniteNumber(refMm);
   if (ref == null || ref <= 0) return null;
@@ -121,10 +123,9 @@ export function isVerifiedMeasurement(side) {
 }
 
 /**
- * Chọn dung sai cho một phép so khớp (S1.1).
+ * Chọn dung sai cho một phép so khớp (V1.2).
  * - explicit (tham số tolerance truyền thẳng) luôn thắng (test/override).
- * - Chỉ khi CẢ HAI bên là số đo kiểm chuẩn mới dùng mức chặt 5%/2mm;
- *   còn lại (nhập tay/không rõ) dùng mức rộng 10%/3mm.
+ * - Các nguồn đo đều dùng 5% không sàn mm theo quyết định 2026-10-21.
  */
 export function resolveSizeTolerance(querySide, candidateSide, explicit) {
   const relative = toFiniteNumber(explicit?.relative);
@@ -143,7 +144,7 @@ function compareEdges(queryPair, candidatePair, tolerance) {
     const q = queryPair[key];
     const c = candidatePair[key];
     const delta = Math.abs(q - c);
-    const ref = Math.max(q, c);
+    const ref = q;
     const allowed = Math.max(tol.relative * ref, tol.floorMm);
     return {
       key,
@@ -152,14 +153,10 @@ function compareEdges(queryPair, candidatePair, tolerance) {
       ok: delta <= allowed + 1e-9
     };
   });
-  const dMax = Math.max(
-    ...edges.map((edge) => round(edge.delta) / Math.max(
-      queryPair[edge.key],
-      candidatePair[edge.key]
-    ))
-  );
+  const longEdge = edges[0];
+  const dMax = longEdge.delta / queryPair.length_mm;
   return {
-    ok: edges.every((edge) => edge.ok),
+    ok: longEdge.ok,
     partial: !hasWidth,
     d_max: round(dMax),
     edges
@@ -167,8 +164,7 @@ function compareEdges(queryPair, candidatePair, tolerance) {
 }
 
 /**
- * Khoảng cách chuẩn hoá d_max với hoán vị (L,W) <-> (W,L) (§10.3).
- * Thiếu cạnh ngắn -> chỉ tính trên cạnh dài.
+ * Khoảng cách cạnh dài chuẩn hoá theo L_query. Cạnh ngắn không tham gia gate.
  * Trả về null nếu một trong hai cặp không hợp lệ.
  */
 export function sizeDistance(queryPair, candidatePair) {
@@ -181,14 +177,7 @@ export function sizeDistance(queryPair, candidatePair) {
     candidatePair?.width_mm ?? candidatePair?.widthMm
   );
   if (!q || !c) return null;
-  const identity = compareEdges(q, c, DEFAULT_SIZE_TOLERANCE);
-  if (identity.partial) return identity.d_max;
-  const swapped = compareEdges(
-    q,
-    { length_mm: c.width_mm, width_mm: c.length_mm },
-    DEFAULT_SIZE_TOLERANCE
-  );
-  return Math.min(identity.d_max, swapped.d_max);
+  return compareEdges(q, c, DEFAULT_SIZE_TOLERANCE).d_max;
 }
 
 /**
@@ -221,20 +210,8 @@ export function evaluateSizeMatch(queryPair, candidatePair, tolerance) {
   const tol = resolveSizeTolerance(queryPair, candidatePair, tolerance);
   const identity = compareEdges(q, c, tol);
 
-  let chosen = identity;
-  let permutation = 'identity';
-
-  if (!identity.partial) {
-    const swappedPair = { length_mm: c.width_mm, width_mm: c.length_mm };
-    const swapped = compareEdges(q, swappedPair, tol);
-    if (!identity.ok && swapped.ok) {
-      chosen = swapped;
-      permutation = 'swapped';
-    } else if (!identity.ok && !swapped.ok && swapped.d_max < identity.d_max) {
-      chosen = swapped;
-      permutation = 'swapped';
-    }
-  }
+  const chosen = identity;
+  const permutation = 'identity';
 
   return {
     status: chosen.ok ? (chosen.partial ? 'match_partial' : 'match') : 'mismatch',
@@ -306,36 +283,71 @@ function lookupDims(dimsById, id) {
  */
 export async function loadCandidateDims(env, token, recordIds) {
   const ids = [...new Set((recordIds || []).map((id) => String(id || '').trim()).filter(Boolean))]
-    .slice(0, 100);
+    .filter((id) => /^[a-z0-9-]{1,64}$/i.test(id));
   if (!ids.length) return new Map();
 
   const base = String(env?.SUPABASE_URL || '').replace(/\/+$/, '');
   if (!base) return null;
 
-  const serviceKey = String(env?.SUPABASE_SERVICE_ROLE_KEY || '');
-  const anonKey = String(env?.SUPABASE_ANON_KEY || '');
-  const apikey = serviceKey || anonKey;
-  if (!apikey) return null;
-  const bearer = serviceKey || String(token || '') || anonKey;
-
-  const params = new URLSearchParams();
-  params.set('select', 'record_id,length_mm,width_mm,method,confidence');
-  params.set('record_id', `in.(${ids.join(',')})`);
+  const key = serverKey(env);
+  if (!key) return null;
 
   try {
-    const res = await fetch(`${base}/rest/v1/${SIZE_DIMS_TABLE}?${params.toString()}`, {
-      headers: {
-        apikey,
-        authorization: `Bearer ${bearer}`,
-        accept: 'application/json'
-      }
-    });
-    if (!res.ok) return null;
-    const data = await res.json().catch(() => null);
-    if (!Array.isArray(data)) return null;
-    return new Map(data.map((row) => [String(row?.record_id || ''), row]));
+    const result = new Map();
+    for (let offset = 0; offset < ids.length; offset += 100) {
+      const params = new URLSearchParams();
+      params.set('select', 'record_id,length_mm,width_mm,method,confidence');
+      params.set('record_id', `in.(${ids.slice(offset, offset + 100).join(',')})`);
+      const res = await fetch(`${base}/rest/v1/${SIZE_DIMS_TABLE}?${params.toString()}`, {
+        headers: {...headersForKey(key), accept: 'application/json'}
+      });
+      if (!res.ok) return null;
+      const data = await res.json().catch(() => null);
+      if (!Array.isArray(data)) return null;
+      for (const row of data) result.set(String(row?.record_id || ''), row);
+    }
+    return result;
   } catch {
     return null;
+  }
+}
+
+/** Read-only length shortlist before ANN. A full final page means incomplete coverage. */
+export async function loadLengthShortlist(env, querySize, {maxRows = 2000, pageSize = 200} = {}) {
+  const size = normalizeQuerySize(querySize);
+  if (!size) return {status: 'not_provided', rows: []};
+  const base = String(env?.SUPABASE_URL || '').replace(/\/+$/, '');
+  const key = serverKey(env);
+  if (!base || !key) return {status: 'dims_unavailable', rows: []};
+
+  const allowed = toleranceForEdge(size.length_mm);
+  const budget = Math.max(1, Math.min(5000, Math.floor(maxRows) || 2000));
+  const page = Math.max(1, Math.min(500, Math.floor(pageSize) || 200));
+  const rows = [];
+  try {
+    for (let offset = 0; offset <= budget; offset += page) {
+      const limit = Math.min(page, budget - offset + 1);
+      const params = new URLSearchParams({
+        select: 'record_id,length_mm,width_mm,method,confidence',
+        and: `(length_mm.gte.${size.length_mm - allowed},length_mm.lte.${size.length_mm + allowed})`,
+        order: 'record_id.asc',
+        limit: String(limit),
+        offset: String(offset)
+      });
+      const res = await fetch(`${base}/rest/v1/${SIZE_DIMS_TABLE}?${params}`, {
+        headers: {...headersForKey(key), accept: 'application/json'},
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!res.ok) return {status: 'dims_unavailable', rows: []};
+      const part = await res.json();
+      if (!Array.isArray(part)) return {status: 'dims_unavailable', rows: []};
+      rows.push(...part);
+      if (rows.length > budget) return {status: 'budget_exceeded', rows: [], budget};
+      if (part.length < limit) return {status: 'complete', rows, budget};
+    }
+    return {status: 'budget_exceeded', rows: [], budget};
+  } catch {
+    return {status: 'dims_unavailable', rows: []};
   }
 }
 
@@ -382,6 +394,7 @@ export function applySizeGate({
   const tol = resolveSizeTolerance(queryPair, null, tolerance);
   const kept = [];
   const rejected = [];
+  const rescueCandidates = [];
   let unknownCount = 0;
   let partialCount = 0;
 
@@ -424,17 +437,23 @@ export function applySizeGate({
       permutation: verdict.permutation,
       candidate: { ...candidatePair }
     });
+    rescueCandidates.push({
+      ...row,
+      size_status:'outside_tolerance',
+      size_evidence:{d_max:verdict.d_max,permutation:verdict.permutation,candidate:{...candidatePair},method:dims?.method||null}
+    });
   }
 
   const warnings = rejected.length
     ? [
-        `Đã loại ${rejected.length} mã khác kích thước ngoài dung sai ` +
-          `(${Math.round(tol.relative * 100)}% hoặc tối thiểu ${tol.floorMm}mm).`
+        `Đã chuyển ${rejected.length} mã khác kích thước ngoài dung sai ` +
+          `(${Math.round(tol.relative * 100)}% theo cạnh dài đã nhập) sang nhóm đối chiếu phụ.`
       ]
     : [];
 
   return {
     candidates: kept,
+    rescueCandidates,
     rejected,
     evidence: {
       status: 'applied',

@@ -158,6 +158,7 @@ createApp({
         imageFile:null,
         vectorStatus:'',
         captureEvidence:null,
+        captureQuality:null,
         messages:[
           {
             id:'moris-welcome',
@@ -195,9 +196,9 @@ createApp({
       },
       pointerCache:null,
 
-      // ---- Camera chụp ảnh cho Moris (khung căn chỉnh 1000:410 như ảnh mẫu) ----
-      camera:{ open:false, ready:false, error:'', busy:false, facing:'environment', scanning:false, previewUrl:'', maskUrl:'', scanStatus:'',
-        lock:{ enabled:false, seed:null, ready:false, checks:{}, guidance:[], chips:[], box:null, stableCount:0, samples:0, agreement:0, evidence:null, evidenceSummary:'', lastError:'' },
+      // ---- Camera Moris: landscape và toàn bộ khung sensor ----
+      camera:{ open:false, ready:false, error:'', busy:false, facing:'environment', scanning:false, previewUrl:'', maskUrl:'', scanStatus:'', frameAspect:'16 / 9', landscapeHint:false, streamSettings:null,
+        lock:{ enabled:false, seed:null, ready:false, checks:{}, guidance:[], chips:[], box:null, stableCount:0, samples:0, agreement:0, lastSampleAt:0, evidence:null, evidenceSummary:'', lastError:'' },
         // M28: size contract — người dùng nhập cạnh dài nhất/ngắn nhất (mm), tuỳ chọn, fail-open
         size:{ length:'', width:'', unknown:true } },
       vectorCenter:{ open:false, loading:true },
@@ -3023,6 +3024,8 @@ createApp({
      * Không có bằng chứng camera → null (server bỏ qua, không boost).
      */
     morisHoleFormatsPayload() {
+      if (this.moris.captureEvidence?.reliable !== true) return null;
+      if (this.moris.captureQuality?.optical_consistency?.status === 'mismatch') return null;
       const counts = this.moris.captureEvidence?.holes?.counts || null;
       if (!counts) return null;
       const map = { circle: 'tron', square: 'vuong', oval: 'oval', slot: 'dai' };
@@ -3032,6 +3035,25 @@ createApp({
         if (n > 0) out[tag] = n;
       }
       return Object.keys(out).length ? out : null;
+    },
+
+    /** So sánh hai segmentation độc lập sau crop; chỉ diagnostics, không đổi rank. */
+    compareCaptureOpticalEvidence(vectorResult) {
+      const capture = this.moris.captureEvidence;
+      const quality = vectorResult?.diagnostics?.maskQuality;
+      const opticalCount = vectorResult?.geometry?.hole_count;
+      const captureCount = capture?.holes?.total;
+      if (!capture || !quality || !Number.isInteger(opticalCount) || !Number.isInteger(captureCount)) {
+        return { status:'unknown', reason:'missing_evidence' };
+      }
+      if (capture.reliable !== true || quality.reliable !== true || Number(capture.holes?.counts?.unknown || 0) > 0) {
+        return { status:'unknown', reason:'low_quality_or_unknown_holes' };
+      }
+      return {
+        status: captureCount === opticalCount ? 'agree' : 'mismatch',
+        capture_closed_count:captureCount,
+        optical_closed_count:opticalCount
+      };
     },
 
     useMorisSuggestion(text) {
@@ -3054,7 +3076,17 @@ createApp({
     async applyMorisFile(file) {
       try {
         this.moris.status = 'Đang chuẩn bị ảnh...';
+        this.clearMorisImage();
         const dataUrl = await this.prepareMorisImage(file);
+        const quality = await this.validateMorisUploadDataUrl(dataUrl);
+        this.moris.captureQuality = {
+          source_kind:'upload',
+          frame_width_px:quality.source_frame.width,
+          frame_height_px:quality.source_frame.height,
+          crop_roi:null,
+          gate_status:'passed',
+          temporal_stability:'not_applicable_static'
+        };
         this.moris.imageDataUrl = dataUrl;
         this.moris.imagePreview = dataUrl;
         this.moris.imageName = file.name || 'query-image';
@@ -3114,19 +3146,52 @@ createApp({
       }
     },
 
+    /** Ảnh tải lên không có temporal stability; bốn quality checks còn lại bắt buộc. */
+    async validateMorisUploadDataUrl(dataUrl) {
+      const mod = await this.loadSubjectLockModule();
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('Không đọc được ảnh để kiểm tra trọn linh kiện.'));
+        img.src = dataUrl;
+      });
+      const iw = Number(img.naturalWidth || img.width || 0);
+      const ih = Number(img.naturalHeight || img.height || 0);
+      if (!iw || !ih) throw new Error('Ảnh tải lên không có kích thước hợp lệ.');
+      const scale = Math.min(1, CONFIG.MORIS_CAMERA_LOCK_SAMPLE_WIDTH / iw);
+      const w = Math.max(1, Math.round(iw * scale));
+      const h = Math.max(1, Math.round(ih * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d', { willReadFrequently:true });
+      if (!ctx) throw new Error('Không kiểm tra được ảnh tải lên trên thiết bị này.');
+      ctx.drawImage(img, 0, 0, w, h);
+      const pixels = ctx.getImageData(0, 0, w, h);
+      canvas.width = 1; canvas.height = 1;
+      const analysis = mod.analyzeFrame({ data:pixels.data, width:w, height:h });
+      const sharpness = mod.laplacianVariance(mod.toGray(pixels.data,w,h),w,h);
+      const verdict = mod.assessStillSubject(analysis, sharpness);
+      if (!verdict.ready) {
+        throw new Error(verdict.guidance[0] || 'Ảnh chưa xác nhận trọn linh kiện. Hãy chụp lại trên nền trơn, chừa đủ lề.');
+      }
+      return { verdict, source_frame:{ width:iw, height:ih }, sample_frame:{ width:w, height:h } };
+    },
+
     clearMorisImage() {
       this.moris.imageDataUrl = '';
       this.moris.imagePreview = '';
       this.moris.imageName = '';
       this.moris.imageFile = null;
+      this.moris.captureEvidence = null;
+      this.moris.captureQuality = null;
       this.$nextTick(() => this.renderIcons());
     },
 
     // ------------------------------------------------------------------
-    // CAMERA MORIS — mở camera có khung căn chỉnh tỉ lệ 1000:410 (ảnh mẫu)
-    // Ảnh chụp được cắt theo khung rồi gắn vào ô nhập Moris.
+    // CAMERA MORIS — hiển thị và lấy mẫu toàn bộ frame camera landscape.
     // ------------------------------------------------------------------
     openCamera() {
+      this._cameraOpenId = (this._cameraOpenId || 0) + 1;
       this.camera.open = true;
       this.camera.ready = false;
       this.camera.busy = false;
@@ -3137,25 +3202,96 @@ createApp({
       this.camera.error = '';
       this.resetCameraLock();
       this.resetCameraSize();
+      this.updateCameraOrientation();
+      this._cameraOrientationHandler = () => {
+        const wasPortrait = this._cameraPortrait;
+        this.updateCameraOrientation();
+        if (wasPortrait !== this._cameraPortrait) {
+          this.resetCameraLock();
+          if (this.camera.ready) this.startCameraLockLoop();
+        }
+      };
+      window.addEventListener?.('resize', this._cameraOrientationHandler);
+      window.addEventListener?.('orientationchange', this._cameraOrientationHandler);
+      this.requestCameraLandscape();
       this.$nextTick(() => this.startCameraStream());
     },
+    updateCameraOrientation() {
+      const handheld = window.matchMedia?.('(pointer: coarse)')?.matches === true;
+      const type = typeof screen !== 'undefined' ? screen.orientation?.type : null;
+      const angle = Number(window.orientation);
+      const portrait = typeof type === 'string' && /^(portrait|landscape)/.test(type)
+        ? type.startsWith('portrait')
+        : (Number.isFinite(angle) && window.orientation != null
+            ? Math.abs(angle % 180) < 45
+            : (window.matchMedia?.('(orientation: portrait)')?.matches ?? window.innerHeight > window.innerWidth));
+      this._cameraPortrait = portrait;
+      this.camera.landscapeHint = handheld && portrait;
+    },
+    updateCameraFrameAspect() {
+      const video=this.$refs.camVideo;
+      if (!video?.videoWidth || !video?.videoHeight) return;
+      const next=`${video.videoWidth} / ${video.videoHeight}`;
+      if (this.camera.frameAspect !== next) {
+        this.camera.frameAspect=next;
+        this.resetCameraLock();
+        if (this.camera.ready) this.startCameraLockLoop();
+      }
+    },
+    async requestCameraLandscape() {
+      const openId = this._cameraOpenId;
+      try {
+        if (!screen?.orientation?.lock) return;
+        if (!document.fullscreenElement && document.documentElement?.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+          this._cameraEnteredFullscreen = true;
+        }
+        if (!this.camera.open || openId !== this._cameraOpenId) {
+          if (this._cameraEnteredFullscreen && document.fullscreenElement === document.documentElement) {
+            await document.exitFullscreen?.().catch?.(() => {});
+          }
+          this._cameraEnteredFullscreen = false;
+          return;
+        }
+        await screen.orientation.lock('landscape');
+        this.updateCameraOrientation();
+      } catch (_) {
+        // Safari/thiết bị không hỗ trợ lock: người dùng xoay máy, listener cập nhật hint.
+      }
+    },
     async startCameraStream() {
+      const requestId = this._camStreamRequestId = (this._camStreamRequestId || 0) + 1;
       this.camera.error = '';
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error('Trình duyệt không hỗ trợ camera.');
         this.stopCameraStream();
+        this.resetCameraLock();
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: this.camera.facing }, width:{ ideal:1920 }, height:{ ideal:1080 } },
           audio: false
         });
+        if (!this.camera.open || requestId !== this._camStreamRequestId) {
+          for (const track of stream.getTracks()) track.stop();
+          return;
+        }
         this._camStream = stream;
         const video = this.$refs.camVideo;
         if (!video) { this.stopCameraStream(); return; }
         video.srcObject = stream;
-        try { await video.play(); } catch(_) {}
+        await video.play();
+        if (!this.camera.open || requestId !== this._camStreamRequestId) {
+          for (const track of stream.getTracks()) track.stop();
+          if (video.srcObject === stream) video.srcObject = null;
+          if (this._camStream === stream) this._camStream = null;
+          return;
+        }
+        this.camera.streamSettings = stream.getVideoTracks?.()[0]?.getSettings?.() || null;
+        this.updateCameraFrameAspect();
         this.camera.ready = true;
         this.startCameraLockLoop();
       } catch(e) {
+        if (!this.camera.open || requestId !== this._camStreamRequestId) return;
+        this.stopCameraStream();
         const name = String(e?.name || '');
         this.camera.ready = false;
         this.camera.error = /NotAllowed|Permission|Security/i.test(name)
@@ -3173,6 +3309,8 @@ createApp({
       if (v) { try { v.srcObject = null; } catch(_) {} }
     },
     closeCamera() {
+      this._cameraOpenId = (this._cameraOpenId || 0) + 1;
+      this._camStreamRequestId = (this._camStreamRequestId || 0) + 1;
       this.camera.open = false;
       this.camera.ready = false;
       this.camera.busy = false;
@@ -3182,6 +3320,16 @@ createApp({
       this.camera.scanStatus = '';
       this.camera.error = '';
       this.stopCameraStream();
+      if (this._cameraOrientationHandler) {
+        window.removeEventListener?.('resize', this._cameraOrientationHandler);
+        window.removeEventListener?.('orientationchange', this._cameraOrientationHandler);
+        this._cameraOrientationHandler = null;
+      }
+      if (this._cameraEnteredFullscreen && document.fullscreenElement === document.documentElement) {
+        document.exitFullscreen?.().catch?.(() => {});
+      }
+      this._cameraEnteredFullscreen = false;
+      this.camera.streamSettings = null;
     },
     async switchCamera() {
       this.camera.facing = this.camera.facing === 'environment' ? 'user' : 'environment';
@@ -3314,6 +3462,7 @@ createApp({
 
     resetCameraLock() {
       this.stopCameraLockLoop();
+      this._camCaptureRoi = null;
       this.camera.lock.enabled = CONFIG.MORIS_CAMERA_SUBJECT_LOCK_ENABLED;
       this.camera.lock.seed = null;
       this.camera.lock.ready = false;
@@ -3324,6 +3473,7 @@ createApp({
       this.camera.lock.stableCount = 0;
       this.camera.lock.samples = 0;
       this.camera.lock.agreement = 0;
+      this.camera.lock.lastSampleAt = 0;
       this.camera.lock.evidence = null;
       this.camera.lock.evidenceSummary = '';
       this.camera.lock.lastError = '';
@@ -3336,10 +3486,7 @@ createApp({
       this._camLockAnimFrame = null;
     },
 
-    /**
-     * M27: đổi bbox pixel của vùng phân tích (crop 1000:410 khớp 1:1 container)
-     * sang % để vẽ khung vuông tracking — clamp biên, trả null khi thiếu dữ liệu.
-     */
+    /** M27: đổi bbox pixel toàn frame sang % khung tracking; clamp biên. */
     subjectBoxToPercent(bbox, width, height) {
       const w = Number(width || 0), h = Number(height || 0);
       if (!bbox || w <= 0 || h <= 0) return null;
@@ -3500,7 +3647,7 @@ createApp({
       el.style.height = view.height + '%';
     },
 
-    /** Chạm vào linh kiện = seed point-prompt; lưu theo toạ độ chuẩn hoá vùng crop 1000:410. */
+    /** Chạm vào linh kiện = seed point-prompt trên toàn bộ frame sensor. */
     handleCameraTap(evt) {
       if (!CONFIG.MORIS_CAMERA_SUBJECT_LOCK_ENABLED || !this.camera.ready || this.camera.busy || this.camera.scanning) return;
       const video = this.$refs.camVideo;
@@ -3509,21 +3656,16 @@ createApp({
       const vw = Number(video.videoWidth || 0), vh = Number(video.videoHeight || 0);
       if (!rect.width || !rect.height || !vw || !vh) return;
 
-      // video hiển thị object-fit: cover → quy đổi toạ độ màn hình về pixel video
-      const scale = Math.max(rect.width / vw, rect.height / vh);
-      const offsetX = (vw * scale - rect.width) / 2;
-      const offsetY = (vh * scale - rect.height) / 2;
-      const vx = (evt.clientX - rect.left + offsetX) / scale;
-      const vy = (evt.clientY - rect.top + offsetY) / scale;
+      // video hiển thị object-fit: contain; bỏ qua tap ở vùng letterbox.
+      const scale = Math.min(rect.width / vw, rect.height / vh);
+      const offsetX = (rect.width - vw * scale) / 2;
+      const offsetY = (rect.height - vh * scale) / 2;
+      const vx = (evt.clientX - rect.left - offsetX) / scale;
+      const vy = (evt.clientY - rect.top - offsetY) / scale;
+      if (vx < 0 || vy < 0 || vx > vw || vy > vh) return;
 
-      // vùng crop trung tâm 1000:410 giống captureCamera
-      const RATIO = 1000 / 410;
-      let cw = vw, ch = Math.round(vw / RATIO);
-      if (ch > vh) { ch = vh; cw = Math.round(vh * RATIO); }
-      const cx = (vw - cw) / 2, cy = (vh - ch) / 2;
-
-      const fx = Math.min(1, Math.max(0, (vx - cx) / cw));
-      const fy = Math.min(1, Math.max(0, (vy - cy) / ch));
+      const fx = Math.min(1, Math.max(0, vx / vw));
+      const fy = Math.min(1, Math.max(0, vy / vh));
       this.camera.lock.seed = { fx: Number(fx.toFixed(4)), fy: Number(fy.toFixed(4)) };
       this.camera.lock.stableCount = 0;
       this._camLockLastMask = null;
@@ -3543,12 +3685,7 @@ createApp({
       try {
         const mod = await this.loadSubjectLockModule();
         const vw = video.videoWidth, vh = video.videoHeight;
-        const RATIO = 1000 / 410;
-        let cw = vw, ch = Math.round(vw / RATIO);
-        if (ch > vh) { ch = vh; cw = Math.round(vh * RATIO); }
-        const cx = Math.round((vw - cw) / 2), cy = Math.round((vh - ch) / 2);
-
-        let targetW = cw, targetH = ch;
+        let targetW = vw, targetH = vh;
         const MAX_W = CONFIG.MORIS_CAMERA_LOCK_SAMPLE_WIDTH;
         if (targetW > MAX_W) {
           const s = MAX_W / targetW;
@@ -3560,7 +3697,7 @@ createApp({
         const canvas = this._camLockCanvas;
         canvas.width = targetW; canvas.height = targetH;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(video, cx, cy, cw, ch, 0, 0, targetW, targetH);
+        ctx.drawImage(video, 0, 0, vw, vh, 0, 0, targetW, targetH);
         const imgData = ctx.getImageData(0, 0, targetW, targetH);
 
         const seed = this.camera.lock.seed
@@ -3618,12 +3755,13 @@ createApp({
           { key: 'sharp', label: 'Đủ nét', ok: readiness.checks.sharp }
         ];
         this.camera.lock.lastError = '';
+        this.camera.lock.lastSampleAt = Date.now();
       } catch (err) {
         this.camera.lock.lastError = this.readError(err);
       }
     },
 
-    /** Mask cuối cho overlay laser + hole-shape evidence (B13); lỗi → fallback mask đơn giản. */
+    /** Mask cuối và quality gate trên chính frame sẽ gửi tới encoder. */
     async buildSubjectMaskDataUrl(sourceCanvas) {
       const fallback = () => this.generatePartMaskDataUrl(sourceCanvas);
       if (!CONFIG.MORIS_CAMERA_SUBJECT_LOCK_ENABLED) return fallback();
@@ -3646,20 +3784,31 @@ createApp({
           ? mod.voteMasks(this._camLockMasks, dims.w, dims.h)
           : null;
         const agreement = voted ? voted.agreement : 1;
-        const reliable = analysis.stats.partPixels > 0 &&
-          analysis.stats.coverage >= 0.02 && analysis.stats.coverage <= 0.90 &&
-          analysis.stats.marginFrac >= 0.10 && !analysis.stats.touchesBorder &&
-          agreement >= 0.85;
+        const sharpness = mod.laplacianVariance(mod.toGray(imgData.data,w,h),w,h);
+        const readiness = mod.computeReadiness({
+          ...analysis.stats,
+          stableCount:this.camera.lock.stableCount,
+          sharpness
+        });
+        const roi = mod.paddedSubjectRoi(analysis.stats.bbox, w, h);
+        const reliable = readiness.ready && agreement >= 0.85 &&
+          Date.now() - Number(this.camera.lock.lastSampleAt || 0) <= 1500 && !!roi;
+        this._camCaptureRoi = reliable ? roi : null;
 
         this.camera.lock.evidence = {
           version: analysis.version,
           reliable,
+          source_frame: { width: w, height: h },
+          subject_bbox: analysis.stats.bbox,
+          crop_roi: this._camCaptureRoi,
           agreement,
           partPixels: analysis.stats.partPixels,
           coverage: Number(analysis.stats.coverage.toFixed(4)),
           marginFrac: Number(analysis.stats.marginFrac.toFixed(4)),
           shadowPixels: analysis.stats.shadowPixels,
           specularRatio: analysis.stats.specularRatio,
+          checks:readiness.checks,
+          sharpness,
           holes: analysis.holes
         };
         this.moris.captureEvidence = this.camera.lock.evidence;
@@ -3682,9 +3831,8 @@ createApp({
         outCtx.putImageData(outImg, 0, 0);
         return outCanvas.toDataURL('image/png');
       } catch (err) {
-        console.warn('buildSubjectMaskDataUrl failed, fallback to simple mask:', err);
         this.camera.lock.lastError = this.readError(err);
-        return fallback();
+        throw err;
       }
     },
 
@@ -3692,20 +3840,26 @@ createApp({
     async captureCamera() {
       const video = this.$refs.camVideo;
       if (!video || !this.camera.ready || this.camera.busy || this.camera.scanning) return;
+      if (this.camera.landscapeHint) {
+        this.toast('warning','Xoay ngang điện thoại trước khi chụp.');
+        return;
+      }
+      if (CONFIG.MORIS_CAMERA_SUBJECT_LOCK_ENABLED && !this.camera.lock.ready) {
+        this.toast('warning',this.camera.lock.guidance?.[0] || 'Đưa trọn linh kiện vào khung và chờ tracking khóa.');
+        return;
+      }
+      this.camera.lock.evidence = null;
+      this.moris.captureEvidence = null;
+      this.moris.captureQuality = null;
+      this._camCaptureRoi = null;
       this.camera.busy = true;
       try {
         const vw = Number(video.videoWidth || 0), vh = Number(video.videoHeight || 0);
         if (!vw || !vh) throw new Error('Camera chưa sẵn sàng, thử lại sau giây lát.');
 
-        // Khung căn chỉnh = vùng cắt thật, tỉ lệ 1000:410
-        const RATIO = 1000 / 410;
-        let cw = vw, ch = Math.round(vw / RATIO);
-        if (ch > vh) { ch = vh; cw = Math.round(vh * RATIO); }
-        const cx = Math.round((vw - cw) / 2), cy = Math.round((vh - ch) / 2);
-
         // Chuẩn hóa kích thước khung hình (tối đa 1280px) để bảo vệ RAM Safari iOS/Android và tối ưu tốc độ AI
         const MAX_W = 1280;
-        let targetW = cw, targetH = ch;
+        let targetW = vw, targetH = vh;
         if (targetW > MAX_W) {
           const s = MAX_W / targetW;
           targetW = MAX_W;
@@ -3717,13 +3871,37 @@ createApp({
         const ctx = canvas.getContext('2d', { alpha:false });
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, targetW, targetH);
-        ctx.drawImage(video, cx, cy, cw, ch, 0, 0, targetW, targetH);
+        ctx.drawImage(video, 0, 0, vw, vh, 0, 0, targetW, targetH);
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.84);
         if (!dataUrl) throw new Error('Không chụp được ảnh.');
 
         // Tạo mặt nạ chỉ quét linh kiện (subject lock M27) — fallback về mask tối màu cũ
         const maskDataUrl = await this.buildSubjectMaskDataUrl(canvas);
+        if (CONFIG.MORIS_CAMERA_SUBJECT_LOCK_ENABLED && !this.camera.lock.evidence?.reliable) {
+          throw new Error('Ảnh chụp cuối chưa xác nhận trọn vật và đủ nét. Hãy lùi máy, giữ ổn định rồi chụp lại.');
+        }
+        // Query crop lấy từ bbox mask của đúng frame vừa chụp, không dùng box EMA hiển thị.
+        const roi = this._camCaptureRoi;
+        let queryDataUrl = dataUrl;
+        if (roi) {
+          const crop = document.createElement('canvas');
+          crop.width = roi.width; crop.height = roi.height;
+          const cropCtx = crop.getContext('2d', { alpha:false });
+          cropCtx.drawImage(canvas, roi.x, roi.y, roi.width, roi.height, 0, 0, roi.width, roi.height);
+          queryDataUrl = crop.toDataURL('image/jpeg', 0.84);
+          if (!queryDataUrl) throw new Error('Không tạo được crop trọn linh kiện.');
+        }
+        if (this.camera.lock.evidence?.reliable) {
+          this.moris.captureQuality = {
+            source_kind:'camera',
+            frame_width_px:targetW,
+            frame_height_px:targetH,
+            crop_roi:roi,
+            gate_status:'passed',
+            temporal_stability:'verified_live'
+          };
+        }
 
         // M28: đọc kích thước người dùng nhập trước khi đóng camera (fail-open → null)
         const querySize = await this.readCameraSize();
@@ -3746,7 +3924,10 @@ createApp({
         let vectorError = null;
         if (CONFIG.MORIS_BROWSER_VECTOR_ENABLED) {
           try {
-            vectorResult = await this.buildMorisQueryVector(dataUrl);
+            vectorResult = await this.buildMorisQueryVector(queryDataUrl);
+            if (this.moris.captureQuality) {
+              this.moris.captureQuality.optical_consistency = this.compareCaptureOpticalEvidence(vectorResult);
+            }
           } catch (embedErr) {
             console.warn('Vector embedding during camera scan failed, will fallback to server:', embedErr);
             vectorError = embedErr;
@@ -3759,7 +3940,7 @@ createApp({
         }
 
         // Hoàn tất xử lý hình ảnh -> chuyển vào box chat của Moris
-        const capturedDataUrl = this.camera.previewUrl;
+        const capturedDataUrl = queryDataUrl;
         this.closeCamera();
         this.openMoris();
 
@@ -3792,6 +3973,17 @@ createApp({
 
         this.camera.scanStatus = 'AI Đang đọc & phân tích ảnh linh kiện tải lên...';
         const dataUrl = await this.prepareMorisImage(file);
+        this.moris.captureEvidence = null;
+        this.moris.captureQuality = null;
+        const quality = await this.validateMorisUploadDataUrl(dataUrl);
+        this.moris.captureQuality = {
+          source_kind:'upload',
+          frame_width_px:quality.source_frame.width,
+          frame_height_px:quality.source_frame.height,
+          crop_roi:null,
+          gate_status:'passed',
+          temporal_stability:'not_applicable_static'
+        };
 
         // Hiển thị preview và kích hoạt quét AI
         this.camera.previewUrl = dataUrl;
@@ -3833,6 +4025,7 @@ createApp({
         this.toast('error', `Không xử lý được ảnh tải lên: ${this.readError(err)}`);
         this.camera.busy = false;
         this.camera.scanning = false;
+        if (this.camera.open) await this.startCameraStream();
       } finally {
         if (event?.target) event.target.value = '';
       }
@@ -3862,6 +4055,7 @@ createApp({
       if(view)parts.push(`Ảnh đối chiếu: ${{front:'mặt trước',back:'mặt sau',thumb:'thu nhỏ',detail:'chi tiết'}[view]||view}`);
       if(candidate?.query_quality?.reliable===false)parts.push('Vùng linh kiện chưa rõ; cần chụp lại');
       if(candidate?.geometric_warning)parts.push(candidate.geometric_warning);
+      if(candidate?.reason)parts.push(candidate.reason);
       return parts.join(' · ');
     },
 
@@ -4185,6 +4379,9 @@ createApp({
 
       // Sắp xếp danh sách Top 10 giảm dần theo tỷ lệ phần trăm hiển thị (từ lớn trở xuống)
       candidatesList.sort((a, b) => {
+        const groupRank=group=>group==='rescue_outside'?2:group==='rescue_unknown'?1:0;
+        const groupDelta=groupRank(a?.selection_group)-groupRank(b?.selection_group);
+        if(groupDelta!==0)return groupDelta;
         const pctA = this.morisCandidatePercent(a) ?? -1;
         const pctB = this.morisCandidatePercent(b) ?? -1;
         if (pctB !== pctA) return pctB - pctA;
@@ -4429,6 +4626,7 @@ createApp({
               geometry:vectorResult?.geometry || null,
               size:querySize || null,
               hole_formats:this.morisHoleFormatsPayload(),
+              capture_quality:this.moris.captureQuality || null,
               hints:{
                 query_vector_source:
                   queryEmbedding

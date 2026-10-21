@@ -24,6 +24,36 @@ describe('M07 deterministic canonicalization and mask quality',()=>{
   expect(seg.foregroundArea).toBe(0);expect(seg.diagnostics.maskQuality.reliable).toBe(false);
   expect(()=>processLayer1Optical(rgba,64,64)).toThrow(/vật thể/);
  });
+ it('counts a large enclosed alpha slot but not an open edge notch',()=>{
+  const w=200,h=120,rgba=new Uint8ClampedArray(w*h*4);
+  for(let y=20;y<100;y++)for(let x=10;x<190;x++)rgba.set([45,45,45,255],(y*w+x)*4);
+  // The enclosed slot occupies more than 45% of the remaining metal area.
+  for(let y=32;y<88;y++)for(let x=65;x<175;x++)rgba.set([0,0,0,0],(y*w+x)*4);
+  for(let y=52;y<68;y++)for(let x=30;x<46;x++)rgba.set([0,0,0,0],(y*w+x)*4);
+  // This notch is connected to the exterior and must stay outside hole_count.
+  for(let y=20;y<42;y++)for(let x=50;x<59;x++)rgba.set([0,0,0,0],(y*w+x)*4);
+  const seg=segmentForegroundAndHoles(rgba,w,h);
+  const out=processLayer1Optical(rgba,w,h);
+  expect(seg.holes.length).toBe(2);
+  expect(out.holeCount).toBe(2);
+  expect(out.holeFeatures).toHaveLength(2);
+ });
+ it('keeps measured per-view geometry from a tightly cropped alpha catalogue asset',()=>{
+  const {rgba,w,h}=fixture('alpha',false,true);
+  for(let y=56;y<64;y++)for(let x=50;x<58;x++)rgba.set([0,0,0,0],(y*w+x)*4);
+  const out=processLayer1Optical(rgba,w,h);
+  expect(out.diagnostics.maskQuality.flags).toContain('subject_touches_edge');
+  expect(out.diagnostics.maskQuality.reliable).toBe(true);
+  expect(out.holeCount).toBe(1);
+  expect(out.aspectRatio).toBeGreaterThan(1);
+  expect(out.holeFeatures).toHaveLength(1);
+ });
+ it('still rejects an edge-clipped opaque camera image',()=>{
+  const {rgba,w,h}=fixture('white',false,true);
+  const out=processLayer1Optical(rgba,w,h);
+  expect(out.diagnostics.maskQuality.flags).toContain('subject_touches_edge');
+  expect(out.diagnostics.maskQuality.reliable).toBe(false);
+ });
  it('flags clipped edges and nonuniform backgrounds',()=>{
   for(const [mode,edge,flag] of [['white',true,'subject_touches_edge'],['colored',false,'background_nonuniform']] as const){
    const {rgba,w,h}=fixture(mode,false,edge);

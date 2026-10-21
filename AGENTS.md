@@ -42,7 +42,7 @@
 
 2. **CƠ CHẾ BẰNG CHỨNG THỰC TẾ (EVIDENCE-BASED):**
    - Mọi kết luận sửa lỗi thành công phải đi kèm output terminal chạy test hoặc kiểm tra API thực tế.
-   - Khi tối ưu hóa tìm kiếm Moris, phải đo đạc tỷ lệ chuẩn trên tập dữ liệu catalogue 122 mã hiện hữu.
+   - Khi tối ưu hóa tìm kiếm Moris, phải đo trên snapshot catalogue production hiện hành bằng truy vấn chỉ đọc, ghi rõ thời điểm, mẫu số, profile, coverage và giới hạn của phép đo. Tách self-query catalogue khỏi ảnh camera thật có nhãn; chỉ owner nghiệm thu ảnh/thiết bị thật trên production. Bộ 122 mã đã xóa và queue 57 ca lịch sử không còn là gate nghiệm thu.
 
 3. **TƯƠNG THÍCH HOÀN TOÀN VỚI AGY CLI & MÔI TRƯỜNG AGENT:**
    - Cấu hình quy chuẩn trong thư mục `.agents/` và root để mọi phiên agy cli tự động kế thừa và nhận diện quy tắc.

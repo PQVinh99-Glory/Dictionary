@@ -375,3 +375,88 @@ Before continuing, read [docs/moris-v6/HANDOFF.md](docs/moris-v6/HANDOFF.md). It
   - Toàn bộ test suite: **62 test files / 608 tests PASS 100%** (tăng thêm 30 test mới).
   - `npx tsc --noEmit` exit 0 (không lỗi TypeScript).
   - `npm run build` thành công: 47 file build static vào `dist/`.
+
+
+## Khảo sát tính khả thi Plan_uplevel (2026-10-21)
+
+- [x] Đọc state/plan/kiến trúc và đối chiếu capture, preprocessing, retrieval, size, feature, fusion, evaluation với mã nguồn.
+- [x] Lập báo cáo `docs/moris-v6/UPLEVEL_FEASIBILITY_REVIEW.md`; ghi nhận yêu cầu chủ dự án: bắt buộc chụp trọn vật.
+- [x] Kiểm chứng local: npm test ngoài sandbox 62 files/610 tests pass; tsc exit 0; build exit 0/47 files; lưu log test.
+- [x] Cập nhật state; không sửa code/Plan_uplevel, không DB/vector write/deploy/commit.
+- Kế hoạch U0–U7 đã được thay bởi `Plan_pipeline_moris.md` (P00–P12); không đánh dấu implementation cũ là hoàn thành.
+
+## Khảo sát live ca 3448000001 (2026-10-21)
+
+- [x] Xem image.png và image copy.png; xác nhận bằng chứng UI size180mm/top10 thiếu target.
+- [x] SELECT Supabase và API GET qua .env chỉ đọc: coverage, target vectors/dims, self-query RPC và SELECT size-compatible; lưu evidence.
+- [x] Bổ sung báo cáo section9 và state; không đổi code/profile/DB/vector, không deploy/commit.
+- [ ] Xác minh request/runtime profile phiên camera lỗi và replay ảnh gốc khi có — chuyển theo dõi tại P01/P07/P10 của plan mới.
+
+## Đánh giá lại hướng uplevel: length-first, CLS và hybrid (2026-10-21)
+
+- [x] Ghi nhận nghiệp vụ: cạnh dài ưu tiên, cạnh ngắn hỗ trợ/không bắt buộc; không chờ đủ hai cạnh để làm recall.
+- [x] Đối chiếu implementation CLS/hybrid và provenance M22; xác nhận global là hybrid, chưa có A/B công bằng CLS vs hybrid.
+- [x] Lập UPLEVEL_DIRECTION_DECISION.md: hybrid baseline kỹ thuật, CLS đối chứng; đề xuất điều chỉnh U0–U7.
+- [x] Focused tests 3 files/39 tests pass; lưu evidence và cập nhật state.
+- [ ] Triển khai thay đổi kế hoạch/code: chưa bắt đầu; chưa đổi profile, production hoặc tạo vector.
+
+## Nghiên cứu sâu concept capture/hậu kỳ/từ điển lỗ (2026-10-21)
+
+- [x] Đối chiếu code tracking/crop/encoder/mask/hole dictionary; nghiên cứu landscape, contour, RAG và mô hình nhận dạng.
+- [x] Ghi quyết định owner: cầm ngang Android+iPhone Safari; lỗ kín+khoét hở; length manual lệch<=5% được duyệt (code chưa đổi).
+- [x] Lập HARNESS_CAPTURE_HOLE_RESEARCH.md; focused5 files/65 tests pass; lưu pure-function evidence count loss và manual10% hiện hành.
+- [x] Cập nhật state; không sửa ứng dụng/Plan_uplevel, không train/DB/vector/deploy.
+- [x] Đã rõ quy ước răng cưa và policy >5%/top10 rescue theo owner; chưa thực thi landscape/rebuild/model.
+- [x] Owner làm rõ răng cưa hiếm/không biến thể: tương đương mẫu là đủ, không đếm từng răng.
+- [x] Owner chốt: đủ10 ứng viên hợp lệ trong5% thì không lấy nhóm phụ; thiếu mới thêm cứu sinh có note+score, không pad rác.
+
+## Plan triển khai hiện hành: Plan_pipeline_moris.md (2026-10-21)
+
+- [x] Loại bỏ Plan_uplevel.md theo yêu cầu owner.
+- [x] Tạo Plan_pipeline_moris.md: nghiệp vụ đã chốt, baseline, contracts, dependencies, file/test/evidence/rollback và gate triển khai.
+- [x] Full npm test 62 files/610 tests pass; kiểm tra file/link/Markdown/JSON và git diff --check.
+- [x] Cập nhật RAM state và điểm vào; không thay code hoặc production.
+
+- [x] P00 — Contract, schema dữ liệu và metric; ngưỡng release pending calibration, owner nghiệm thu camera production.
+- [ ] P01 — Baseline/profile audit và evidence.
+- [ ] P02 — Camera landscape và mapping.
+- [ ] P03 — Khóa trọn vật và crop frame gốc.
+- [ ] P04 — Hậu kỳ có bằng chứng.
+- [ ] P05 — Dictionary/lỗ kín/khoét hở/facts.
+- [ ] P06 — Length5% shortlist sớm.
+- [ ] P07 — Hybrid parity xuyên pipeline.
+- [ ] P08 — Scoped matching/union/keyed hydrate.
+- [ ] P09 — Ranking và top10 primary/rescue.
+- [ ] P10 — Evaluation và nghiệm thu thiết bị thật.
+- [ ] P11 — Model bổ sung nếu có bằng chứng cần.
+- [ ] P12 — Rebuild/release chỉ khi được giao phạm vi cụ thể.
+- [ ] P13 — Hậu kiểm `catalogue_image_vectors.hole_count = 0` sau cùng: phân biệt zero thật, unknown/legacy và lỗi tách lỗ theo ảnh/profile; read-only trước, owner GT sau.
+
+### Triển khai pipeline — checkpoint cục bộ 2026-10-21
+
+- [x] P00 hoàn tất contract/schema: owner bỏ gate 122 mã đã xóa và queue57 lịch sử; snapshot production SELECT 2026-10-21 02:50:18 UTC: 545 mã, 6 có length, 0 width, hybrid active 1103 vector/544 record, CLS active 1069/534. Manifest camera có validator/hash ảnh+mask; ảnh và thiết bị thật chờ owner nghiệm thu production. 64 file/622 test pass, tsc0, build47; không ghi DB/deploy.
+- [x] P01 phần diagnostics: debug admin ghi RPC thực gọi/ok/error, giữ profile khi fallback; audit exact object-key hybrid 544/545 front/thumb, 5/5 back, 10/10 detail (2026-10-21 02:53:12 UTC). P01 chưa hoàn tất vì thiếu freshness byte/ETag, raw camera replay và trace frontend đầy đủ; full 64 file/622 test pass, tsc0, build47.
+- [ ] P01 baseline production đang biến động: SELECT 02:56:01 UTC chỉ còn 44 hybrid active/19 record, 0 CLS (so với 1103 hybrid +1069 CLS lúc 02:50). Chờ owner xác nhận rebuild/ổn định rồi đo lại; không dùng snapshot trước làm accuracy baseline.
+- [x] P02 phần code lifecycle: owner xác nhận đang rebuild hybrid và cho tiếp phase. Camera đóng/đổi giữa lúc getUserMedia/play/fullscreen pending không bật lại luồng cũ; reset tracking khi đổi stream; orientation lock từ chối vẫn dùng được. Focused 5/5; full npm test 65 file/627 test pass, tsc0, build47, diff check pass. P02 máy thật/safe-area/keyboard chưa nghiệm thu.
+- [x] P02 bàn phím/safe-area: hướng máy đọc orientation API trước viewport, keyboard resize không reset tracker; overlay chừa notch/safe area. Focused lifecycle 7/7; full 65 file/629 test pass, tsc0, build47, diff check pass. Nghiệm thu Android/iPhone thật chờ owner trên production.
+- [x] P03 phần code: query crop từ mask bbox final frame + lề 8%, upload qua still-image quality gate, invalid upload không embed/search và camera restart; provenance schema-bounded chỉ debug admin, hole count cũ không tái dùng. Full 66 file/636 test pass, tsc0, build47, diff check pass. P03 phase pending GT ảnh thật/false-ready/false-reject do owner test production.
+- [x] P04 phần diagnostics: đối chiếu số lỗ kín từ capture và optical, status agree/mismatch/unknown; không đổi pixel canonicalizer/profile. Mask IoU/chói/trích artifact ảnh thật còn pending.
+- [x] P05 phần facts: query count chính xác chỉ cộng boost nếu identifying_features ghi đúng count, oval leaf không nhân đôi parent, stale/unreliable capture không gửi hole facts. Feature flag boost vẫn OFF; nhận dạng khoét hở và benchmark ảnh thật còn pending.
+- [x] P06/P08 phần code local: đọc length shortlist 5% trước ANN, bounded pagination, session/filter intersection; scoped RPC SQL chỉ là proposal, flag OFF chờ review/deploy. Local test target ngoài global ANN vào pool qua scoped cosine; chunk dims >100. Chưa có production recall/latency.
+- [x] P09 phần code: primary within5% → rescue thiếu size → rescue ngoài5% chỉ khi thiếu Top10; note và score thật, API/UI giữ thứ tự nhóm. Full npm test 67 file/642 test pass, tsc0, build47; nghiệm thu hard-negative/owner production còn pending.
+- [x] P07 code audit hybrid và P08 keyed hydration proposal: spatial patch/no CLS fallback; ba RPC SQL chỉ ở docs, cờ scoped/keyed OFF; test 101 ID chunk/orphan/session filter. Full 69 file/650 test pass, tsc0/build47/diff check. Browser/index byte parity và RPC EXPLAIN/deploy pending.
+- [x] P10–P12 phần tự kiểm/prep: owner acceptance protocol và release review packet đã soạn; P11 giữ conditional vì thiếu GT. Local E2E Playwright+Postgres không chạy do fixture Docker `moris-v6-test` vắng; production camera/holdout, migration, release pending owner.
+- [x] P13 khảo sát cuối bằng SELECT/R2 read-only: snapshot 1.110 hybrid vectors/236 zero, 68 mã front>0 nhưng thumb=0; tái hiện hai asset có optical đếm được 7/5 nhưng `subject_touches_edge` làm count NULL, RPC cũ COALESCE thành 0. Báo cáo `docs/moris-v6/evidence/pipeline-p13-hole-zero-audit.md`; false-zero toàn bảng/GT và sửa production pending.
+- [x] P13 bản sửa local: replay 236/236 asset zero alpha và 58 đối chứng từ R2; sửa alpha chạm mép, giữ camera opaque gate, nhận lỗ oval lớn kín, loại khoét hở; 236/236 nay có count/ratio/centroids local, 33 raw/canonical lệch cần GT. API không fallback writer legacy; Vector Center cảnh báo dữ liệu hình học legacy/thiếu. Không tự backfill production; xem bằng chứng P13 và CSV.
+- [x] P13/Release rehearsal trước production: PostgreSQL 17/pgvector fixture chạy `check-moris-vector-db`, `check-moris-provenance-db`, `check-moris-catalogue-db`, `check-moris-scoped-db` đều pass; scoped/keyed SQL được đóng gói migration và đối chiếu schema/index production read-only. Không mở port test DB.
+- [x] Release DB 2026-10-21: backup schema+data public ngoài repo, Supabase CLI dry-run đúng 4 migration, `db push --include-all --skip-vault` exit0; post-check 1.110 active/546 SKU, 236 zero cũ/0 provenance, anon writer/scoped deny, scoped 180±5% trả hai view 3448000001. Đã bật scoped/keyed flags cho main; owner replace vector cũ/test camera sau deploy.
+- [x] Final local verification sau P13: `npm test` 69 file/651 test PASS; `npx tsc --noEmit` exit0; `npm run build` 47 file; `git diff --check` exit0. Không commit, deploy, migration hoặc ghi vector production.
+- [x] Audit read-only release sau owner rebuild: 1.110 vector/546 mã phủ exact asset 1.110/1.110, 236 hàng zero thuộc 152 mã; 7/546 mã có cạnh dài **đủ smoke test size, không bắt buộc size để tìm bằng ảnh**. Ba migration V6 còn pending; scoped/keyed RPC ngoài migration; Pages kết nối `PQVinh99-Glory/Dictionary` main/upstream ở `b5b65c2`. NO-GO cho DB push toàn bộ và deploy pipeline vì contract/migration chưa ready; xem `docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md`. Không ghi production.
+- [x] P00: owner xác nhận cạnh dài 5% theo query, không sàn mm; ghi decision record và metric/dataset blockers.
+- [x] P01: debug API chỉ hiện cho phiên admin đã xác thực khi bật cờ nội bộ; thêm monotonic stage timing, tách encode khỏi vector RPC.
+- [x] P02 phần code: màn camera landscape, full sensor frame cho preview/tap/tracking/capture, lấy video dimensions/track settings thực tế.
+- [x] P03 phần code: khóa nút chụp khi chưa ready và kiểm tra lại frame cuối trước khi gửi ảnh.
+- [x] P06 phần contract: client/server cùng 5% không sàn, width chỉ hỗ trợ; early shortlist còn chờ.
+- [x] P07 phần profile: loại fallback dùng query hybrid trên index CLS.
+- [x] Kiểm chứng checkpoint: 63 file/617 test pass; `tsc --noEmit` exit 0; `npm run build` tạo 47 file; `git diff --check` pass.
+- [ ] Hoàn thành các phase còn lại sau benchmark camera, early shortlist/scoped matching, perception và nghiệm thu thiết bị thật.

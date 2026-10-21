@@ -1,5 +1,17 @@
 # Moris V6 — Technical Debt Register (Sổ nợ kỹ thuật)
 
+## P13 checkpoint mới — 2026-10-21 (ưu tiên hơn snapshot lịch sử bên dưới)
+
+**Cập nhật release 05:15 UTC:** Đã apply bốn migration V6/scoped sau backup và dry-run; production cột/RPC/grants xác minh read-only, 1.110 active vector và 236 zero cũ giữ nguyên. `wrangler.toml` đã bật scoped/keyed cho bản phát hành main. Các câu “chưa push DB” bên dưới là checkpoint trước migration, không còn là trạng thái hiện hành. Code chưa push/deploy main tại thời điểm dòng này.
+
+Snapshot read-only production sau owner rebuild: 1.110 hybrid vector / 546 SKU; 236 hàng `hole_count=0` thuộc 152 SKU. Đã replay **236/236** asset R2 zero và 58 asset positive đối chứng, không ghi production. Cơ chế 236 zero: alpha cutout crop chạm mép → quality false → count NULL → RPC cũ `COALESCE` thành 0. Bản sửa local giữ khoang oval lớn kín, không cộng khoét hở, cho alpha catalogue tight crop được đo nhưng camera opaque vẫn nghiêm; bỏ legacy writer fallback và thêm cảnh báo Trung tâm Vector AI. Kết quả replay local: 236/236 có count/ratio/centroids; **33/236** raw/canonical lệch. Đây không phải tỷ lệ đúng theo nhãn người. Chi tiết và từng object/hash: `docs/moris-v6/evidence/pipeline-p13-hole-zero-audit.md`, `pipeline-p13-zero-asset-replay.csv`.
+
+Nợ kỹ thuật **agent còn phải làm trước khi phát hành**: ba migration V6 đã rehearsal trên fixture PostgreSQL 17/pgvector local (nullable/zero, retry/concurrency, ACL, backup/restore, rollback, stable paging đều pass). Scoped/keyed RPC đã thành migration local `20261021051000`, pass fixture (`check-moris-scoped-db.mjs`) và đối chiếu cột/index/hàm session production read-only; cần `EXPLAIN` với dữ liệu tương đương, byte/ETag và đường Web Worker/Vector Center end-to-end trên staging đúng profile hybrid. 33 asset raw/canonical lệch cần nhãn instance, không tự chọn số thuận mắt. Production DB hiện chưa có `source_etag`/`geometry_evidence`; API mới chủ động từ chối ghi thay vì tạo thêm zero giả. Vì vậy **không push DB/deploy main ở checkpoint này**. Test local cuối: `npm test` 69 file/659 pass, tsc exit0, build47, diff check0.
+
+Nợ **owner nghiệm thu production** sau khi migration/release đạt gate: xác nhận có ảnh/nhãn lỗ kín theo từng view (bao gồm nhóm 33 bất đồng), thực hiện replace vector qua Trung tâm Vector AI khi đã có V6 RPC, đối chiếu cảnh báo biến mất/zero thật giữ nguyên, thử camera Android Chrome và iPhone Safari với vật lớn, kiểm tra size có/không, top-10 primary/rescue và latency. Bộ 122/57 cũ đã được owner bỏ, không dựng lại để hợp thức hóa metric. Mẫu `moris_hole_samples` hữu ích cho tên/hình dạng lỗ sau khi xác định topology; ảnh mẫu chưa có mask để tự chứng minh kín/hở hoặc huấn luyện chính xác.
+
+---
+
 Cập nhật: 2026-10-20 (thêm mẫu **Lỗ bán oval** `ban_oval` — 15 ảnh/11 định dạng; migration `20261020072401` **đã áp production**, R2 `hole-samples/ban-oval.png` **đã upload**; code/test đã lên main, **Functions chưa deploy**; Phase 1 DB taxonomy giữ local, không đưa lên main. Trước đó 2026-10-19: **Mẫu lỗ phổ biến + Moris Phase 1 tham chiếu định dạng** — 14 ảnh R2 + bảng `moris_hole_samples` + menu full-screen, boost-only flag OFF; Gate D **applied production** + S1.1 width nullable + commit/push `75bc8ec`/`cc004b8`). Mục đích: điểm vào nhanh cho **agent phiên kế tiếp** —
 liệt kê toàn bộ nợ kỹ thuật đang mở, kèm bằng chứng `file:line`/log, blocker, hành động kế tiếp và **test cần viết**.
 Tài liệu này bổ sung cho `docs/moris-v6/TECH_DEBT_ROADMAP.md` (thứ tự gate M06–M26) và `state.json` (`tasks[]`, `moris_v6`).

@@ -6,12 +6,14 @@ import {
   labelPixels,
   labelComponents,
   selectSubject,
+  paddedSubjectRoi,
   extractEnclosedHoles,
   classifyHoleShape,
   analyzeHoles,
   voteMasks,
   laplacianVariance,
   computeReadiness,
+  assessStillSubject,
   analyzeFrame,
   maskIoU,
   scaleMaskNN,
@@ -22,6 +24,40 @@ import {
 
 const BG = [242, 242, 242];
 const PART = [70, 70, 70];
+
+describe('P03 crop đúng bbox frame cuối', () => {
+  it('giữ cả hai đầu vật dài, thêm lề rồi clamp đúng frame', () => {
+    const bbox = { x0: 40, y0: 42, x1: 359, y1: 57 };
+    const roi = paddedSubjectRoi(bbox, 400, 100);
+    expect(roi).toEqual({ x: 14, y: 16, width: 372, height: 68 });
+    expect(roi.x).toBeLessThan(bbox.x0);
+    expect(roi.x + roi.width).toBeGreaterThan(bbox.x1);
+  });
+
+  it('không dựng crop giả khi bbox/frame không hợp lệ', () => {
+    expect(paddedSubjectRoi(null, 400, 100)).toBeNull();
+    expect(paddedSubjectRoi({x0:0,y0:0,x1:400,y1:4},400,100)).toBeNull();
+    expect(paddedSubjectRoi({x0:2,y0:2,x1:1,y1:3},400,100)).toBeNull();
+  });
+});
+
+describe('P03 upload still-image gate', () => {
+  const stats = {
+    partPixels: 6000, touchesBorder:false, marginFrac:.15, coverage:.18,
+    otherComponents:[], specularRatio:.03
+  };
+  it('chỉ duyệt ảnh tĩnh đủ frame/ít chói/nét, không gán temporal stability giả', () => {
+    const verdict = assessStillSubject({ stats }, 12);
+    expect(verdict.ready).toBe(true);
+    expect(verdict.checks).not.toHaveProperty('stable');
+    expect(verdict.temporal_stability).toBe('not_applicable_static');
+  });
+  it('chặn ảnh chạm viền, nhiều vật hoặc chói mạnh', () => {
+    expect(assessStillSubject({ stats:{...stats,touchesBorder:true} },12).ready).toBe(false);
+    expect(assessStillSubject({ stats:{...stats,otherComponents:[{id:2}]} },12).ready).toBe(false);
+    expect(assessStillSubject({ stats:{...stats,specularRatio:.3} },12).ready).toBe(false);
+  });
+});
 
 function makeBuffer(w, h, color = BG) {
   const data = new Uint8ClampedArray(w * h * 4);

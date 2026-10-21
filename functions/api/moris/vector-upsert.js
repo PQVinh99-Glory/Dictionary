@@ -124,9 +124,7 @@ export async function onRequestPost({request,env}) {
         // Compare the ETag of bytes actually embedded with the current R2 object.
         const object = await env.CATALOGUE_BUCKET?.head(objectKey);
         if (!object?.httpEtag || row.source_etag !== object.httpEtag) throw new Error("Ảnh nguồn đã đổi hoặc thiếu ETag; tải lại trước khi tạo vector.");
-        let outcome = null;
-        try {
-          outcome = await rpcService(
+        const outcome = await rpcService(
             env,
             "kim_write_catalogue_vector_v6_provenance",
             { p_mode: mode, p_vector: {
@@ -167,43 +165,6 @@ export async function onRequestPost({request,env}) {
               p_hole_centroids: geometry.hole_centroids || []
             } }
           );
-        } catch (v6Err) {
-          // Fallback to production RPC kim_upsert_catalogue_image_vector if v6 migration is not applied
-          const msg = v6Err?.message || "";
-          const isMissingRpc = msg.includes("kim_write_catalogue_vector_v6_provenance") || msg.includes("PGRST202") || msg.includes("schema cache") || msg.includes("Could not find the function");
-          if (isMissingRpc) {
-            try {
-              const upsertId = await rpcService(
-                env,
-                "kim_upsert_catalogue_image_vector",
-                {
-                  p_record_id: String(row?.record_id || ""),
-                  p_asset_type: String(row?.asset_type || "front"),
-                  p_object_key: objectKey,
-                  p_view_variant: String(row?.view_variant || "canonical"),
-                  p_embedding_model: config.vector.model,
-                  p_embedding_model_version: config.vector.modelVersion,
-                  p_preprocess_version: config.vector.preprocessVersion,
-                  p_embedding_profile: config.vector.profile,
-                  p_embedding: vectorLiteral(row?.embedding, config.vector.dimension),
-                  p_foreground_status: String(row?.foreground_status || "browser_dinov2_v58"),
-                  p_quality_score: row?.quality_score == null ? null : Number(row.quality_score),
-                  p_hole_count: geometry.hole_count,
-                  p_aspect_ratio: geometry.aspect_ratio,
-                  p_hole_centroids: geometry.hole_centroids || []
-                }
-              );
-              outcome = {
-                id: upsertId,
-                action: mode === "replace" ? "replaced" : "created"
-              };
-            } catch {
-              throw v6Err;
-            }
-          } else {
-            throw v6Err;
-          }
-        }
 
         if (!outcome?.id || !["created", "replaced", "skipped"].includes(outcome.action)) {
           throw new Error("RPC không trả bằng chứng ghi vector hợp lệ.");

@@ -16,7 +16,7 @@ vi.mock('../functions/_lib/moris/v5/vector/search.js',()=>({searchVectorIndex:vi
   {record_id:'a',similarity:.94},{record_id:'b',similarity:.90},{record_id:'c',similarity:.88}
 ])}));
 
-const env={SUPABASE_URL:'https://fixture.invalid',SUPABASE_ANON_KEY:'fixture'};
+const env={SUPABASE_URL:'https://fixture.invalid',SUPABASE_ANON_KEY:'fixture',SUPABASE_SERVICE_ROLE_KEY:'fixture-service'};
 const sizeQuery={length_mm:100,width_mm:60,shape_class:'rect',source:'user',confidence:null};
 
 async function search({querySize=sizeQuery,configEnv={}}={}){
@@ -36,24 +36,26 @@ describe('M28 Size Gate — tích hợp orchestrator (gate sau hydrate, trước
     ])));
     const result=await search();
     expect(result.mode).not.toBe('MORIS_SIZE_GATE_NO_MATCH');
-    expect(result.candidates.map(c=>c.id)).toEqual(['a','c']);
+    expect(result.candidates.map(c=>c.id)).toEqual(['a','c','b']);
     expect(result.candidates[0].size_status).toBe('match');
     expect(result.candidates[0].size_evidence.d_max).toBeLessThanOrEqual(0.05);
     expect(result.candidates[1].size_status).toBe('unknown');
+    expect(result.candidates[2]).toMatchObject({size_status:'outside_tolerance',selection_group:'rescue_outside'});
     expect(result.size_evidence.status).toBe('applied');
     expect(result.size_evidence).toMatchObject({matched_count:1,unknown_count:1,rejected_count:1});
-    expect(result.warnings.some(w=>w.includes('loại 1 mã'))).toBe(true);
+    expect(result.warnings.some(w=>w.includes('chuyển 1 mã'))).toBe(true);
   });
 
-  it('toàn bộ ứng viên bị loại -> mode MORIS_SIZE_GATE_NO_MATCH, pool rỗng',async()=>{
+  it('không có primary thì vẫn trả ứng viên ngoài dung sai có ghi chú cứu sinh',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>Response.json([
       {record_id:'a',length_mm:300,width_mm:300},
       {record_id:'b',length_mm:200,width_mm:200},
       {record_id:'c',length_mm:400,width_mm:150}
     ])));
     const result=await search();
-    expect(result.mode).toBe('MORIS_SIZE_GATE_NO_MATCH');
-    expect(result.candidates).toEqual([]);
+    expect(result.candidates).toHaveLength(3);
+    expect(result.candidates.every(c=>c.selection_group==='rescue_outside')).toBe(true);
+    expect(result.candidates.every(c=>c.reason.includes('vượt dung sai'))).toBe(true);
     expect(result.size_evidence).toMatchObject({status:'applied',rejected_count:3});
   });
 

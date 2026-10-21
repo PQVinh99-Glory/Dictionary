@@ -26,9 +26,9 @@ describe('holeFormatReference — từ điển mẫu lỗ (chủ dự án chốt
     expect(inferFormatTagsFromText('2 lỗ tròn, 4 Lỗ vuông')).toEqual(['vuong', 'tron']);
     expect(inferFormatTagsFromText('1 lỗ dài')).toEqual(['dai']);
     expect(inferFormatTagsFromText('2 lỗ dài (1)')).toEqual(['dai']);
-    expect(inferFormatTagsFromText('Lỗ oval cong')).toEqual(['oval_cong', 'oval']);
-    expect(inferFormatTagsFromText('Lỗ bán oval')).toEqual(['ban_oval', 'oval']);
-    expect(inferFormatTagsFromText('2 lỗ bán-oval')).toEqual(['ban_oval', 'oval']);
+    expect(inferFormatTagsFromText('Lỗ oval cong')).toEqual(['oval_cong']);
+    expect(inferFormatTagsFromText('Lỗ bán oval')).toEqual(['ban_oval']);
+    expect(inferFormatTagsFromText('2 lỗ bán-oval')).toEqual(['ban_oval']);
     expect(inferFormatTagsFromText('2 lỗ chữ nhật')).toEqual(['chu_nhat']);
     expect(inferFormatTagsFromText('1 lỗ chữ L')).toEqual(['chu_l']);
     expect(inferFormatTagsFromText('3 lỗ tam giác')).toEqual(['tam_giac']);
@@ -63,6 +63,19 @@ describe('holeFormatReference — từ điển mẫu lỗ (chủ dự án chốt
     expect(out[1].hole_format_score).toBeUndefined();
     expect(out[2].hole_format_available).toBeUndefined();
     expect(evidence).toMatchObject({ version: 'hole_format_ref_v1', query_tags: ['dai'], matched_count: 1, matched_per_tag: { dai: 1 } });
+  });
+
+  it('query 4 lỗ tròn chỉ boost mã ghi chính xác 4, không coi 2/6/unknown là cùng nhãn', () => {
+    const rows=[
+      {id:'two',identifying_features:'2 lỗ tròn'},
+      {id:'four',identifying_features:'4 lỗ tròn'},
+      {id:'six',identifying_features:'6 lỗ tròn'},
+      {id:'unknown',identifying_features:'có lỗ tròn'}
+    ];
+    const out=applyHoleFormatBoost({rows,queryTags:['tron'],queryCounts:{tron:4}}).rows;
+    expect(out.filter(row=>row.hole_format_available).map(row=>row.id)).toEqual(['four']);
+    expect(out[0].hole_format_score).toBeUndefined();
+    expect(out[2].hole_format_score).toBeUndefined();
   });
 
   it('không có queryTags → không đánh dấu gì, evidence null (fail-open)', () => {

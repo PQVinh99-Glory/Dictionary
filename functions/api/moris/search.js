@@ -1,5 +1,6 @@
 import { readMorisConfig } from "../../_lib/moris/v5/runtime/config.js";
 import { createQueryContext } from "../../_lib/moris/v5/runtime/queryContext.js";
+import { summarizeTrace } from "../../_lib/moris/v5/runtime/trace.js";
 import { validateMorisQuery } from "../../_lib/moris/v5/schemas/query.js";
 import { validateSession } from "../../_lib/moris/v5/connectors/supabase.js";
 import { runMorisSearch } from "../../_lib/moris/v5/orchestrator.js";
@@ -8,10 +9,10 @@ import { toPublicMorisResult } from "../../_lib/moris/v5/presentation/publicResu
 import { MORIS_PUBLIC_MESSAGES } from "../../_lib/moris/v5/presentation/userMessage.js";
 import { json, readJson } from "../../_lib/shared/http.js";
 
-function debugEnabled(env) {
+export function debugEnabled(env, session) {
   return /^(1|true|yes|on)$/i.test(
     String(env.MORIS_DEBUG_EXPOSE_INTERNAL || "")
-  );
+  ) && String(session?.role_name || "").toLowerCase() === "admin";
 }
 
 function publicErrorMessage(error) {
@@ -56,7 +57,7 @@ export async function onRequestPost({request,env}) {
       ""
     );
 
-    await validateSession(env, token);
+    const session = await validateSession(env, token);
 
     const query = validateMorisQuery(body, config);
     queryId = query.query_id;
@@ -90,10 +91,17 @@ export async function onRequestPost({request,env}) {
       {token,query,ctx}
     );
 
+    const allowDebug = debugEnabled(env, session);
     const publicResult = toPublicMorisResult(
       result,
-      {debug:debugEnabled(env)}
+      {debug:allowDebug}
     );
+    if (allowDebug && publicResult.debug) {
+      publicResult.debug.stage_timings = summarizeTrace(ctx);
+      publicResult.debug.embedding_profile = ctx.embedding_profile;
+      publicResult.debug.vector_rpc_attempts = ctx.vector_rpc_attempts;
+      publicResult.debug.capture_quality = query.capture_quality;
+    }
 
     return json({
       ...publicResult,

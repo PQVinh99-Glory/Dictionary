@@ -46,4 +46,15 @@ describe('M08 nullable geometry evidence',()=>{
   const result=analyzeStructuralEvidence({query:{geometry:{hole_count:2}},candidates:[{id:'back',hole_count:0,quality:{reliable:false}}]});
   expect(result.conflicts).toBe(0);
  });
+ it('preserves geometry for an alpha catalogue crop that touches the frame',()=>{
+  const w=120,h=80,rgba=new Uint8ClampedArray(w*h*4);
+  for(let y=15;y<65;y++)for(let x=0;x<110;x++)rgba.set([70,70,70,255],(y*w+x)*4);
+  for(let y=33;y<43;y++)for(let x=50;x<60;x++)rgba[(y*w+x)*4+3]=0;
+  const out=processLayer1Optical(rgba,w,h);
+  const geometry=browserGeometry({quality:out.diagnostics.maskQuality,hole_count:out.holeCount,
+   aspect_ratio:out.aspectRatio,hole_centroids:out.holeFeatures.map(h=>({x:h.x,y:h.y}))});
+  expect(geometry.hole_count).toBe(1);
+  expect(geometry.aspect_ratio).toBeGreaterThan(1);
+  expect(geometry.hole_centroids).toHaveLength(1);
+ });
 });

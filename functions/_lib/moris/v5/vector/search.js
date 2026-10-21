@@ -4,7 +4,7 @@ function vectorLiteral(vector) {
   return `[${Array.from(vector).map(v => Number(v).toFixed(8)).join(",")}]`;
 }
 
-export async function searchVectorIndex(env, config, vector, matchCount) {
+export async function searchVectorIndex(env, config, vector, matchCount, { onRpc } = {}) {
   const matchK = Math.max(
     1,
     Math.min(Number(matchCount || config.vector.topK), 100)
@@ -12,14 +12,21 @@ export async function searchVectorIndex(env, config, vector, matchCount) {
   const vecStr = vectorLiteral(vector);
 
   const callRpc = async (fnName, model, modelVersion, preprocessVersion, profile) => {
-    return await rpcService(env, fnName, {
+    try {
+      const rows = await rpcService(env, fnName, {
       p_query_embedding: vecStr,
       p_embedding_model: model,
       p_embedding_model_version: modelVersion,
       p_preprocess_version: preprocessVersion,
       p_embedding_profile: profile,
       p_match_count: matchK
-    });
+      });
+      onRpc?.({rpc:fnName,status:'ok',count:Array.isArray(rows)?rows.length:0});
+      return rows;
+    } catch (error) {
+      onRpc?.({rpc:fnName,status:'error',code:String(error?.code || 'RPC_ERROR')});
+      throw error;
+    }
   };
 
   let data = null;
@@ -46,21 +53,28 @@ export async function searchVectorIndex(env, config, vector, matchCount) {
     }
   }
 
-  // If new profile returns 0 hits, fallback to legacy profile (which matches 1,090 production vectors)
-  if ((!Array.isArray(data) || data.length === 0) && config.vector.profile !== "cls_l2_v1") {
-    try {
-      const fallbackData = await callRpc(
-        "match_catalogue_image_vectors",
-        config.vector.model,
-        config.vector.modelVersion,
-        "kim_canon_v2",
-        "cls_l2_v1"
-      );
-      if (Array.isArray(fallbackData) && fallbackData.length > 0) {
-        data = fallbackData;
-      }
-    } catch {}
-  }
-
   return Array.isArray(data) ? data : [];
+}
+
+/** Reviewed read-only proposal RPC. Never reuse global ANN scores for scoped IDs. */
+export async function searchScopedVectorIndex(env, config, vector, recordIds, matchCount, {onRpc} = {}) {
+  const ids = [...new Set((recordIds || []).map(String))].filter(id => /^[a-z0-9-]{1,64}$/i.test(id));
+  if (!ids.length || ids.length > 2000) return {status:'invalid_scope', hits:[]};
+  try {
+    const rows = await rpcService(env, 'match_catalogue_image_vectors_scoped_v1', {
+      p_query_embedding: vectorLiteral(vector),
+      p_embedding_model: config.vector.model,
+      p_embedding_model_version: config.vector.modelVersion,
+      p_preprocess_version: config.vector.preprocessVersion,
+      p_embedding_profile: config.vector.profile,
+      p_record_ids: ids,
+      p_match_count: Math.max(1, Math.min(100, Number(matchCount) || 100))
+    });
+    if (!Array.isArray(rows)) return {status:'invalid_response', hits:[]};
+    onRpc?.({rpc:'match_catalogue_image_vectors_scoped_v1',status:'ok',count:rows.length});
+    return {status:'ok', hits:rows};
+  } catch (error) {
+    onRpc?.({rpc:'match_catalogue_image_vectors_scoped_v1',status:'error',code:String(error?.code || error?.status || 'RPC_ERROR')});
+    return {status:'unavailable', hits:[]};
+  }
 }

@@ -14,7 +14,8 @@ export function collapseBestVectorHitPerRecord(hits,{limit=100}={}){
     const best=!current || similarity>current.similarity?{...hit,record_id:id,similarity}:current;
     const merged=[...(current?.view_evidence||[]),...evidence];
     const distinct=[...new Map(merged.map(e=>[JSON.stringify([e.probe_id,e.asset_type,e.object_key,e.similarity]),e])).values()];
-    byRecord.set(id,{...best,view_evidence:distinct});
+    const channels=[...new Set([...(current?.retrieval_channels||[]),...(hit.retrieval_channels||[])])];
+    byRecord.set(id,{...best,view_evidence:distinct,retrieval_channels:channels});
   }
   return [...byRecord.values()].sort((a,b)=>(b.retrieval_score??b.similarity)-(a.retrieval_score??a.similarity)||a.record_id.localeCompare(b.record_id))
     .slice(0,Math.max(1,Math.min(100,Number(limit)||100)));

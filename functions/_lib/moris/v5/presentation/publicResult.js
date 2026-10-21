@@ -17,6 +17,12 @@ export function toPublicMorisResult(result,{debug=false}={}){
 
   const sortedCandidates = processedList
     .sort((a, b) => {
+      if(a?.selection_group || b?.selection_group){
+        const groupRank=group=>group==='rescue_outside'?2:group==='rescue_unknown'?1:0;
+        const groupA=groupRank(a?.selection_group);
+        const groupB=groupRank(b?.selection_group);
+        if(groupA!==groupB)return groupA-groupB;
+      }
       const scoreA = Number(a?.match_score ?? a?.final_score ?? a?.geometric_score ?? a?.vector_similarity ?? 0);
       const scoreB = Number(b?.match_score ?? b?.final_score ?? b?.geometric_score ?? b?.vector_similarity ?? 0);
       return scoreB - scoreA;
@@ -31,6 +37,7 @@ export function toPublicMorisResult(result,{debug=false}={}){
   };
 
   if(result?.size_evidence) out.size_evidence = result.size_evidence;
+  if(result?.size_shortlist_evidence) out.size_shortlist_evidence = result.size_shortlist_evidence;
   if(result?.hole_format_evidence) out.hole_format_evidence = result.hole_format_evidence;
   if(result?.confusing_pair_evidence) out.confusing_pair_evidence = result.confusing_pair_evidence;
 
@@ -42,6 +49,7 @@ export function toPublicMorisResult(result,{debug=false}={}){
       ai_calls:result?.ai_calls ?? null,
       candidate_pool_hash:result?.candidate_pool_hash || null,
       size_evidence:result?.size_evidence || null,
+      size_shortlist_evidence:result?.size_shortlist_evidence || null,
       hole_format_evidence:result?.hole_format_evidence || null,
       confusing_pair_evidence:result?.confusing_pair_evidence || null
     };

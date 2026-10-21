@@ -334,6 +334,12 @@
       .detail-side { border-radius:1.5rem 1.5rem 0 0 !important; width:100%; height:auto !important; max-height:none !important; flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; background:rgba(255,255,255,0.97); z-index:5; padding-top:1.25rem !important; margin-top:0 !important; }
       .detail-overlay { overflow:hidden !important; }
     }
+    .moris-camera-overlay {
+      padding-top:max(.5rem, env(safe-area-inset-top));
+      padding-right:max(.5rem, env(safe-area-inset-right));
+      padding-bottom:max(.5rem, env(safe-area-inset-bottom));
+      padding-left:max(.5rem, env(safe-area-inset-left));
+    }
   
   /* ================================================================
      SLIDE MENU — nút sách đỏ mở bảng thao tác (trượt từ trái)
@@ -2084,9 +2090,9 @@
     </div>
   </div>
 
-  <!-- ============== CAMERA MORIS (khung căn chỉnh 1000:410) ============== -->
-  <div v-if="camera.open" class="fixed inset-0 z-[90] bg-slate-900/80 backdrop-blur-md p-3 sm:p-6 flex items-center justify-center" @click.self="closeCamera">
-    <div class="modal-shell glass w-full max-w-3xl rounded-[2rem] bg-white/95 overflow-y-auto overscroll-contain scrollbar-soft p-4 sm:p-5 my-auto">
+  <!-- ============== CAMERA MORIS LANDSCAPE ============== -->
+  <div v-if="camera.open" class="moris-camera-overlay fixed inset-0 z-[90] bg-slate-900/80 backdrop-blur-md flex items-center justify-center" @click.self="closeCamera">
+    <div class="modal-shell glass w-full max-w-6xl rounded-[2rem] bg-white/95 overflow-y-auto overscroll-contain scrollbar-soft p-3 sm:p-5 my-auto" style="max-height:calc(100dvh - max(.5rem, env(safe-area-inset-top)) - max(.5rem, env(safe-area-inset-bottom)));">
 
       <div class="flex items-center justify-between gap-3 mb-4">
         <div class="flex items-center gap-3 min-w-0">
@@ -2102,7 +2108,8 @@
       </div>
 
       <!-- Khung camera & Scanner preview -->
-      <div class="relative rounded-2xl overflow-hidden bg-black" style="aspect-ratio:1000/410;">
+      <p v-if="camera.landscapeHint" class="mb-2 rounded-xl bg-amber-50 border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800">Xoay ngang điện thoại để chụp trọn linh kiện.</p>
+      <div class="relative rounded-2xl overflow-hidden bg-black" :style="{ aspectRatio: camera.frameAspect }">
         <!-- Khi đang quét laser: hiển thị ảnh freeze frame + laser beam masked -->
         <template v-if="camera.scanning">
           <img :src="camera.previewUrl" alt="Ảnh chụp linh kiện"
@@ -2139,9 +2146,9 @@
 
         <!-- Khi đang quay live: hiển thị video -->
         <template v-else>
-          <video ref="camVideo" autoplay playsinline muted @click="handleCameraTap"
+          <video ref="camVideo" autoplay playsinline muted @click="handleCameraTap" @loadedmetadata="updateCameraFrameAspect" @resize="updateCameraFrameAspect"
             class="w-full h-full block bg-black cursor-crosshair"
-            style="object-fit:cover;"></video>
+            style="object-fit:contain;"></video>
 
           <!-- M27: điểm khóa chủ thể (tap-to-lock) -->
           <div v-if="camera.lock.seed" class="absolute pointer-events-none -translate-x-1/2 -translate-y-1/2"
@@ -2239,7 +2246,7 @@
             class="btn h-11 px-4 bg-slate-200 text-slate-600 hover:bg-slate-300 text-xs uppercase tracking-wider font-black ml-auto">Hủy</button>
         </template>
         <template v-else>
-          <button @click="captureCamera" :disabled="!camera.ready || camera.busy"
+          <button @click="captureCamera" :disabled="!camera.ready || camera.busy || camera.landscapeHint || (camera.lock.enabled && !camera.lock.ready)"
             class="btn h-11 px-5 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 text-xs uppercase tracking-wider font-black">
             <i data-lucide="aperture" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>{{ camera.busy ? 'Đang chụp...' : 'Chụp & Tìm kiếm bằng AI' }}
           </button>
@@ -2258,7 +2265,7 @@
       </div>
 
       <ul class="mt-3 text-[11px] font-bold text-slate-500 leading-relaxed list-disc pl-5">
-        <li>Tỉ lệ khung 1000:410 — đặt vật thể vừa khung trên nền TRẮNG</li>
+        <li>Giữ trọn vật thể trong khung camera trên nền TRẮNG</li>
         <li>Chờ tracking khóa chủ thể trong khung vàng rồi chụp.</li>
         <li>Đối với linh kiện to và dài, nếu không tìm ra bằng tracking hãy bấm "Tải ảnh từ máy" để gửi ảnh chụp toàn cảnh rõ nét mà không lo bị thu nhỏ.</li>
         <li>Nhập chiều dài để Harness sàng lọc chuẩn hơn</li>

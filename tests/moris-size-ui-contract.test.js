@@ -153,6 +153,7 @@ describe('M28 UI contract — panel nhập kích thước (hành vi thật từ 
         moris: { imageDataUrl: '', imagePreview: '', imageName: '', imageFile: null },
         stopCameraStream: vi.fn(),
         prepareMorisImage: async () => 'data:image/jpeg;base64,QUJD',
+        validateMorisUploadDataUrl: vi.fn(async () => ({ verdict: { ready:true }, source_frame:{width:1280,height:720} })),
         buildMorisQueryVector: async () => ({ embedding: [0.1], probes: [], profile: 'cls_l2_v1' }),
         readCameraSize: async () => expectedSize,
         closeCamera: vi.fn(),
@@ -163,6 +164,7 @@ describe('M28 UI contract — panel nhập kích thước (hành vi thật từ 
       };
       const event = { target: { files: [{ name: 'part.jpg' }], value: 'x' } };
       await methods.onCameraFileSelect.call(ctx, event);
+      expect(ctx.validateMorisUploadDataUrl).toHaveBeenCalledOnce();
       expect(ctx.sendMorisMessage).toHaveBeenCalledTimes(1);
       return ctx.sendMorisMessage.mock.calls[0];
     };
