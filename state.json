@@ -2,14 +2,14 @@
   "system": {
     "project": "Catalogue AI (Dictionary)",
     "stack": "Vue 3 CDN + Cloudflare Pages Functions + Supabase (pgvector) + Cloudflare R2",
-    "updated_at": "2026-10-21T05:05:00Z",
+    "updated_at": "2026-10-21T05:17:00Z",
     "memory_version": "2.9.0",
     "status": "in_progress"
   },
   "current_session": {
-    "active_task": "pipeline_main_release_after_db_migration",
-    "last_checkpoint": "2026-10-21 05:15 UTC: full tests 69/659, tsc/build/diff pass. PostgreSQL17/pgvector V6/scoped local fixtures pass. Supabase CLI dry-run listed exactly 4 pending migrations; backed up public schema/data to /tmp (hashes in release audit); db push applied all four. Post-check 1110 active vectors/546 SKUs, 236 legacy zeros/0 provenance, anon writer/scoped denied, scoped RPC 180mm returns front/thumb 3448000001. wrangler.toml scoped/keyed true for next main release. No vector replace or Git push yet.",
-    "resumption_prompt": "Read AGENTS.md and docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md POST-AUDIT update. DB migrations already applied 2026-10-21; do not reapply. Stage only intended code/docs/tests/dist/migration, scan for secrets, commit only after full test pass, push upstream/main PQVinh99-Glory/Dictionary, verify Pages deploy and owner test debt. 236 legacy zero rows unchanged until owner-confirmed Vector Center replace; do not direct-update vectors.",
+    "active_task": "pipeline_production_owner_acceptance_pending",
+    "last_checkpoint": "2026-10-21 05:16 UTC: DB four migrations applied after backup/dry-run; post-check 1110 vectors/546 SKUs/236 legacy zero, provenance columns ready, anon writer/scoped denied, scoped 180mm RPC returns 3448000001 front/thumb. Commit 1c159a213db29bf92628ea2ad7ae71a451262011 pushed upstream/main PQVinh99-Glory/Dictionary. Cloudflare Pages production deployment f1476641-356f-4f50-aa7c-797efc0796ea success matching SHA; production scoped/keyed flags true. Local tests 69/659, tsc/build/diff pass. Owner camera/ranking GT and confirmed Vector Center replace of 236 legacy rows pending; no direct vector writes.",
+    "resumption_prompt": "Read AGENTS.md, Plan_pipeline_moris.md, docs/moris-v6/evidence/pipeline-owner-acceptance.md and P13 audit. DB migrations and main deploy are DONE; do not repeat. Production Pages SHA 1c159a2 successful. 236 legacy zero rows remain until owner-confirmed Vector Center replace; 33 raw/canonical disagreements need per-view GT. Ask owner for results/labels after they test Android/iPhone production; do not invent accuracy.",
     "tech_debt_register": "docs/moris-v6/TECH_DEBT_REGISTER.md",
     "plan_file": "Plan_pipeline_moris.md",
     "release_audit": "docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md"
@@ -796,14 +796,14 @@
     {
       "id": "task_p13_hole_zero_local_fix_20261021",
       "title": "Sửa nguyên nhân 236 zero geometry legacy và cảnh báo Vector Center",
-      "status": "local_verified_pending_production",
-      "evidence": "docs/moris-v6/evidence/pipeline-p13-hole-zero-audit.md; docs/moris-v6/evidence/pipeline-p13-zero-asset-replay.csv; focused 37/37 and 47/47; final full suite 69/659, tsc exit0, build47, git diff --check exit0; local PG17/pgvector vector/provenance/catalogue DB fixtures pass (retry, nullable zero, ACL, backup/restore, stable paging); scoped/keyed SQL proposal local fixture pass",
+      "status": "production_deployed_pending_owner_acceptance",
+      "evidence": "docs/moris-v6/evidence/pipeline-p13-hole-zero-audit.md; docs/moris-v6/evidence/pipeline-p13-zero-asset-replay.csv; focused 37/37 and 47/47; final full suite 69/659, tsc exit0, build47, git diff --check exit0; local PG17/pgvector vector/provenance/catalogue DB fixtures pass (retry, nullable zero, ACL, backup/restore, stable paging); scoped/keyed SQL proposal local fixture pass; db push four migrations exit0; production post-check 1110 active/236 legacy zero, ACL correct; Git 1c159a2 upstream/main; Pages deploy f1476641 success",
       "production_writes": "4 schema/RPC migrations applied; 0 vector data writes",
-      "deployed": false,
+      "deployed": true,
       "remaining": [
-        "Commit/push main and verify Pages deployment",
-        "Owner-confirmed Vector Center replace for affected assets",
-        "Owner-labeled hole GT and Android/iPhone production acceptance"
+        "Owner-confirmed Vector Center replace of 236 affected legacy assets",
+        "Owner per-view closed-hole labels for 33 raw/canonical disagreements and true-zero controls",
+        "Owner Android Chrome/iPhone Safari camera, size, ranking, latency acceptance on production"
       ]
     }
   ],

@@ -2,6 +2,8 @@
 
 ## P13 checkpoint mới — 2026-10-21 (ưu tiên hơn snapshot lịch sử bên dưới)
 
+**Cập nhật sau deploy 05:16 UTC:** Commit `1c159a2` đã push `upstream/main`, Cloudflare Pages deployment `f1476641-356f-4f50-aa7c-797efc0796ea` production success. Bốn migration đã áp; scoped/keyed flags production=true. 236 hàng legacy zero vẫn cần owner-confirmed replace qua Trung tâm Vector AI; 33 raw/canonical bất đồng cần nhãn lỗ kín theo view; camera Android/iPhone và ranking/latency thật pending owner. Các checkpoint “chưa deploy” bên dưới chỉ là lịch sử trước phát hành.
+
 **Cập nhật release 05:15 UTC:** Đã apply bốn migration V6/scoped sau backup và dry-run; production cột/RPC/grants xác minh read-only, 1.110 active vector và 236 zero cũ giữ nguyên. `wrangler.toml` đã bật scoped/keyed cho bản phát hành main. Các câu “chưa push DB” bên dưới là checkpoint trước migration, không còn là trạng thái hiện hành. Code chưa push/deploy main tại thời điểm dòng này.
 
 Snapshot read-only production sau owner rebuild: 1.110 hybrid vector / 546 SKU; 236 hàng `hole_count=0` thuộc 152 SKU. Đã replay **236/236** asset R2 zero và 58 asset positive đối chứng, không ghi production. Cơ chế 236 zero: alpha cutout crop chạm mép → quality false → count NULL → RPC cũ `COALESCE` thành 0. Bản sửa local giữ khoang oval lớn kín, không cộng khoét hở, cho alpha catalogue tight crop được đo nhưng camera opaque vẫn nghiêm; bỏ legacy writer fallback và thêm cảnh báo Trung tâm Vector AI. Kết quả replay local: 236/236 có count/ratio/centroids; **33/236** raw/canonical lệch. Đây không phải tỷ lệ đúng theo nhãn người. Chi tiết và từng object/hash: `docs/moris-v6/evidence/pipeline-p13-hole-zero-audit.md`, `pipeline-p13-zero-asset-replay.csv`.

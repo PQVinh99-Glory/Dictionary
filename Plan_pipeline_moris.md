@@ -441,16 +441,16 @@ Chỉ mở khi P05/P10 chỉ ra lỗi perception mà baseline hình học/matchi
 
 ### [ ] P12 — Hybrid-only rebuild và release theo phạm vi được duyệt
 
-Đây là checklist chuẩn bị; chưa authorization xóa/tạo vector, migration hoặc deploy.
+Owner đã yêu cầu release để thử trên production sau khi agent hoàn tất kiểm thử local. Bốn migration đã áp và code đã lên main; **chưa có authorization xóa sạch/rebuild hàng loạt vector**. Nghiệm thu owner vẫn pending.
 
 - [ ] Freeze capture/preprocess/model/profile cuối; audit toàn asset expected, readiness/freshness theo asset.
-- [x] Audit read-only auth/write contract và migration pending: ba migration V6 vẫn thiếu trên remote; `db push` toàn bộ NO-GO. Snapshot sau rebuild, main/Pages và nợ 236 hàng zero ghi tại `docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md`. Chưa push DB/deploy.
-- [ ] Soạn backup/restore và danh sách asset/profile cần rebuild/retire; review concrete diff và dự kiến chi phí/thời gian bằng số đo pilot được phép.
+- [x] Audit read-only auth/write contract, backup schema+data public, dry-run đúng bốn migration, rehearsal PostgreSQL 17/pgvector; bốn migration đã áp và post-check quyền/coverage pass. Snapshot, main/Pages và nợ 236 zero trong `docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md`.
+- [x] Backup schema+data public ngoài repo với hash và rehearsal restore/rollback trên fixture local; danh sách 236 asset legacy/152 SKU cần owner review theo CSV P13. Chưa có nhãn GT để chốt danh sách replace chính xác và không tự retire vector.
 - [ ] Khi owner yêu cầu thực thi cụ thể: Vector Center confirmed single/batch → server kiểm quyền → idempotent index; không shell script auto-write hoặc Editor làm writer mới.
 - [ ] Verify hybrid coverage và query/ranking trên dữ liệu thật trước bỏ legacy; không đánh ready cho asset thiếu/stale chỉ vì sibling có vector.
 - [ ] Nếu owner chọn xóa sạch trước, ghi rõ phạm vi downtime/backup/restore và xin quyết định cụ thể; không suy từ ý định tương lai thành lệnh xóa.
 - [ ] Kiểm thử rollback/recovery bằng môi trường cô lập; không thử phá production.
-- [ ] Release owner-authorized, staging/shadow/canary theo môi trường đã duyệt, có budget và stop conditions; không tự nhân đôi production workload để shadow.
+- [x] Release main theo chỉ đạo owner: commit `1c159a2` lên `PQVinh99-Glory/Dictionary`, Pages production deployment `f1476641-356f-4f50-aa7c-797efc0796ea` success đúng SHA; production flags scoped/keyed=true. Chưa đo canary/stop condition trên thiết bị thật.
 - [ ] Theo dõi runtime parity, lỗi camera/profile, primary/rescue rate và P95; rollback đúng bundle browser/server/index.
 
 **Exit:** owner sign-off đúng phạm vi, đủ asset/index evidence, release log và rollback đã kiểm chứng. Chưa triển khai thì giữ `[ ]`.
