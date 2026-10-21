@@ -1,0 +1,62 @@
+
+> dictionary-catalogue-ai@0.1.0 test
+> vitest run
+
+
+ RUN  v5.0.3 /workspaces/Dictionary
+
+ ❯ tests/frontend.test.js (35 tests | 2 failed) 1241ms
+   ❯ build-static — allowlist, không rò secret (3)
+     × npm run build chạy được và chỉ copy allowlist 1163ms
+   ❯ src/app.js — phân quyền & phiên (5)
+     × node --check pass 42ms
+ ❯ tests/moris-hard-negatives.test.js (7 tests | 1 failed) 132ms
+   ❯ hard-negative evidence and synthetic behavior (7)
+     × review cli tool reports correct summary without mutating state 120ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/frontend.test.js > build-static — allowlist, không rò secret > npm run build chạy được và chỉ copy allowlist
+Error: spawnSync /usr/local/share/nvm/versions/node/v24.21.0/bin/node EPERM
+ ❯ tests/frontend.test.js:13:5
+     11| describe('build-static — allowlist, không rò secret', () => {
+     12|   it('npm run build chạy được và chỉ copy allowlist', () => {
+     13|     execFileSync(process.execPath, ['tools/build-static.mjs'], { cwd: …
+       |     ^
+     14|
+     15|     for (const entry of [
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/frontend.test.js > src/app.js — phân quyền & phiên > node --check pass
+Error: spawnSync /usr/local/share/nvm/versions/node/v24.21.0/bin/node EPERM
+ ❯ tests/frontend.test.js:114:5
+    112|
+    113|   it('node --check pass', () => {
+    114|     execFileSync(process.execPath, ['--check', 'src/app.js'], { cwd: R…
+       |     ^
+    115|   });
+    116|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/moris-hard-negatives.test.js > hard-negative evidence and synthetic behavior > review cli tool reports correct summary without mutating state
+Error: spawnSync /bin/sh EPERM
+ ❯ tests/moris-hard-negatives.test.js:35:13
+     33|  });
+     34|  it('review cli tool reports correct summary without mutating state',(…
+     35|   const out=execSync('node tools/review-moris-hard-negatives.mjs',{enc…
+       |             ^
+     36|   expect(out).toContain('Total Cases:           57');
+     37|   expect(out).toContain('Approved:              2');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed | 60 passed (62)
+      Tests  3 failed | 607 passed (610)
+   Start at  00:39:02
+   Duration  27.65s (tests 78%, import 10%, transform 9%, worker 3%)
+
+    Isolate  62 workers spawned · ~150ms startup each (spawn + environment, per file)
+             at least ~9.15s faster with isolate: false — reuses workers across files instead of one per file

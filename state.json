@@ -2,14 +2,14 @@
   "system": {
     "project": "Catalogue AI (Dictionary)",
     "stack": "Vue 3 CDN + Cloudflare Pages Functions + Supabase (pgvector) + Cloudflare R2",
-    "updated_at": "2026-10-21T06:56:40Z",
+    "updated_at": "2026-10-21T07:15:59Z",
     "memory_version": "2.9.0",
     "status": "in_progress"
   },
   "current_session": {
-    "active_task": "moris_header_avatar_replaced_owner_visual_acceptance_pending",
-    "last_checkpoint": "2026-10-21 06:56 UTC replaced Moris chat header brain icon with owner-provided transparent Moris_avatar.png; source asset in assets/ and build output in dist/assets/. Bumped PWA version 6.6.3. Browser rendered image at 44x44 on portrait 393x852 and landscape 844x390 with natural 1566x2000 and object-fit cover. Build 48 files and full 69 file/665 test suite pass. Device visual acceptance pending owner.",
-    "resumption_prompt": "Moris chat header avatar updated and tests passed. Owner should visually confirm on actual device after production deploy. P02 Redmi K70E/iPhone Safari camera acceptance still pending. Do not rerun owner-completed 236-vector batch; book-slide issue deferred pending repro.",
+    "active_task": "repository_commit_all_remaining_evidence_owner_single_sku_acceptance_recorded",
+    "last_checkpoint": "2026-10-21 07:15 UTC owner reported production SKU 3448000001 Top 1 both with and without manually entered size; documented as owner-observed single-SKU result, not catalogue-wide metric. Git working tree had 16 untracked historical log/JSON evidence files; scan found no credential/JWT/private key or email pattern, one sandbox test log records historical failures. Current build 48 files, full 69 file/665 test suite pass, tsc exit0, diff check pass. P10 multi-SKU metrics, 33 raw/canonical disagreements, 874 positive-vector provenance, and iPhone Safari/device evidence remain pending; do not mark project-wide acceptance complete.",
+    "resumption_prompt": "Commit and push remaining historical evidence + owner observation; confirm git clean and deployment SHA. Owner reports 3448000001 Top1 with/without size, but no request trace/label dataset; keep P10 and other plan gates open. P13 236 batch done. Book-slide intermittent issue deferred pending repro.",
     "tech_debt_register": "docs/moris-v6/TECH_DEBT_REGISTER.md",
     "plan_file": "Plan_pipeline_moris.md",
     "release_audit": "docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md"

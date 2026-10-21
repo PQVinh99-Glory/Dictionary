@@ -434,6 +434,8 @@ Before continuing, read [docs/moris-v6/HANDOFF.md](docs/moris-v6/HANDOFF.md). It
 
 ### Triển khai pipeline — checkpoint cục bộ 2026-10-21
 
+- [x] Owner nghiệm thu production: mã `3448000001` lên Top 1 cả khi có và không có size (báo cáo 2026-10-21). Ghi nhận kết quả một mã, không thay thế benchmark nhiều mã/thiết bị của P10.
+
 - [x] UI Moris: thay biểu tượng não ở header chat box bằng avatar người dùng cung cấp; ảnh nguồn được lưu trong `assets/` và được build sang `dist/`. Browser render 44×44 trên viewport dọc/ngang; 69 file/665 test pass. Nghiệm thu trực quan trên thiết bị thật chờ owner.
 
 - [x] P00 hoàn tất contract/schema: owner bỏ gate 122 mã đã xóa và queue57 lịch sử; snapshot production SELECT 2026-10-21 02:50:18 UTC: 545 mã, 6 có length, 0 width, hybrid active 1103 vector/544 record, CLS active 1069/534. Manifest camera có validator/hash ảnh+mask; ảnh và thiết bị thật chờ owner nghiệm thu production. 64 file/622 test pass, tsc0, build47; không ghi DB/deploy.

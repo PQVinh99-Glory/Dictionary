@@ -1,5 +1,7 @@
 # Moris V6 — Technical Debt Register (Sổ nợ kỹ thuật)
 
+**Checkpoint 2026-10-21 sau nghiệm thu owner:** Chủ dự án báo `3448000001` lên Top 1 trên production cả khi nhập size và khi bỏ trống size. Nhóm 236 vector zero cũ đã được owner chạy lại và kiểm tra read-only 236/236 có metadata hình học; xem `evidence/pipeline-owner-acceptance.md`. Các đoạn lịch sử bên dưới mô tả trạng thái tại thời điểm ghi. Nợ mở vẫn gồm nhãn/đối chứng cho 33 raw/canonical bất đồng, benchmark nhiều mã và false accept, kiểm thử iPhone Safari/thiết bị thật có log, provenance của 874 vector positive cũ và các gate P03–P12 còn `[ ]` trong `Plan_pipeline_moris.md`. Không coi kết quả một SKU là độ chính xác toàn hệ thống.
+
 ## P13 checkpoint mới — 2026-10-21 (ưu tiên hơn snapshot lịch sử bên dưới)
 
 **Cập nhật sau deploy 05:16 UTC:** Commit `1c159a2` đã push `upstream/main`, Cloudflare Pages deployment `f1476641-356f-4f50-aa7c-797efc0796ea` production success. Bốn migration đã áp; scoped/keyed flags production=true. 236 hàng legacy zero vẫn cần owner-confirmed replace qua Trung tâm Vector AI; 33 raw/canonical bất đồng cần nhãn lỗ kín theo view; camera Android/iPhone và ranking/latency thật pending owner. Các checkpoint “chưa deploy” bên dưới chỉ là lịch sử trước phát hành.

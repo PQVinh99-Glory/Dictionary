@@ -1,0 +1,44 @@
+{
+  "scope": "Pure-function illustrative input, not camera measurement",
+  "count4_becomes_tags": [
+    "tron"
+  ],
+  "rows": [
+    {
+      "code": "illustration_2",
+      "score": 1,
+      "match": [
+        "tron"
+      ]
+    },
+    {
+      "code": "illustration_4",
+      "score": 1,
+      "match": [
+        "tron"
+      ]
+    }
+  ]
+}
+{
+  "scope": "Current implementation only; owner now accepts 5%, not yet implemented",
+  "query_length": 180,
+  "candidate_length": 195,
+  "verdict": {
+    "status": "match_partial",
+    "permutation": "identity",
+    "d_max": 0.076923,
+    "edges": [
+      {
+        "key": "length_mm",
+        "delta": 15,
+        "allowed": 19.5,
+        "ok": true
+      }
+    ],
+    "tolerance": {
+      "relative": 0.1,
+      "floorMm": 3
+    }
+  }
+}

@@ -1,0 +1,11 @@
+
+ RUN  v5.0.3 /workspaces/Dictionary
+
+
+ Test Files  3 passed (3)
+      Tests  39 passed (39)
+   Start at  01:02:17
+   Duration  1.35s (transform 55%, tests 26%, import 17%, worker 2%)
+
+    Isolate  3 workers spawned · ~139ms startup each (spawn + environment, per file)
+             at least ~277ms faster with isolate: false — reuses workers across files instead of one per file

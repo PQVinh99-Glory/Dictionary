@@ -1,5 +1,7 @@
 # Moris production acceptance pending owner — 2026-10-21
 
+**Owner report, 2026-10-21:** On production, SKU `3448000001` now ranks Top 1 in both the query with manually entered size and the query without size. This resolves the original reported search failure for that SKU. The owner described the current operation as working well; no original camera frame, request trace, device/browser details or labeled multi-SKU evaluation was supplied with this report, so the broader camera, ranking and latency gates below remain pending. This is an owner-observed result, not an independently replayed accuracy metric.
+
 This is a test protocol, not a pass report. The reviewed code/RPC bundle was deployed at Git SHA `1c159a2` on 2026-10-21; record browser worker/profile, API profile, indexed asset coverage and timestamp before any accuracy comparison. Do not mix the transient 02:50 and 02:56 production snapshots into one baseline.
 
 For each camera query, retain the original frame (subject to owner privacy policy), camera crop, device model/OS/browser, orientation, manually entered long edge, query request ID and response/debug trace. Label the full-object mask and closed/open hole instances independently of Moris output. Use separate shots/sessions for development and holdout; the old 122/57 lists and the previously viewed M22 holdout are excluded from new acceptance.

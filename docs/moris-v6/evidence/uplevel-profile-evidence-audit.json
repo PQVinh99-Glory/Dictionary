@@ -1,0 +1,78 @@
+{
+  "scope": "Historical evidence inspection, not a new benchmark; original camera data unavailable",
+  "profile_comparison_measured": false,
+  "sources": [
+    {
+      "file": "M22-development-summary.json",
+      "mode": "global",
+      "n": 93,
+      "metrics": {
+        "top1": 0.6236559139784946,
+        "recall10": 0.8387096774193549,
+        "recall50": 0.946236559139785
+      },
+      "profile": {
+        "model": "onnx-community/dinov2-small",
+        "model_version": "ef1fb10",
+        "preprocess_version": "kim_canon_v3_letterbox",
+        "profile": "hybrid_gem3_edge_55_45_pseudorgb_u8_v1",
+        "dimension": 384
+      },
+      "algorithm": "local_exact_front_reference_global_v1"
+    },
+    {
+      "file": "M22-development-summary.json",
+      "mode": "holes",
+      "n": 93,
+      "metrics": {
+        "top1": 0.5806451612903226,
+        "recall10": 0.8064516129032258,
+        "recall50": 0.946236559139785
+      },
+      "profile": {
+        "model": "onnx-community/dinov2-small",
+        "model_version": "ef1fb10",
+        "preprocess_version": "kim_canon_v3_letterbox",
+        "profile": "hybrid_gem3_edge_55_45_pseudorgb_u8_v1",
+        "dimension": 384
+      },
+      "algorithm": "local_exact_front_reference_holes_v1"
+    },
+    {
+      "file": "M22-holdout-summary.json",
+      "mode": "global",
+      "n": 31,
+      "metrics": {
+        "top1": 0.6451612903225806,
+        "recall10": 0.9354838709677419,
+        "recall50": 1
+      },
+      "profile": {
+        "model": "onnx-community/dinov2-small",
+        "model_version": "ef1fb10",
+        "preprocess_version": "kim_canon_v3_letterbox",
+        "profile": "hybrid_gem3_edge_55_45_pseudorgb_u8_v1",
+        "dimension": 384
+      },
+      "algorithm": "local_exact_front_reference_global_v1"
+    },
+    {
+      "file": "M22-holdout-summary.json",
+      "mode": "holes",
+      "n": 31,
+      "metrics": {
+        "top1": 0.6451612903225806,
+        "recall10": 0.9354838709677419,
+        "recall50": 1
+      },
+      "profile": {
+        "model": "onnx-community/dinov2-small",
+        "model_version": "ef1fb10",
+        "preprocess_version": "kim_canon_v3_letterbox",
+        "profile": "hybrid_gem3_edge_55_45_pseudorgb_u8_v1",
+        "dimension": 384
+      },
+      "algorithm": "local_exact_front_reference_holes_v1"
+    }
+  ]
+}

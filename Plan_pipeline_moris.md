@@ -410,6 +410,8 @@ Không thay nhiều stage trong một thí nghiệm. Có thể phát triển mod
 
 ### [ ] P10 — Evaluation và nghiệm thu thực tế
 
+- [x] Owner báo nghiệm thu production ngày 2026-10-21: `3448000001` đứng Top 1 khi có size và khi không có size. Đây là xác nhận theo một SKU do owner quan sát; chưa có frame/request trace hoặc phép đo toàn tập để đánh dấu P10 hoàn tất.
+
 - [ ] Đóng băng dev/new holdout theo SKU/shot/session trước xem kết quả; không để augment siblings qua split.
 - [ ] Bộ regression gồm3448000001, vật dài/to/mỏng/uốn, bóng/chói, nhỏ lỗ, hai vật, lỗ kín/khoét hở, răng cưa, size trong/ngoài5% và thiếu size.
 - [ ] Benchmark read-only trên snapshot catalogue production hiện hành; tách self-query khỏi camera thật do owner nghiệm thu trên production. Ghi rõ coverage, profile và mẫu số thực tế.
