@@ -18,6 +18,7 @@ const state = {
   filteredItems: [],
   visibleLimit: 20,
   loadingItems: false,
+  itemsLoaded: false,
   batchRunning: false,
   batchControl: createPauseControl()
 };
@@ -390,44 +391,61 @@ function renderItemsSlice() {
   if (window.lucide) window.lucide.createIcons();
 }
 
+let itemsLoadSeq = 0;
 async function loadItems(query = "") {
-  if (state.loadingItems) return;
+  const requestSeq = ++itemsLoadSeq;
   state.loadingItems = true;
+  state.itemsLoaded = false;
   const tbody = $("itemsTableBody");
   const countBadge = $("itemsCountBadge");
+  if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400 font-bold">Đang tải danh sách...</td></tr>';
+  if (countBadge) countBadge.textContent = "Đang tải...";
 
   try {
     const t = token();
     const items = [];
-    for (let offset=0; ; offset+=20) {
-      const data = await readJson(`/api/moris/vector-items?session_token=${encodeURIComponent(t)}&limit=20&offset=${offset}&search=${encodeURIComponent(query)}`);
-      const page = Array.isArray(data?.items) ? data.items : [];
-      items.push(...page);
-      if (!data.has_more || !page.length) break;
+    const pageSize = 20;
+    const readPage = offset => readJson(`/api/moris/vector-items?session_token=${encodeURIComponent(t)}&limit=${pageSize}&offset=${offset}&search=${encodeURIComponent(query)}`);
+    const first = await readPage(0);
+    if (requestSeq !== itemsLoadSeq) return;
+    items.push(...(Array.isArray(first?.items) ? first.items : []));
+    // Hiển thị trang đầu ngay; các trang còn lại tải song song có giới hạn.
+    const showItems = complete => {
+      if (requestSeq !== itemsLoadSeq) return;
+      state.items = [...items];
+      state.filteredItems = state.items;
+      state.visibleLimit = 20;
+      const withVec = items.filter(i => i.vector_status === "ready").length;
+      const pending = items.length - withVec;
+      if ($("pendingCount")) $("pendingCount").textContent = pending;
+      if ($("records")) $("records").textContent = withVec;
+      if (countBadge) countBadge.textContent = `${items.length} mã (${withVec} sẵn sàng, ${pending} cần kiểm tra)${complete ? "" : " · đang tải thêm"}`;
+      renderItemsSlice();
+    };
+    showItems(!first.has_more);
+    for (let offset=pageSize; first.has_more; offset+=pageSize*3) {
+      const pages = await Promise.all([0,1,2].map(n=>readPage(offset+n*pageSize)));
+      if (requestSeq !== itemsLoadSeq) return;
+      let complete = false;
+      for (const data of pages) {
+        const page = Array.isArray(data?.items) ? data.items : [];
+        items.push(...page);
+        if (!data.has_more || !page.length) { complete = true; break; }
+      }
       if (items.length >= 5000) throw new Error("Danh sách vượt giới hạn; thu hẹp tìm kiếm.");
+      showItems(complete);
+      if (complete) break;
     }
-    state.items = items;
-    state.filteredItems = items;
-    state.visibleLimit = 20;
-
-    const withVec = items.filter(i => i.vector_status === "ready").length;
-    const pending = items.length - withVec;
-
-    if ($("pendingCount")) $("pendingCount").textContent = pending;
-    if ($("records")) $("records").textContent = withVec;
-
-    if (countBadge) {
-      countBadge.textContent = `${items.length} mã (${withVec} sẵn sàng, ${pending} cần kiểm tra)`;
-    }
-
-    renderItemsSlice();
+    if (requestSeq === itemsLoadSeq) state.itemsLoaded = true;
   } catch (err) {
+    if (requestSeq !== itemsLoadSeq) return;
     if (tbody) {
       tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-rose-500 font-bold">Lỗi tải danh sách: ${escapeHtml(err?.message || String(err))}</td></tr>`;
     }
+    if (countBadge) countBadge.textContent = "Tải danh sách thất bại";
     showToast("error", `Không thể tải danh sách mã: ${err?.message || err}`);
   } finally {
-    state.loadingItems = false;
+    if (requestSeq === itemsLoadSeq) state.loadingItems = false;
   }
 }
 
@@ -445,6 +463,7 @@ function previewText(preview) {
   return `${preview.skus} mã, ${preview.assets} ảnh RGB; ${preview.missing} ảnh thiếu, tối đa ${preview.possibly_replaced} vector cần thay. Dự kiến thêm ${preview.new_rows_min}–${preview.new_rows_max} hàng vật lý tùy phiên bản hiện có. Không xóa lịch sử.`;
 }
 function showBatchPreview(){
+ if(!state.itemsLoaded){if($("batchPreview"))$("batchPreview").textContent="Đợi tải đủ danh sách trước khi xem trước batch.";return null;}
  const preview=previewBatch(legacyZeroOnly()?onlyLegacyZeroAssets(state.items):state.items,writeMode());
  if($("batchPreview"))$("batchPreview").textContent=previewText(preview);
  return preview;
@@ -506,6 +525,7 @@ async function vectorizeSingleItem(item, btn) {
 
 async function batchVectorizePending() {
   if (state.batchRunning) return;
+  if (!state.itemsLoaded) return showToast("warning", "Đợi tải đủ danh sách trước khi tách hàng loạt.");
   const mode=writeMode(),preview=showBatchPreview();
   if(!preview.assets)return showToast("info","Không có ảnh phù hợp với chế độ đã chọn.");
   state.batchRunning=true;const btn=$("btnBatchVectorize");
@@ -590,8 +610,9 @@ if ($("itemSearchInput")) {
   let searchTimer = null;
   $("itemSearchInput").oninput = (e) => {
     clearTimeout(searchTimer);
+    const query=e.target.value.trim();
     searchTimer = setTimeout(() => {
-      loadItems(e.target.value.trim());
+      loadItems(query);
     }, 350);
   };
 }

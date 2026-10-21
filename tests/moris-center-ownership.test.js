@@ -17,7 +17,7 @@ function center({ missingModal = false } = {}) {
     initDinov2: vi.fn(async () => ({})), embedImageDinov2: embed, embedImageDinov2Variants: embed,
     onDinov2Progress() {}, renderParts() {}, upsertVectorsChunked: args => upsertVectorsChunked({...args, fetchImpl:fetch}) };
   const source = readFileSync('tools/moris-vector-center.js','utf8').replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
-  vm.runInNewContext(source+'\nglobalThis.api = { state, vectorizeSingleItem, batchVectorizePending, showBatchPreview, showConfirm };', sandbox);
+  vm.runInNewContext(source+'\nglobalThis.api = { state, loadItems, vectorizeSingleItem, batchVectorizePending, showBatchPreview, showConfirm };', sandbox);
   return { ...sandbox.api, get, embed, fetch };
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -32,6 +32,7 @@ describe('M03 explicit Center intent', () => {
     const c = center(); await tick();
     const item = { id:'part', code:'ABC', assets:[{asset_type:'front',image_path:'p.webp'}] };
     c.state.items=[item];
+    c.state.itemsLoaded=true;
     const pending=kind==='single' ? c.vectorizeSingleItem(item,null) : c.batchVectorizePending();
     expect(c.embed).not.toHaveBeenCalled();
     c.get('btnConfirmCancel').onclick(); await pending;
@@ -49,11 +50,29 @@ describe('M03 explicit Center intent', () => {
       {asset_type:'front',image_path:'front.webp',legacy_hole_zero:true},
       {asset_type:'thumb',image_path:'thumb.webp',legacy_hole_zero:false}
     ]}];
+    c.state.itemsLoaded=true;
     expect(c.showBatchPreview()).toMatchObject({assets:1,skus:1});
     const work=c.batchVectorizePending();
     c.get('btnConfirmCancel').onclick();await work;
     expect(c.embed).not.toHaveBeenCalled();
     expect(c.fetch.mock.calls.some(([url])=>url.includes('upsert'))).toBe(false);
+  });
+  it('latest search wins when a prior page is still loading; clearing restores the full list',async()=>{
+    const c=center();await tick();
+    let releaseSlow;
+    c.fetch.mockImplementation(async url=>{
+      const query=new URL(String(url),'http://localhost').searchParams.get('search');
+      if(query==='slow')return new Promise(resolve=>{releaseSlow=()=>resolve(new Response(JSON.stringify({ok:true,items:[{id:'old',code:'OLD',assets:[],vector_status:'ready'}],has_more:false})));});
+      const code=query==='fast'?'FAST':'ALL';
+      return new Response(JSON.stringify({ok:true,items:[{id:code,code,assets:[],vector_status:'ready'}],has_more:false}));
+    });
+    const slow=c.loadItems('slow');await tick();
+    const fast=c.loadItems('fast');await fast;
+    releaseSlow();await slow;
+    expect(c.state.items.map(i=>i.code)).toEqual(['FAST']);
+    await c.loadItems('');
+    expect(c.state.items.map(i=>i.code)).toEqual(['ALL']);
+    expect(c.state.itemsLoaded).toBe(true);
   });
   it('confirmed single selects only that item', async () => {
     const c=center(); await tick();

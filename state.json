@@ -2,14 +2,14 @@
   "system": {
     "project": "Catalogue AI (Dictionary)",
     "stack": "Vue 3 CDN + Cloudflare Pages Functions + Supabase (pgvector) + Cloudflare R2",
-    "updated_at": "2026-10-21T05:42:36Z",
+    "updated_at": "2026-10-21T06:18:36Z",
     "memory_version": "2.9.0",
     "status": "in_progress"
   },
   "current_session": {
-    "active_task": "p13_vector_center_legacy_zero_repair_release",
-    "last_checkpoint": "2026-10-21: Production read-only 1110 active vectors, 236 exact legacy zero, 0 geometry provenance. Added Vector Center repair_zero mode selecting only active exact 0/1/[] without geometry_evidence, avoiding general stale mode that would rebuild all pre-V6 assets. Full npm test 69 files/662 tests pass; tsc 0; build 47 files; no production vector writes. Owner pilot + image GT and 33 raw/canonical disagreements pending.",
-    "resumption_prompt": "Read AGENTS.md, Plan_pipeline_moris.md, docs/moris-v6/evidence/pipeline-owner-acceptance.md. Verify repair_zero deployment before directing owner to use it. Pilot selected assets in Vector Center, then obtain image-level closed-hole GT before broad batch. Do not direct-update vector data. Owner device/camera ranking acceptance remains pending.",
+    "active_task": "p13_owner_pilot_verified_center_filter_harness_labels",
+    "last_checkpoint": "2026-10-21 owner Vector Center pilot completed for five views: production read-only measured 3445170001 2/2, 3433410101 5/5, 3430590001 thumb 2, provenance+ETag present; active rows 1110 unchanged, exact legacy zero remaining 231 across 149 SKUs. These are algorithm outputs, not ground truth. Owner removed full manual-label gate; individual errors will be debugged when observed. Fixed Center search race and progressive/concurrent page loading, batch gated on full list; Moris labels changed to Harness. Book-slide failure not reproduced locally; owner will provide details later, no speculative fix. No production vector writes by agent.",
+    "resumption_prompt": "Read AGENTS.md, Plan_pipeline_moris.md, owner acceptance doc. Pilot was performed by owner; 231 exact legacy-zero views remain. Owner does not want to manually label all catalogue images. Confirm production deployment of Center filter/Harness labels before owner continues batch. Investigate specific hole-count errors only when observed. Book-slide intermittent failure postponed at owner request pending precise repro; do not pursue speculatively.",
     "tech_debt_register": "docs/moris-v6/TECH_DEBT_REGISTER.md",
     "plan_file": "Plan_pipeline_moris.md",
     "release_audit": "docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md"
@@ -814,6 +814,15 @@
       "evidence": "npm test 69 files/662 tests pass; tsc --noEmit exit 0; build 47 files; git diff --check exit 0",
       "production_vector_writes": 0,
       "owner_pending": "Pilot closed-hole count by view; review 33 raw/canonical disagreements before full batch; Android/iPhone camera and ranking acceptance"
+    },
+    {
+      "id": "p13_owner_pilot_filter_harness_2026_10_21",
+      "title": "Xác minh pilot 5 ảnh, sửa filter Trung tâm Vector AI và đổi nhãn Harness",
+      "status": "completed_local_verified_owner_batch_pending",
+      "completed_at": "2026-10-21T06:18:36Z",
+      "evidence": "Production read-only 1110 active, 231 exact legacy zero, 5 provenance; Chromium fixture search/clear/80-row load and create/edit save book-menu smoke; npm test 69 files/663 pass; tsc 0; build 47 files; git diff --check 0",
+      "production_vector_writes_by_agent": 0,
+      "deferred": "Book-slide intermittent issue not reproducible; owner to supply precise case; no speculative code changes"
     }
   ],
   "verification": {

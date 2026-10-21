@@ -1494,10 +1494,10 @@
                   : 'bg-slate-100 text-slate-600 border-slate-200'">
                 <span class="w-1.5 h-1.5 rounded-full" 
                   :class="morisAi.ready ? 'bg-emerald-500 shadow-sm shadow-emerald-400' : morisAi.loading ? 'bg-amber-500' : 'bg-slate-400'"></span>
-                {{ morisAi.statusText || 'DINOv2' }}
+                {{ morisAi.statusText || 'Harness chưa được khởi tạo' }}
               </span>
-              <button v-if="!morisAi.ready" @click="testMorisDinov2" :disabled="morisAi.loading" class="text-[10px] font-black text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all" title="Nạp & kiểm tra DINOv2 ngay">
-                <i data-lucide="zap" class="w-2.5 h-2.5"></i> Test AI
+              <button v-if="!morisAi.ready" @click="testMorisDinov2" :disabled="morisAi.loading" class="text-[10px] font-black text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all" title="Khởi tạo Harness ngay">
+                <i data-lucide="zap" class="w-2.5 h-2.5"></i> Khởi tạo Harness
               </button>
             </div>
             <p class="text-xs font-bold text-slate-500 truncate">Hỏi đáp & tra cứu linh kiện thông minh</p>

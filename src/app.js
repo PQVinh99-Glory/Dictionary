@@ -171,7 +171,7 @@ createApp({
         ready: false,
         loading: false,
         runtime: null,
-        statusText: 'DINOv2 Chưa nạp'
+        statusText: 'Harness chưa được khởi tạo'
       },
       morisScan: {
         active: false,
@@ -2993,16 +2993,14 @@ createApp({
     async testMorisDinov2() {
       if (this.morisAi.loading) return;
       this.morisAi.loading = true;
-      this.morisAi.statusText = 'Đang nạp DINOv2...';
+      this.morisAi.statusText = 'Đang khởi tạo Harness...';
       try {
         const mod = await this.loadMorisBrowserVectorModule();
         const init = await mod.initDinov2();
         this.morisAi.ready = true;
         this.morisAi.runtime = init?.runtime || {};
-        const device = init?.runtime?.device || 'wasm';
-        const dtype = init?.runtime?.dtype || 'q8';
-        this.morisAi.statusText = `Sẵn sàng (${device}/${dtype})`;
-        this.toast('success', `Mô hình DINOv2 AI đã sẵn sàng (${device}/${dtype})!`);
+        this.morisAi.statusText = 'Harness Sẵn sàng';
+        this.toast('success', 'Harness đã sẵn sàng!');
       } catch (err) {
         this.morisAi.ready = false;
         this.morisAi.statusText = 'Lỗi nạp';
@@ -4139,7 +4137,7 @@ createApp({
 
       // Cập nhật trạng thái loading
       this.morisAi.loading = true;
-      this.morisAi.statusText = 'Đang tải DINOv2...';
+      this.morisAi.statusText = 'Đang khởi tạo Harness...';
 
       // Lắng nghe tiến trình tải mô hình thời gian thực
       const unsubscribe = mod.onDinov2Progress?.(progress => {
@@ -4179,7 +4177,7 @@ createApp({
         this.morisAi.loading = false;
         const rt = result?.probes?.[0]?.runtime || {};
         this.morisAi.runtime = rt;
-        this.morisAi.statusText = `Sẵn sàng (${rt.device || 'wasm'}/${rt.dtype || 'q8'})`;
+        this.morisAi.statusText = 'Harness Sẵn sàng';
       } catch (err) {
         this.morisAi.ready = false;
         this.morisAi.statusText = 'Lỗi nạp';
@@ -4251,7 +4249,7 @@ createApp({
       ) {
         return (
           'Xin lỗi anh, chưa thể tải mô hình nhận dạng DINOv2 từ CDN (Failed to fetch). ' +
-          'Anh vui lòng kiểm tra kết nối mạng rồi bấm nút [⚡ Test AI] phía trên để thử lại nhé.'
+          'Anh vui lòng kiểm tra kết nối mạng rồi bấm nút [⚡ Khởi tạo Harness] phía trên để thử lại nhé.'
         );
       }
 
