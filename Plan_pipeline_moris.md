@@ -280,6 +280,7 @@ Không thay nhiều stage trong một thí nghiệm. Có thể phát triển mod
 - [x] Đọc videoWidth/videoHeight và track settings thực tế; không suy ideal 1920×1080 là đã nhận đúng. Chưa nghiệm thu thiết bị thật.
 - [x] Bỏ phụ thuộc crop 1000:410 ở vùng phân tích khi làm mất vật; dùng toàn frame sensor và khung video aspect thực. Chưa đo mobile UX thật.
 - [x] Tap, box, analysis và capture dùng tọa độ toàn frame; reset seed/mask history khi rotate/resize/switch camera. Đã kiểm code và test tọa độ; mapping trên máy thật còn chờ owner.
+- [x] Sửa hồi quy layout camera ngang trên viewport 640×320–900×393: preview và nút chụp cùng hiện, panel không tràn; ưu tiên viewport ngang thật khi Android giữ orientation cũ sau fullscreen, vẫn giữ khóa chụp khi tracking chưa sẵn sàng. Playwright Chromium mô phỏng và unit test pass; Redmi K70E/iPhone Safari thật chờ owner xác nhận.
 - [ ] Kiểm tra safe area, bàn phím size, close/reopen, camera permission và stream cleanup. Đã thêm safe-area CSS và test keyboard resize không reset tracker, close/pending permission/track cleanup; E2E thiết bị thật còn pending.
 
 **File/test:** src/app.js, index.html, camera box/frontend tests; test toán tọa độ + E2E rotation; nghiệm thu máy thật hai hệ.

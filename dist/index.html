@@ -340,6 +340,29 @@
       padding-bottom:max(.5rem, env(safe-area-inset-bottom));
       padding-left:max(.5rem, env(safe-area-inset-left));
     }
+    /* Điện thoại xoay ngang: preview và nút chụp luôn cùng một màn hình. */
+    @media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+      .moris-camera-overlay .modal-shell {
+        height:100%; max-height:100% !important; display:flex; flex-direction:column;
+        overflow:hidden; padding:.5rem !important; margin:0 !important;
+        border-radius:1rem !important;
+      }
+      .moris-camera-header { margin-bottom:.4rem !important; flex:none; }
+      .moris-camera-header > div:first-child > div:first-child { width:2rem; height:2rem; border-radius:.65rem; }
+      .moris-camera-header p { display:none; }
+      .moris-camera-content {
+        display:grid; grid-template-columns:minmax(0, 1fr) minmax(220px, 32%);
+        gap:.5rem; flex:1; min-height:0;
+      }
+      .moris-camera-preview { min-width:0; min-height:0; height:100%; width:auto; max-width:100%; justify-self:center; }
+      .moris-camera-side { min-width:0; min-height:0; display:flex; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; }
+      .moris-camera-controls { order:-1; margin:0 0 .4rem !important; }
+      .moris-camera-capture { width:100%; min-height:2.5rem; }
+      .moris-camera-capture-hint { width:100%; margin:-.15rem 0 .1rem; }
+      .moris-camera-controls > button:not(.moris-camera-capture) { height:2rem; padding:.25rem .5rem; font-size:.6rem; }
+      .moris-camera-side > ul { display:none; }
+      .moris-camera-side > div:not(.moris-camera-controls) { margin-top:.4rem !important; padding:.4rem .5rem !important; }
+    }
   
   /* ================================================================
      SLIDE MENU — nút sách đỏ mở bảng thao tác (trượt từ trái)
@@ -2094,7 +2117,7 @@
   <div v-if="camera.open" class="moris-camera-overlay fixed inset-0 z-[90] bg-slate-900/80 backdrop-blur-md flex items-center justify-center" @click.self="closeCamera">
     <div class="modal-shell glass w-full max-w-6xl rounded-[2rem] bg-white/95 overflow-y-auto overscroll-contain scrollbar-soft p-3 sm:p-5 my-auto" style="max-height:calc(100dvh - max(.5rem, env(safe-area-inset-top)) - max(.5rem, env(safe-area-inset-bottom)));">
 
-      <div class="flex items-center justify-between gap-3 mb-4">
+      <div class="moris-camera-header flex items-center justify-between gap-3 mb-4">
         <div class="flex items-center gap-3 min-w-0">
           <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
             <i data-lucide="camera" class="w-5 h-5 text-emerald-600"></i>
@@ -2107,9 +2130,9 @@
         <button @click="closeCamera" class="btn w-10 h-10 rounded-2xl bg-white border border-slate-200 shadow-sm hover:bg-slate-50 text-slate-500 shrink-0"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
+      <div class="moris-camera-content">
       <!-- Khung camera & Scanner preview -->
-      <p v-if="camera.landscapeHint" class="mb-2 rounded-xl bg-amber-50 border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800">Xoay ngang điện thoại để chụp trọn linh kiện.</p>
-      <div class="relative rounded-2xl overflow-hidden bg-black" :style="{ aspectRatio: camera.frameAspect }">
+      <div class="moris-camera-preview relative rounded-2xl overflow-hidden bg-black" :style="{ aspectRatio: camera.frameAspect }">
         <!-- Khi đang quét laser: hiển thị ảnh freeze frame + laser beam masked -->
         <template v-if="camera.scanning">
           <img :src="camera.previewUrl" alt="Ảnh chụp linh kiện"
@@ -2192,6 +2215,8 @@
         </template>
       </div>
 
+      <div class="moris-camera-side">
+      <p v-if="camera.landscapeHint" class="mb-2 rounded-xl bg-amber-50 border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800">Xoay ngang điện thoại để chụp trọn linh kiện.</p>
       <!-- M27: Subject lock — readiness 5 điều kiện trước khi chụp -->
       <div v-if="camera.lock.enabled && !camera.scanning && camera.ready && !camera.error"
         class="mt-3 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5">
@@ -2236,7 +2261,7 @@
       </div>
 
       <!-- Điều khiển -->
-      <div class="flex flex-wrap items-center gap-2 mt-4">
+      <div class="moris-camera-controls flex flex-wrap items-center gap-2 mt-4">
         <template v-if="camera.scanning">
           <div class="flex items-center gap-2 text-xs font-black text-cyan-700 bg-cyan-50 border border-cyan-200 px-4 py-2.5 rounded-xl">
             <span class="w-4 h-4 rounded-full border-2 border-cyan-400 border-t-cyan-700 animate-spin"></span>
@@ -2247,9 +2272,10 @@
         </template>
         <template v-else>
           <button @click="captureCamera" :disabled="!camera.ready || camera.busy || camera.landscapeHint || (camera.lock.enabled && !camera.lock.ready)"
-            class="btn h-11 px-5 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 text-xs uppercase tracking-wider font-black">
+            :title="cameraCaptureHint" class="moris-camera-capture btn h-11 px-5 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 text-xs uppercase tracking-wider font-black">
             <i data-lucide="aperture" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>{{ camera.busy ? 'Đang chụp...' : 'Chụp & Tìm kiếm bằng AI' }}
           </button>
+          <p v-if="cameraCaptureHint !== 'Sẵn sàng chụp' && !camera.busy" class="moris-camera-capture-hint text-[10px] font-bold text-amber-700">{{ cameraCaptureHint }}</p>
           <button @click="triggerCameraUpload" :disabled="camera.busy"
             class="btn h-11 px-4 bg-teal-50 border border-teal-300 text-teal-800 hover:bg-teal-100 disabled:opacity-50 text-xs uppercase tracking-wider font-black">
             <i data-lucide="image-plus" class="w-4 h-4 inline-block align-[-2px] mr-1"></i>Tải ảnh từ máy
@@ -2270,6 +2296,8 @@
         <li>Đối với linh kiện to và dài, nếu không tìm ra bằng tracking hãy bấm "Tải ảnh từ máy" để gửi ảnh chụp toàn cảnh rõ nét mà không lo bị thu nhỏ.</li>
         <li>Nhập chiều dài để Harness sàng lọc chuẩn hơn</li>
       </ul>
+      </div>
+      </div>
     </div>
   </div>
 

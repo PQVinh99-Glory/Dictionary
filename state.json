@@ -2,14 +2,14 @@
   "system": {
     "project": "Catalogue AI (Dictionary)",
     "stack": "Vue 3 CDN + Cloudflare Pages Functions + Supabase (pgvector) + Cloudflare R2",
-    "updated_at": "2026-10-21T06:29:08Z",
+    "updated_at": "2026-10-21T06:44:47Z",
     "memory_version": "2.9.0",
     "status": "in_progress"
   },
   "current_session": {
-    "active_task": "p13_legacy_zero_batch_completed_accuracy_pending",
-    "last_checkpoint": "2026-10-21 06:28 UTC owner reported Center batch 231 written/0 skipped/0 errors. Production read-only: all 236 original zero assets matched by exact record/type/key now have geometry_v1 optical provenance, reliable quality, source ETag, valid hole_count/aspect_ratio/centroids; stored count/ratio/centroid length match local replay 236/236. Zero legacy 0/1/[] rows remain, active index stable 1110 rows/546 SKUs, duplicate active keys 0. 874 other positive pre-V6 vectors lack provenance/ETag. No claim of image-level accuracy; 33 raw/canonical disagreements remain targeted analysis. No agent production vector writes.",
-    "resumption_prompt": "Read AGENTS.md, Plan_pipeline_moris.md and owner acceptance. P13 legacy-zero repair batch is DONE by owner and independently verified read-only (236/236 repaired, 1110 active stable); do not rerun it. Accuracy on real labeled images, 33 raw/canonical disagreements, camera/ranking acceptance, and 874 old positive vectors without provenance remain distinct work. Intermittent book-slide issue deferred at owner request pending repro; do not fix speculatively.",
+    "active_task": "p02_camera_landscape_layout_orientation_fix_owner_acceptance_pending",
+    "last_checkpoint": "2026-10-21 06:44 UTC camera landscape fix: Redmi K70E symptom reproduced with Chromium mobile viewport 844x390 (capture at y702 before fix). New two-column layout keeps preview and capture simultaneously visible at 640x320–900x393; Android stale orientation API handled by visible landscape viewport while keyboard focus retains physical orientation. Build, tsc, full test suite 69 files/665 tests, and browser viewport render pass; capture enabled in browser fixture when lock ready. Owner acceptance on actual Redmi K70E and iPhone Safari pending; no claim of physical-device pass.",
+    "resumption_prompt": "P02 camera landscape layout and orientation regression fixed in code; owner still needs physical Redmi K70E and iPhone Safari acceptance. Full suite 665/665 local tests pass and Chromium viewport render checked. Continue P13 accuracy and P10 owner tests separately; do not rerun owner-completed 236-vector batch. Book-slide intermittent issue deferred by owner.",
     "tech_debt_register": "docs/moris-v6/TECH_DEBT_REGISTER.md",
     "plan_file": "Plan_pipeline_moris.md",
     "release_audit": "docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md"

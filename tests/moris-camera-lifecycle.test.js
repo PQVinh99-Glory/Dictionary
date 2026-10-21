@@ -112,7 +112,9 @@ describe('P02 camera lifecycle across browser permission and orientation races',
   });
 
   it('uses device orientation on a phone so opening the keyboard cannot masquerade as landscape', () => {
+    const doc = { activeElement: { tagName: 'INPUT' } };
     const { methods, win } = cameraMethods({
+      document: doc,
       windowOverrides: {
         orientation: 0,
         innerWidth: 390,
@@ -123,13 +125,48 @@ describe('P02 camera lifecycle across browser permission and orientation races',
     const ctx = { camera: { landscapeHint: false } };
     methods.updateCameraOrientation.call(ctx);
     expect(ctx.camera.landscapeHint).toBe(true);
+    doc.activeElement = null;
     win.orientation = 90;
     methods.updateCameraOrientation.call(ctx);
     expect(ctx.camera.landscapeHint).toBe(false);
   });
 
-  it('keeps a locked subject while the keyboard resizes a landscape viewport', () => {
+  it('accepts a visibly landscape Android fullscreen viewport when orientation APIs lag', () => {
     const { methods, win } = cameraMethods({
+      screen: { width: 390, height: 844, orientation: { type: 'portrait-primary' } },
+      document: { activeElement: null },
+      windowOverrides: {
+        orientation: 0, innerWidth: 844, innerHeight: 390,
+        matchMedia: () => ({ matches: true })
+      }
+    });
+    const ctx = { camera: { landscapeHint: true } };
+    methods.updateCameraOrientation.call(ctx);
+    expect(ctx.camera.landscapeHint).toBe(false);
+    win.innerWidth = 390;
+    win.innerHeight = 844;
+    methods.updateCameraOrientation.call(ctx);
+    expect(ctx.camera.landscapeHint).toBe(true);
+  });
+
+  it('uses screen dimensions when a portrait keyboard makes the viewport wide', () => {
+    const { methods } = cameraMethods({
+      screen: { width: 390, height: 844, orientation: { type: 'portrait-primary' } },
+      document: { activeElement: { tagName: 'INPUT' } },
+      windowOverrides: {
+        innerWidth: 390, innerHeight: 280,
+        matchMedia: () => ({ matches: true })
+      }
+    });
+    const ctx = { camera: { landscapeHint: false } };
+    methods.updateCameraOrientation.call(ctx);
+    expect(ctx.camera.landscapeHint).toBe(true);
+  });
+
+  it('keeps a locked subject while the keyboard resizes a landscape viewport', () => {
+    const doc = { activeElement: null };
+    const { methods, win } = cameraMethods({
+      document: doc,
       windowOverrides: {
         orientation: 90,
         innerWidth: 844,
@@ -147,6 +184,7 @@ describe('P02 camera lifecycle across browser permission and orientation races',
     ctx.updateCameraOrientation = () => methods.updateCameraOrientation.call(ctx);
     methods.openCamera.call(ctx);
     expect(ctx.resetCameraLock).toHaveBeenCalledTimes(1);
+    doc.activeElement = { tagName: 'INPUT' };
     win.innerHeight = 200;
     ctx._cameraOrientationHandler();
     expect(ctx.resetCameraLock).toHaveBeenCalledTimes(1);

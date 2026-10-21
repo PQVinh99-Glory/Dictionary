@@ -263,6 +263,17 @@ createApp({
       return !(Number.isFinite(n) && n > 0);
     },
 
+    cameraCaptureHint() {
+      if (this.camera.error) return this.camera.error;
+      if (!this.camera.ready) return 'Đang khởi động camera';
+      if (this.camera.busy) return 'Đang chụp';
+      if (this.camera.landscapeHint) return 'Xoay ngang điện thoại để chụp trọn linh kiện';
+      if (this.camera.lock.enabled && !this.camera.lock.ready) {
+        return this.camera.lock.lastError || this.camera.lock.guidance?.[0] || 'Chờ tracking khóa trọn vật thể';
+      }
+      return 'Sẵn sàng chụp';
+    },
+
     // M28 S1.1: gợi ý trạng thái nhập kích thước trong modal camera.
     // Cạnh dài bắt buộc, cạnh ngắn tùy chọn; để trống cả hai = bỏ qua lọc (fail-open).
     cameraSizeHint() {
@@ -3218,11 +3229,19 @@ createApp({
       const handheld = window.matchMedia?.('(pointer: coarse)')?.matches === true;
       const type = typeof screen !== 'undefined' ? screen.orientation?.type : null;
       const angle = Number(window.orientation);
-      const portrait = typeof type === 'string' && /^(portrait|landscape)/.test(type)
-        ? type.startsWith('portrait')
-        : (Number.isFinite(angle) && window.orientation != null
-            ? Math.abs(angle % 180) < 45
-            : (window.matchMedia?.('(orientation: portrait)')?.matches ?? window.innerHeight > window.innerWidth));
+      const screenWidth = Number(screen?.width || 0);
+      const screenHeight = Number(screen?.height || 0);
+      // Kích thước màn hình vật lý phân biệt xoay máy với viewport bị bàn phím thu nhỏ.
+      // Một số Android giữ orientation.type cũ sau khi vào fullscreen.
+      const editableFocused = /^(INPUT|TEXTAREA|SELECT)$/.test(String(document?.activeElement?.tagName || ''));
+      const viewportLandscape = window.innerWidth > window.innerHeight * 1.1;
+      let portrait;
+      if (viewportLandscape && !editableFocused) portrait = false;
+      else if (editableFocused && window.orientation != null && Number.isFinite(angle)) portrait = Math.abs(angle % 180) < 45;
+      else if (screenWidth > 0 && screenHeight > 0 && screenWidth !== screenHeight) portrait = screenHeight > screenWidth;
+      else if (typeof type === 'string' && /^(portrait|landscape)/.test(type)) portrait = type.startsWith('portrait');
+      else if (window.orientation != null && Number.isFinite(angle)) portrait = Math.abs(angle % 180) < 45;
+      else portrait = window.matchMedia?.('(orientation: portrait)')?.matches ?? window.innerHeight > window.innerWidth;
       this._cameraPortrait = portrait;
       this.camera.landscapeHint = handheld && portrait;
     },
