@@ -92,25 +92,22 @@ describe("Moris Vector Center — Purge, Items, Duplicates & Media", () => {
       if (urlStr.includes("/rpc/app_me")) {
         return Promise.resolve(new Response(JSON.stringify({ ok: true, role_name: "admin" }), { status: 200 }));
       }
-      if (urlStr.includes("/rpc/app_search_catalogue")) {
-        return Promise.resolve(new Response(JSON.stringify([
-          { id: "part-1", code: "CODE-A", usage_side: "left", view_mode: "single_face", thumb_path: "p1.jpg" },
-          { id: "part-2", code: "CODE-B", usage_side: "right", view_mode: "dual_face", thumb_path: "p2.jpg" }
-        ]), { status: 200 }));
-      }
-      if (urlStr.includes("/rpc/kim_list_vector_record_ids")) {
-        // Chỉ part-1 có vector trong DB
+      if (urlStr.includes("/rpc/app_list_catalogue_vector_items")) {
         return Promise.resolve(new Response(JSON.stringify({
           ok: true,
-          items: [{ record_id: "part-1", asset_type: "front", object_key: "p1.jpg" }]
+          items: [
+            {
+              id: "part-1", code: "CODE-A", usage_side: "left", view_mode: "single_face", thumb_path: "p1.jpg",
+              has_vector: true,
+              assets: [{ asset_type: "front", image_path: "p1.jpg", has_vector: true }]
+            },
+            {
+              id: "part-2", code: "CODE-B", usage_side: "right", view_mode: "dual_face", thumb_path: "p2.jpg",
+              has_vector: false,
+              assets: [{ asset_type: "front", image_path: "p2.jpg", has_vector: false }]
+            }
+          ]
         }), { status: 200 }));
-      }
-      if (urlStr.includes("/rpc/app_get_part_assets")) {
-        const bodyStr = String(options?.body || "");
-        const isPart2 = bodyStr.includes('"part-2"');
-        return Promise.resolve(new Response(JSON.stringify([
-          { asset_type: "front", image_path: isPart2 ? "p2.jpg" : "p1.jpg" }
-        ]), { status: 200 }));
       }
       return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
     });
@@ -171,6 +168,85 @@ describe("Moris Vector Center — Purge, Items, Duplicates & Media", () => {
     expect(rpcBody.p_limit).toBe(20);
 
     globalThis.fetch = originalFetch;
+  });
+
+  it("vector-items: RPC tạm lỗi được thử lại một lần, không fallback N+1", async () => {
+    const token = makeJwt("admin");
+    const mockEnv = {
+      SUPABASE_URL: "https://test.supabase.co",
+      SUPABASE_ANON_KEY: "anon-key"
+    };
+
+    let listCalls = 0;
+    const calls = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockImplementation((url) => {
+      const urlStr = String(url);
+      calls.push(urlStr);
+      if (urlStr.includes("/rpc/app_me")) {
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, role_name: "admin" }), { status: 200 }));
+      }
+      if (urlStr.includes("/rpc/app_list_catalogue_vector_items")) {
+        listCalls += 1;
+        return Promise.resolve(new Response(JSON.stringify({ message: "upstream unavailable" }), { status: 503 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    });
+
+    try {
+      const request = new Request(`https://example.com/api/moris/vector-items?session_token=${token}&limit=20`);
+      const res = await handleVectorItems({ request, env: mockEnv });
+      expect(res.status).toBe(503);
+      const data = await res.json();
+      expect(data.ok).toBe(false);
+      expect(data.error).toContain("tạm thời");
+      expect(listCalls).toBe(2);
+      expect(calls.some(url => url.includes("/rpc/app_search_catalogue") ||
+        url.includes("/rpc/kim_list_vector_record_ids") ||
+        url.includes("/rpc/app_get_part_assets"))).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("vector-items: RPC lỗi tạm thời lần đầu vẫn trả danh sách khi lần hai thành công", async () => {
+    const token = makeJwt("admin");
+    const mockEnv = {
+      SUPABASE_URL: "https://test.supabase.co",
+      SUPABASE_ANON_KEY: "anon-key"
+    };
+
+    let listCalls = 0;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockImplementation((url) => {
+      const urlStr = String(url);
+      if (urlStr.includes("/rpc/app_me")) {
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, role_name: "admin" }), { status: 200 }));
+      }
+      if (urlStr.includes("/rpc/app_list_catalogue_vector_items")) {
+        listCalls += 1;
+        if (listCalls === 1) {
+          return Promise.resolve(new Response(JSON.stringify({ message: "temporary" }), { status: 503 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify({
+          ok: true,
+          items: [{ id: "part-1", code: "CODE-A", assets: [] }]
+        }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+    });
+
+    try {
+      const request = new Request(`https://example.com/api/moris/vector-items?session_token=${token}&limit=20`);
+      const res = await handleVectorItems({ request, env: mockEnv });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.ok).toBe(true);
+      expect(data.items).toHaveLength(1);
+      expect(listCalls).toBe(2);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it("api/media: hỗ trợ Gatekeeper cookie (catalogue_session) không cần Supabase JWT", async () => {

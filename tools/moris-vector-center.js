@@ -135,7 +135,10 @@ async function readJson(url, options = {}) {
   const res = await fetch(url, options);
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data?.ok === false) {
-    throw new Error(data?.error || data?.user_message || `HTTP ${res.status}`);
+    const fallback = res.status === 503
+      ? "Máy chủ dữ liệu tạm thời quá tải (HTTP 503). Vui lòng thử lại sau."
+      : `HTTP ${res.status}`;
+    throw new Error(data?.error || data?.user_message || fallback);
   }
   return data;
 }
@@ -321,7 +324,7 @@ function renderItemsSlice() {
     };
     const sideLabel = sideMap[item.usage_side] || (item.usage_side || "—");
 
-    const labels = {ready:"Sẵn sàng",missing:"Chưa có vector",stale:"Cần cập nhật",partial:"Chưa đủ ảnh",failed:"Chưa xác minh được"};
+    const labels = {ready:"Sẵn sàng",missing:"Chưa có vector",stale:"Cần cập nhật",partial:"Chưa đủ ảnh",failed:"Chưa xác minh được",unverified:"Chưa xác minh"};
     const statusBadge = `<span class="text-xs font-bold">${labels[item.vector_status] || "Chưa xác minh được"}</span>` +
       (item.assets || []).map(a => `<div class="text-[10px]">${escapeHtml(a.asset_type)}: ${labels[a.vector_status] || "Chưa xác minh được"}${a.geometry_warning ? ` <span class="text-amber-700 font-bold" title="${a.geometry_warning === 'legacy_geometry_ambiguous' ? 'Dữ liệu cũ không phân biệt được số 0 với chưa đo' : 'Thiếu hoặc chưa xác minh đủ dữ liệu hình học'}">⚠ Kiểm tra lỗ/tỷ lệ/tâm lỗ</span>` : ''} <button class="btn-vectorize-asset underline" data-id="${escapeHtml(item.id)}" data-key="${escapeHtml(a.image_path)}" data-type="${escapeHtml(a.asset_type)}">Xử lý ảnh này</button></div>`).join("");
     const actionBtn = `<button data-id="${escapeHtml(item.id)}" class="btn-vectorize-item btn h-8 px-3 text-xs bg-rose-700 text-white">Tạo / cập nhật</button>`;
@@ -391,62 +394,128 @@ function renderItemsSlice() {
   if (window.lucide) window.lucide.createIcons();
 }
 
+const PENDING_STATUSES = new Set(["missing", "stale", "partial"]);
+
+function isPendingStatus(status) {
+  return PENDING_STATUSES.has(status);
+}
+
+function dedupeItems(items) {
+  const unique = new Map();
+  for (const item of items) {
+    if (item && item.id !== undefined) unique.set(String(item.id), item);
+  }
+  return [...unique.values()];
+}
+
+function summarizeItemStates(items) {
+  const ready = items.filter(item => item.vector_status === "ready").length;
+  const pending = items.filter(item => isPendingStatus(item.vector_status)).length;
+  return { ready, pending, unverified: items.length - ready - pending };
+}
+
+function updatePendingKpi(items) {
+  if (!$("pendingCount")) return;
+  $("pendingCount").textContent = items.filter(item => isPendingStatus(item.vector_status)).length;
+}
+
 let itemsLoadSeq = 0;
+let itemsLoadController = null;
+
 async function loadItems(query = "") {
   const requestSeq = ++itemsLoadSeq;
+  const previousController = itemsLoadController;
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  itemsLoadController = controller;
+  const hadItems = state.items.length > 0;
   state.loadingItems = true;
   state.itemsLoaded = false;
   const tbody = $("itemsTableBody");
   const countBadge = $("itemsCountBadge");
   if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400 font-bold">Đang tải danh sách...</td></tr>';
   if (countBadge) countBadge.textContent = "Đang tải...";
+  if (previousController) previousController.abort();
 
   try {
     const t = token();
     const items = [];
     const pageSize = 20;
-    const readPage = offset => readJson(`/api/moris/vector-items?session_token=${encodeURIComponent(t)}&limit=${pageSize}&offset=${offset}&search=${encodeURIComponent(query)}`);
+    const readPage = offset => readJson(
+      `/api/moris/vector-items?session_token=${encodeURIComponent(t)}&limit=${pageSize}&offset=${offset}&search=${encodeURIComponent(query)}`,
+      controller ? { signal: controller.signal } : undefined
+    );
+    // Hiển thị trang đầu ngay; các trang còn lại tải song song có giới hạn.
+    const publish = complete => {
+      if (requestSeq !== itemsLoadSeq) return;
+      state.items = dedupeItems(items);
+      state.filteredItems = state.items;
+      state.visibleLimit = 20;
+      const { ready, pending, unverified } = summarizeItemStates(state.items);
+      if (countBadge) {
+        countBadge.textContent = `${state.items.length} mã (${ready} sẵn sàng, ${pending} cần xử lý${unverified ? `, ${unverified} chưa xác minh` : ""})${complete ? "" : " · đang tải thêm"}`;
+      }
+      renderItemsSlice();
+    };
     const first = await readPage(0);
     if (requestSeq !== itemsLoadSeq) return;
     items.push(...(Array.isArray(first?.items) ? first.items : []));
-    // Hiển thị trang đầu ngay; các trang còn lại tải song song có giới hạn.
-    const showItems = complete => {
+    if (!first.has_more) {
+      publish(true);
+      state.itemsLoaded = true;
+      updatePendingKpi(state.items);
+      return true;
+    }
+    publish(false);
+    let complete = false;
+    for (let offset = pageSize; !complete; offset += pageSize * 3) {
+      const pages = await Promise.all([0, 1, 2].map(n => readPage(offset + n * pageSize)));
       if (requestSeq !== itemsLoadSeq) return;
-      state.items = [...items];
-      state.filteredItems = state.items;
-      state.visibleLimit = 20;
-      const withVec = items.filter(i => i.vector_status === "ready").length;
-      const pending = items.length - withVec;
-      if ($("pendingCount")) $("pendingCount").textContent = pending;
-      if ($("records")) $("records").textContent = withVec;
-      if (countBadge) countBadge.textContent = `${items.length} mã (${withVec} sẵn sàng, ${pending} cần kiểm tra)${complete ? "" : " · đang tải thêm"}`;
-      renderItemsSlice();
-    };
-    showItems(!first.has_more);
-    for (let offset=pageSize; first.has_more; offset+=pageSize*3) {
-      const pages = await Promise.all([0,1,2].map(n=>readPage(offset+n*pageSize)));
-      if (requestSeq !== itemsLoadSeq) return;
-      let complete = false;
       for (const data of pages) {
         const page = Array.isArray(data?.items) ? data.items : [];
         items.push(...page);
         if (!data.has_more || !page.length) { complete = true; break; }
       }
       if (items.length >= 5000) throw new Error("Danh sách vượt giới hạn; thu hẹp tìm kiếm.");
-      showItems(complete);
-      if (complete) break;
+      publish(complete);
     }
-    if (requestSeq === itemsLoadSeq) state.itemsLoaded = true;
+    state.itemsLoaded = true;
+    updatePendingKpi(state.items);
+    return true;
   } catch (err) {
-    if (requestSeq !== itemsLoadSeq) return;
-    if (tbody) {
+    if (err?.name === "AbortError" || requestSeq !== itemsLoadSeq) return false;
+    if (hadItems) {
+      state.filteredItems = state.items;
+      renderItemsSlice();
+    } else if (tbody) {
       tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-rose-500 font-bold">Lỗi tải danh sách: ${escapeHtml(err?.message || String(err))}</td></tr>`;
     }
     if (countBadge) countBadge.textContent = "Tải danh sách thất bại";
     showToast("error", `Không thể tải danh sách mã: ${err?.message || err}`);
+    return false;
   } finally {
-    if (requestSeq === itemsLoadSeq) state.loadingItems = false;
+    if (requestSeq === itemsLoadSeq) {
+      state.loadingItems = false;
+      if (itemsLoadController === controller) itemsLoadController = null;
+    }
   }
+}
+
+async function refreshItemById(itemId, code) {
+  const t = token();
+  const search = String(code || "").trim();
+  const data = await readJson(
+    `/api/moris/vector-items?session_token=${encodeURIComponent(t)}&limit=20&offset=0&search=${encodeURIComponent(search)}`
+  );
+  const fresh = (Array.isArray(data?.items) ? data.items : [])
+    .find(item => String(item.id) === String(itemId));
+  if (!fresh) return false;
+  const index = state.items.findIndex(item => String(item.id) === String(itemId));
+  if (index >= 0) state.items[index] = fresh;
+  else state.items.unshift(fresh);
+  state.filteredItems = state.items;
+  renderItemsSlice();
+  if (state.itemsLoaded) updatePendingKpi(state.items);
+  return true;
 }
 
 function writeMode() {
@@ -502,6 +571,7 @@ async function vectorizeSingleItem(item, btn) {
   const assets = selectedAssets(item, mode);
   if (!assets.length) return showToast("warning", "Không có ảnh phù hợp. Chọn Cập nhật nếu cần thay vector stale.");
   state.batchRunning = true;
+  let shouldRefresh = false;
   try {
     const confirmed = await showConfirm("Tạo/cập nhật vector",
       `Mã ${item.code}: ${assets.length} ảnh RGB. Chế độ ${mode === "replace" ? "rebuild" : mode === "stale" ? "cập nhật phần stale" : "chỉ tạo phần thiếu"}.`,
@@ -509,6 +579,7 @@ async function vectorizeSingleItem(item, btn) {
     if (!confirmed) return;
     if (btn) btn.disabled = true;
     if (!state.modelReady) await loadModel();
+    shouldRefresh = true;
     const result = await runManualBatch({jobs:assets.map(asset=>({item,asset})),confirmed:true,
       writeAsset:({item,asset})=>writeItem(item,[asset],mode),onProgress:({result})=>showAssetResult(result)});
     showToast(result.failed?"warning":"success", `Đã ghi ${result.written}, bỏ qua ${result.skipped || 0}; ${result.failed} ảnh lỗi.`);
@@ -517,9 +588,17 @@ async function vectorizeSingleItem(item, btn) {
   } finally {
     state.batchRunning = false;
     if (btn) btn.disabled = false;
-    // Only the server's fresh per-asset evidence may set ready after partial failure.
-    await loadItems($("itemSearchInput")?.value || "");
-    await refreshStatus().catch(e => showToast("error", e.message));
+    if (shouldRefresh) {
+      // Only the server's fresh per-asset evidence may set ready after partial failure.
+      // Chỉ tải lại đúng mã vừa xử lý để tránh 28 lượt gọi danh sách sau mỗi thao tác.
+      try {
+        const refreshed = await refreshItemById(item.id, item.code);
+        if (!refreshed) showToast("warning", `Đã ghi vector nhưng chưa tìm thấy mã ${item.code} trong danh sách; hãy bấm làm mới.`);
+      } catch (err) {
+        showToast("error", `Không tải lại được mã ${item.code}: ${err?.message || err}`);
+      }
+      await refreshStatus().catch(e => showToast("error", e.message));
+    }
   }
 }
 
@@ -528,9 +607,10 @@ async function batchVectorizePending() {
   if (!state.itemsLoaded) return showToast("warning", "Đợi tải đủ danh sách trước khi tách hàng loạt.");
   const mode=writeMode(),preview=showBatchPreview();
   if(!preview.assets)return showToast("info","Không có ảnh phù hợp với chế độ đã chọn.");
-  state.batchRunning=true;const btn=$("btnBatchVectorize");
+  state.batchRunning=true;const btn=$("btnBatchVectorize");let started=false;
   try{
     if(!await showConfirm(mode==='replace'?"Rebuild ảnh đã chọn":"Tạo/cập nhật vector",previewText(preview),{okText:"Bắt đầu",danger:mode==='replace'}))return;
+    started=true;
     if(btn)btn.disabled=true;
     state.batchControl=createPauseControl();
     if($("btnPauseBatch")){ $("btnPauseBatch").disabled=false;$("btnPauseBatch").textContent="Tạm dừng"; }
@@ -551,8 +631,10 @@ async function batchVectorizePending() {
   finally{
     state.batchRunning=false;state.batchControl.resume();if(btn)btn.disabled=false;
     if($("btnPauseBatch"))$("btnPauseBatch").disabled=true;
-    await loadItems($("itemSearchInput")?.value||"");
-    await refreshStatus().catch(e=>showToast("error",e.message));
+    if(started){
+      await loadItems($("itemSearchInput")?.value||"");
+      await refreshStatus().catch(e=>showToast("error",e.message));
+    }
   }
 }
 
@@ -600,8 +682,8 @@ if ($("btnBatchVectorize")) {
 
 if ($("btnRefreshItems")) {
   $("btnRefreshItems").onclick = () => {
-    loadItems($("itemSearchInput")?.value || "").then(() => {
-      showToast("success", "Đã tải lại danh sách linh kiện.");
+    loadItems($("itemSearchInput")?.value || "").then(ok => {
+      if (ok) showToast("success", "Đã tải lại danh sách linh kiện.");
     });
   };
 }

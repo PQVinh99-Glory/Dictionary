@@ -469,3 +469,15 @@ Before continuing, read [docs/moris-v6/HANDOFF.md](docs/moris-v6/HANDOFF.md). It
 - [x] P07 phần profile: loại fallback dùng query hybrid trên index CLS.
 - [x] Kiểm chứng checkpoint: 63 file/617 test pass; `tsc --noEmit` exit 0; `npm run build` tạo 47 file; `git diff --check` pass.
 - [ ] Hoàn thành các phase còn lại sau benchmark camera, early shortlist/scoped matching, perception và nghiệm thu thiết bị thật.
+
+## Trung tâm Vector AI — sửa KPI pending giả và HTTP 503 (2026-10-23)
+
+- [x] Chẩn đoán read-only production: Cloudflare analytics 2026-10-23 ghi 18 request `exceededResources` trả 503 không JSON; Supabase vẫn đọc được, 1.110 active vector/546 mã khớp profile.
+- [x] Xác định cap `index < 40` trong `inspectVectorItems` làm asset sau vị trí 40 không có ETag và bị xếp `failed`: 10 mã bị ảnh hưởng trên trang offset 0/100/260; 4 mã thực tế ready, 6 mã stale/partial vì `source_etag` null. 8 mã >2 asset nằm trong 40 nên không phải nguyên nhân.
+- [x] Sửa `functions/_lib/moris/v5/vector/assetStatus.js`: budget 120 R2 HEAD/trang, concurrency 6, chỉ HEAD asset có exact vector kèm `source_etag`, Map vector theo record, `headChecked`/`unverified`; `source_etag` null xếp stale; `summarizeAssets` không để unverified che missing/stale.
+- [x] Sửa `functions/api/moris/vector-items.js`: bỏ fallback N+1 (`app_search_catalogue` + `kim_list_vector_record_ids` + `app_get_part_assets`), retry 1 lần cho lỗi tạm thời/429/5xx, trả 503 JSON thân thiện.
+- [x] Sửa `tools/moris-vector-center.js`: AbortController hủy load cũ, KPI pending chỉ cập nhật khi tải đủ, chỉ tính missing/stale/partial, refresh đúng mã sau vectorize thay vì tải lại 28 trang, giữ bảng khi lỗi.
+- [x] Thêm regression tests cho trang >40 asset, budget unverified, no-etag missing/stale, retry/không fallback, KPI partial và targeted refresh.
+- [x] Kiểm chứng: full `npm test` 69 file/677 test pass; `npx tsc --noEmit` exit 0; `npm run build` 48 file; `git diff --check` pass.
+- [x] Mô phỏng read-only production bằng code mới: 546 mã/1.110 asset → 540 ready, 4 stale, 2 partial; 6 pending thật (`3430570201`, `3430590001`, `3445950101`, `3446150001`, `3446160001`, `3670700001`) đều có `source_etag` null. Không ghi DB/vector, không deploy.
+- [ ] Owner review/deploy; sau deploy xác nhận KPI và re-vectorize 6 mã stale để ghi `source_etag`.

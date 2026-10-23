@@ -13,7 +13,7 @@ function center({ missingModal = false } = {}) {
   const embed = vi.fn(async () => ({ probes: [{ view_variant: 'canon_rgb_v2', embedding: [1], profile: {} }] }));
   const sandbox = { selectAssets,onlyLegacyZeroAssets,previewBatch,createPauseControl,runManualBatch, document: { getElementById: get, createElement: element }, window: { location: { search: '' } },
     localStorage: { getItem: () => 'test.jwt.token' }, sessionStorage: { getItem: () => '' },
-    location: { origin: 'http://localhost' }, URL, URLSearchParams, fetch, console, setTimeout: vi.fn(), clearTimeout() {},
+    location: { origin: 'http://localhost' }, URL, URLSearchParams, AbortController, fetch, console, setTimeout: vi.fn(), clearTimeout() {},
     initDinov2: vi.fn(async () => ({})), embedImageDinov2: embed, embedImageDinov2Variants: embed,
     onDinov2Progress() {}, renderParts() {}, upsertVectorsChunked: args => upsertVectorsChunked({...args, fetchImpl:fetch}) };
   const source = readFileSync('tools/moris-vector-center.js','utf8').replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
@@ -42,6 +42,15 @@ describe('M03 explicit Center intent', () => {
   it('missing confirmation modal fails closed', async () => {
     const c=center({missingModal:true});
     expect(await c.showConfirm('title','body')).toBe(false);
+  });
+  it('cancel does not reload the full list or status',async()=>{
+    const c=center();await tick();
+    c.fetch.mockClear();
+    c.state.itemsLoaded=true;
+    const pending=c.vectorizeSingleItem({id:'cancelled',code:'CANCELLED',assets:[{asset_type:'front',image_path:'front.webp'}]},null);
+    c.get('btnConfirmCancel').onclick();await pending;
+    const reloads=c.fetch.mock.calls.filter(([url])=>url.includes('/api/moris/vector-items')||url.includes('/api/moris/reindex-status'));
+    expect(reloads).toHaveLength(0);
   });
   it('repair-zero preview excludes healthy and unmeasured legacy assets before confirmation',async()=>{
     const c=center();await tick();
@@ -83,6 +92,40 @@ describe('M03 explicit Center intent', () => {
     expect(c.embed).toHaveBeenCalledWith(expect.stringMatching(/^blob:/), {includeGray:false});
     const write=c.fetch.mock.calls.find(([url])=>url.includes('upsert'));
     expect(JSON.parse(write[1].body)).toMatchObject({source:'vector_center',confirmed:true,vectors:[{record_id:'selected'}]});
+  });
+  it('single refresh queries only the processed SKU instead of reloading every page',async()=>{
+    const c=center();await tick();
+    const urls=[];
+    c.fetch.mockImplementation(async url=>{
+      urls.push(String(url));
+      if(String(url).includes('upsert'))return new Response(JSON.stringify({ok:true,written:1,failed:0}),{headers:{etag:'\"version1\"'}});
+      if(String(url).includes('/api/moris/vector-items'))return new Response(JSON.stringify({ok:true,items:[{id:'selected',code:'SELECTED',assets:[],vector_status:'ready'}],has_more:false}));
+      return new Response(JSON.stringify({ok:true,status:{}}),{headers:{etag:'\"version1\"'}});
+    });
+    const work=c.vectorizeSingleItem({id:'selected',code:'SELECTED',assets:[{asset_type:'front',image_path:'selected.webp'}]},null);
+    c.get('btnConfirmOk').onclick();await work;
+    const listCalls=urls.filter(url=>url.includes('/api/moris/vector-items'));
+    expect(listCalls).toHaveLength(1);
+    expect(listCalls[0]).toContain('search=SELECTED');
+    expect(c.state.items).toHaveLength(1);
+    expect(c.state.items[0].vector_status).toBe('ready');
+  });
+  it('partial page failure keeps the table and does not publish a partial pending KPI',async()=>{
+    const c=center();await tick();
+    c.get('pendingCount').textContent='—';
+    c.fetch.mockImplementation(async url=>{
+      const parsed=new URL(String(url),'http://localhost');
+      if(parsed.pathname==='/api/moris/vector-items'){
+        const offset=Number(parsed.searchParams.get('offset')||0);
+        if(offset===0)return new Response(JSON.stringify({ok:true,items:[{id:'partial',code:'PARTIAL',assets:[],vector_status:'missing'}],has_more:true}));
+        return new Response(JSON.stringify({ok:false,error:'Máy chủ dữ liệu tạm thời không khả dụng.'}),{status:503});
+      }
+      return new Response(JSON.stringify({ok:true,status:{}}));
+    });
+    await c.loadItems('');
+    expect(c.state.items.map(item=>item.code)).toEqual(['PARTIAL']);
+    expect(c.state.itemsLoaded).toBe(false);
+    expect(c.get('pendingCount').textContent).toBe('—');
   });
   it('legacy reindex script cannot write', () => {
     const source=readFileSync('tools/moris-vector-reindex.js','utf8');
