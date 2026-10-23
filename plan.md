@@ -480,4 +480,5 @@ Before continuing, read [docs/moris-v6/HANDOFF.md](docs/moris-v6/HANDOFF.md). It
 - [x] Thêm regression tests cho trang >40 asset, budget unverified, no-etag missing/stale, retry/không fallback, KPI partial và targeted refresh.
 - [x] Kiểm chứng: full `npm test` 69 file/677 test pass; `npx tsc --noEmit` exit 0; `npm run build` 48 file; `git diff --check` pass.
 - [x] Mô phỏng read-only production bằng code mới: 546 mã/1.110 asset → 540 ready, 4 stale, 2 partial; 6 pending thật (`3430570201`, `3430590001`, `3445950101`, `3446150001`, `3446160001`, `3670700001`) đều có `source_etag` null. Không ghi DB/vector, không deploy.
-- [ ] Owner review/deploy; sau deploy xác nhận KPI và re-vectorize 6 mã stale để ghi `source_etag`.
+- [x] Deploy: commit `9b71678` đã push lên `PQVinh99-Glory/Dictionary` main; Cloudflare Pages deployment `11b259a3-dfbe-4cff-9781-80f7c522fb41` build/deploy success lúc 2026-10-23T05:24:04Z; production alias `https://dictionary-dnw.pages.dev`.
+- [ ] Owner reload UI đã đăng nhập, xác nhận KPI/table và re-vectorize 6 mã stale để ghi `source_etag`.

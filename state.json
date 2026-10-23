@@ -840,13 +840,24 @@
     {
       "id": "vector_center_false_pending_and_503_fix_2026_10_23",
       "title": "Sửa KPI pending giả và HTTP 503 của Trung tâm Vector AI",
-      "status": "local_fix_verified_deploy_pending",
+      "status": "deployed_pending_owner_verification",
       "completed_at": "2026-10-23T05:12:00Z",
-      "evidence": "Cloudflare analytics 2026-10-23: 18 request exceededResources (503 không JSON). Supabase read-only: 1.110 active vectors/546 mã đều khớp profile. Cap index<40 trong inspectVectorItems làm 10 mã có asset sau vị trí 40 bị failed (trang 0/100/260); 4 mã thực tế ready, 6 mã stale/partial vì source_etag null. Code mới: budget 120 HEAD/trang, concurrency 6, chỉ HEAD asset có exact vector kèm source_etag, Map record, unverified thay failed; bỏ fallback N+1, retry 1 lần, 503 JSON; client abort load cũ, KPI chỉ cập nhật khi đủ, pending chỉ missing/stale/partial, targeted refresh sau vectorize. Tests 69 file/677 pass; tsc 0; build 48. Read-only simulation mới: 540 ready/4 stale/2 partial, 6 pending thật. Không ghi DB/vector, không deploy.",
+      "evidence": "Cloudflare analytics 2026-10-23: 18 request exceededResources (503 không JSON). Supabase read-only: 1.110 active vectors/546 mã đều khớp profile. Cap index<40 trong inspectVectorItems làm 10 mã có asset sau vị trí 40 bị failed (trang 0/100/260); 4 mã thực tế ready, 6 mã stale/partial vì source_etag null. Code mới: budget 120 HEAD/trang, concurrency 6, chỉ HEAD asset có exact vector kèm source_etag, Map record, unverified thay failed; bỏ fallback N+1, retry 1 lần, 503 JSON; client abort load cũ, KPI chỉ cập nhật khi đủ, pending chỉ missing/stale/partial, targeted refresh sau vectorize. Tests 69 file/677 pass; tsc 0; build 48. Read-only simulation mới: 540 ready/4 stale/2 partial, 6 pending thật. Không ghi DB/vector. Đã push commit 9b71678 lên PQVinh99-Glory/Dictionary main; Cloudflare Pages build/deploy success deployment 11b259a3-dfbe-4cff-9781-80f7c522fb41 lúc 2026-10-23T05:24:04Z; production alias https://dictionary-dnw.pages.dev (unauthenticated bị gatekeeper 404 nên cần owner xác nhận trong UI).",
       "production_vector_writes_by_agent": 0,
-      "deployed": false,
+      "deployed": true,
+      "deployment": {
+        "repository": "https://github.com/PQVinh99-Glory/Dictionary",
+        "commit": "9b71678",
+        "commit_full": "9b71678235c09627126a7289461901cc040d0f3a",
+        "id": "11b259a3-dfbe-4cff-9781-80f7c522fb41",
+        "url": "https://11b259a3.dictionary-dnw.pages.dev",
+        "production_alias": "https://dictionary-dnw.pages.dev",
+        "status": "success",
+        "created_at": "2026-10-23T05:23:23.936388Z",
+        "deployed_at": "2026-10-23T05:24:04.545798Z"
+      },
       "remaining": [
-        "Owner review/deploy; production KPI and the 6 source_etag-null SKU updates pending",
+        "Owner reload Vector Center in authenticated UI and confirm KPI/table; the 6 source_etag-null SKU updates pending",
         "Do not repeat the earlier 8-code root-cause claim: the 8 codes with >2 assets were within the first 40 and already ready; the cap affected 10 different items in this snapshot"
       ]
     }
@@ -861,7 +872,7 @@
     "build_files": 48,
     "local_e2e_passed": 12,
     "staging": "skipped_by_owner",
-    "evidence": "npm test 2026-10-19 sau Gate D + tracking box (55 files/525 tests pass 100%); tsc --noEmit exit 0; npm run build 46 files exit 0; chi tiết: task_30_gate_d_size_editor_and_tracking_box, task_29_test_backlog_t2_t7_profile01_r2_02, task_28_m28_hardening_tests_and_push Phiên 2026-10-19 (push DB): 4 migration áp production + 5 repair history + version 6.2.0; probe production OK (xem task_31_gate_d_applied_production). Phiên tracking upgrade 2026-10-19: component merge + 600ms + 60fps overlay + viền 1.5px; full 55 files/530 pass (xem task_32_tracking_upgrade_merge_600ms_60fps). Phiên S1.1 2026-10-19: full 55 files/537 pass; migration 20261019120000 đã push + commit 75bc8ec. Phiên mẫu lỗ 2026-10-19: full 59 files/569 pass; migration 20261019180000 + 14 ảnh R2; commit 4e13b02 + e63e99a. Phiên UI #7–#9 2026-10-19: full 59 files/575 pass. Phiên khôi phục ses_eae5 (PROFILE-01, EVAL-01, Simple audit, xóa image 2/): full 60 files/578 pass 100%; version 6.5.0 (xem task_36). Phiên confusing_pairs @mention: full 62 files/608 tests pass 100%; build 47 files (xem task_37). Phiên bổ sung mẫu lỗ bán oval 2026-10-20: full 62 files/610 tests pass 100%; tsc 0; build 47 files; audit text 15/15 (xem task_38). Phiên đồng bộ mẫu lỗ bán oval 2026-10-20: db push 20261020072401 + R2 hole-samples/ban-oval.png; probe production service_role 15 rows/anon 0; full 62 files/610 tests pass; tsc 0; build 47 files (xem task_38). Phiên main release 2026-10-20: chỉ đưa ban_oval lên main, bỏ Phase 1 DB taxonomy; version 6.6.0; full 62 files/610 tests pass. 2026-10-23 vector center fix: npm test 69 files/677 tests pass 100%; npx tsc --noEmit exit 0; npm run build 48 files exit 0; git diff --check pass. Production read-only simulation 546 SKU/1,110 assets -> 540 ready/4 stale/2 partial, 6 actionable pending; no DB writes, no vector writes, no deploy.",
+    "evidence": "npm test 2026-10-19 sau Gate D + tracking box (55 files/525 tests pass 100%); tsc --noEmit exit 0; npm run build 46 files exit 0; chi tiết: task_30_gate_d_size_editor_and_tracking_box, task_29_test_backlog_t2_t7_profile01_r2_02, task_28_m28_hardening_tests_and_push Phiên 2026-10-19 (push DB): 4 migration áp production + 5 repair history + version 6.2.0; probe production OK (xem task_31_gate_d_applied_production). Phiên tracking upgrade 2026-10-19: component merge + 600ms + 60fps overlay + viền 1.5px; full 55 files/530 pass (xem task_32_tracking_upgrade_merge_600ms_60fps). Phiên S1.1 2026-10-19: full 55 files/537 pass; migration 20261019120000 đã push + commit 75bc8ec. Phiên mẫu lỗ 2026-10-19: full 59 files/569 pass; migration 20261019180000 + 14 ảnh R2; commit 4e13b02 + e63e99a. Phiên UI #7–#9 2026-10-19: full 59 files/575 pass. Phiên khôi phục ses_eae5 (PROFILE-01, EVAL-01, Simple audit, xóa image 2/): full 60 files/578 pass 100%; version 6.5.0 (xem task_36). Phiên confusing_pairs @mention: full 62 files/608 tests pass 100%; build 47 files (xem task_37). Phiên bổ sung mẫu lỗ bán oval 2026-10-20: full 62 files/610 tests pass 100%; tsc 0; build 47 files; audit text 15/15 (xem task_38). Phiên đồng bộ mẫu lỗ bán oval 2026-10-20: db push 20261020072401 + R2 hole-samples/ban-oval.png; probe production service_role 15 rows/anon 0; full 62 files/610 tests pass; tsc 0; build 47 files (xem task_38). Phiên main release 2026-10-20: chỉ đưa ban_oval lên main, bỏ Phase 1 DB taxonomy; version 6.6.0; full 62 files/610 tests pass. 2026-10-23 vector center fix: npm test 69 files/677 tests pass 100%; npx tsc --noEmit exit 0; npm run build 48 files exit 0; git diff --check pass. Production read-only simulation 546 SKU/1,110 assets -> 540 ready/4 stale/2 partial, 6 actionable pending; no DB writes, no vector writes. 2026-10-23 deploy: commit 9b71678 pushed to PQVinh99-Glory/Dictionary main; Cloudflare Pages deployment 11b259a3-dfbe-4cff-9781-80f7c522fb41 build+deploy success 05:23:56-05:24:04Z; production alias https://dictionary-dnw.pages.dev.",
     "app_version": "6.6.3",
     "production_migrations_applied": 7,
     "migration_history_repaired": 5,
