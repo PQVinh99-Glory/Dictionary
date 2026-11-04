@@ -156,3 +156,141 @@ describe('P02 — camera landscape dùng toàn bộ frame', () => {
     expect(ctx.camera.busy).toBe(false);
   });
 });
+
+describe('Auto-capture khi tracking thành công báo xanh', () => {
+  it('tự động gọi captureCamera khi tracking đạt readiness (báo xanh)', async () => {
+    const mockModule = {
+      analyzeFrame: vi.fn(() => ({
+        mask: new Uint8Array(100),
+        stats: { partPixels: 50, bbox: { x0: 10, y0: 10, x1: 40, y1: 40 } }
+      })),
+      toGray: vi.fn(() => new Uint8Array(100)),
+      laplacianVariance: vi.fn(() => 15),
+      maskIoU: vi.fn(() => 0.95),
+      voteMasks: vi.fn(() => ({ agreement: 0.95 })),
+      computeReadiness: vi.fn(() => ({
+        ready: true,
+        checks: { inFrame: true, singleSubject: true, stable: true, lowSpecular: true, sharp: true },
+        guidance: []
+      }))
+    };
+
+    const ctx = {
+      camera: {
+        open: true,
+        ready: true,
+        busy: false,
+        scanning: false,
+        landscapeHint: false,
+        lock: { ready: false, checks: {}, guidance: [], chips: [], stableCount: 3, box: null }
+      },
+      _camLockMasks: [new Uint8Array(100), new Uint8Array(100), new Uint8Array(100)],
+      _camLockDims: { w: 500, h: 281 },
+      _camLockLastMask: new Uint8Array(100),
+      $refs: {
+        camVideo: { videoWidth: 1280, videoHeight: 720 }
+      },
+      loadSubjectLockModule: vi.fn(async () => mockModule),
+      subjectBoxToPercent: vi.fn(() => ({ left: 10, top: 10, width: 20, height: 20 })),
+      captureCamera: vi.fn(async () => {}),
+      $nextTick: (fn) => fn(),
+      readError: (e) => String(e?.message || e)
+    };
+
+    const mockCtx = { drawImage: vi.fn(), getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(500 * 281 * 4) })) };
+    ctx._camLockCanvas = { width: 0, height: 0, getContext: () => mockCtx };
+
+    await methods._sampleCameraLockFrame.call(ctx);
+
+    expect(ctx.camera.lock.ready).toBe(true);
+    expect(ctx.captureCamera).toHaveBeenCalledOnce();
+  });
+
+  it('không tự động chụp nếu tracking chưa đạt readiness (chưa báo xanh)', async () => {
+    const mockModule = {
+      analyzeFrame: vi.fn(() => ({
+        mask: new Uint8Array(100),
+        stats: { partPixels: 50, bbox: { x0: 10, y0: 10, x1: 40, y1: 40 } }
+      })),
+      toGray: vi.fn(() => new Uint8Array(100)),
+      laplacianVariance: vi.fn(() => 5),
+      maskIoU: vi.fn(() => 0.5),
+      voteMasks: vi.fn(() => ({ agreement: 0.6 })),
+      computeReadiness: vi.fn(() => ({
+        ready: false,
+        checks: { inFrame: true, singleSubject: true, stable: false, lowSpecular: true, sharp: false },
+        guidance: ['Giữ máy ổn định']
+      }))
+    };
+
+    const ctx = {
+      camera: {
+        open: true,
+        ready: true,
+        busy: false,
+        scanning: false,
+        landscapeHint: false,
+        lock: { ready: false, checks: {}, guidance: [], chips: [], stableCount: 0, box: null }
+      },
+      $refs: {
+        camVideo: { videoWidth: 1280, videoHeight: 720 }
+      },
+      loadSubjectLockModule: vi.fn(async () => mockModule),
+      subjectBoxToPercent: vi.fn(() => ({ left: 10, top: 10, width: 20, height: 20 })),
+      captureCamera: vi.fn(async () => {}),
+      $nextTick: (fn) => fn(),
+      readError: (e) => String(e?.message || e)
+    };
+
+    const mockCtx = { drawImage: vi.fn(), getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(500 * 281 * 4) })) };
+    ctx._camLockCanvas = { width: 0, height: 0, getContext: () => mockCtx };
+
+    await methods._sampleCameraLockFrame.call(ctx);
+
+    expect(ctx.camera.lock.ready).toBe(false);
+    expect(ctx.captureCamera).not.toHaveBeenCalled();
+  });
+
+  it('không tự động chụp nếu camera còn đang ở chiều dọc (landscapeHint = true)', async () => {
+    const mockModule = {
+      analyzeFrame: vi.fn(() => ({
+        mask: new Uint8Array(100),
+        stats: { partPixels: 50, bbox: { x0: 10, y0: 10, x1: 40, y1: 40 } }
+      })),
+      toGray: vi.fn(() => new Uint8Array(100)),
+      laplacianVariance: vi.fn(() => 15),
+      computeReadiness: vi.fn(() => ({
+        ready: true,
+        checks: { inFrame: true, singleSubject: true, stable: true, lowSpecular: true, sharp: true },
+        guidance: []
+      }))
+    };
+
+    const ctx = {
+      camera: {
+        open: true,
+        ready: true,
+        busy: false,
+        scanning: false,
+        landscapeHint: true,
+        lock: { ready: false, checks: {}, guidance: [], chips: [], stableCount: 3, box: null }
+      },
+      $refs: {
+        camVideo: { videoWidth: 1280, videoHeight: 720 }
+      },
+      loadSubjectLockModule: vi.fn(async () => mockModule),
+      subjectBoxToPercent: vi.fn(() => ({ left: 10, top: 10, width: 20, height: 20 })),
+      captureCamera: vi.fn(async () => {}),
+      $nextTick: (fn) => fn(),
+      readError: (e) => String(e?.message || e)
+    };
+
+    const mockCtx = { drawImage: vi.fn(), getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(500 * 281 * 4) })) };
+    ctx._camLockCanvas = { width: 0, height: 0, getContext: () => mockCtx };
+
+    await methods._sampleCameraLockFrame.call(ctx);
+
+    expect(ctx.camera.lock.ready).toBe(true);
+    expect(ctx.captureCamera).not.toHaveBeenCalled();
+  });
+});

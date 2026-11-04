@@ -482,3 +482,19 @@ Before continuing, read [docs/moris-v6/HANDOFF.md](docs/moris-v6/HANDOFF.md). It
 - [x] Mô phỏng read-only production bằng code mới: 546 mã/1.110 asset → 540 ready, 4 stale, 2 partial; 6 pending thật (`3430570201`, `3430590001`, `3445950101`, `3446150001`, `3446160001`, `3670700001`) đều có `source_etag` null. Không ghi DB/vector, không deploy.
 - [x] Deploy: commit `9b71678` đã push lên `PQVinh99-Glory/Dictionary` main; Cloudflare Pages deployment `11b259a3-dfbe-4cff-9781-80f7c522fb41` build/deploy success lúc 2026-10-23T05:24:04Z; production alias `https://dictionary-dnw.pages.dev`.
 - [ ] Owner reload UI đã đăng nhập, xác nhận KPI/table và re-vectorize 6 mã stale để ghi `source_etag`.
+
+## Camera Moris — Tự động chụp khi tracking bắt vật thể ổn định báo xanh (2026-11-04)
+
+- [x] Khảo sát nguyên nhân: khi người dùng bấm nút chụp thủ công bằng tay trên màn hình điện thoại, lực chạm gây rung máy khiến tracking bị mất ổn định (IoU/sharpness giảm), dẫn đến bị chặn chụp hoặc lỗi chất lượng frame cuối.
+- [x] Thêm cấu hình `MORIS_CAMERA_AUTO_CAPTURE_ENABLED: true` trong `CONFIG` (`src/app.js`).
+- [x] Tích hợp cơ chế tự động chụp (`auto-capture`) ngay khi tracking hoàn tất 5 điều kiện readiness và báo xanh (`camera.lock.ready = true`):
+  - Kiểm tra an toàn: chỉ kích hoạt khi camera đang mở, stream ready, không bận (`!camera.busy`), không đang scan (`!camera.scanning`), máy đã ở chiều ngang (`!camera.landscapeHint`), không trùng lặp lệnh chụp (`!_camAutoCapturing`) và người dùng không đang nhập liệu (`!isTyping`).
+  - Haptic feedback an toàn (`navigator.vibrate(60)`).
+  - Sử dụng `$nextTick` để UI kịp chuyển khung sang trạng thái báo xanh (viền xanh `border-emerald-400`, nhãn "Đã nhận diện", chips xanh) trước khi chụp ngay lập tức.
+  - Tự động gọi `captureCamera()`, chụp frame sắc nét không bị rung tay, trích xuất mask và vector 3 lớp, nối thẳng vào hội thoại chat Moris và kích hoạt tìm kiếm AI.
+- [x] Cập nhật xử lý trạng thái dọn dẹp và reset cờ `_camAutoCapturing` trong `resetCameraLock`, `closeCamera` và `captureCamera catch`.
+- [x] Bổ sung 3 unit tests mới trong `tests/moris-camera-lock-box.test.js`:
+  - `tự động gọi captureCamera khi tracking đạt readiness (báo xanh)`
+  - `không tự động chụp nếu tracking chưa đạt readiness (chưa báo xanh)`
+  - `không tự động chụp nếu camera còn đang ở chiều dọc (landscapeHint = true)`
+- [x] Kiểm chứng: toàn bộ test suite 69 file / 680 tests pass 100%, `npm run build` sinh 48 static files sạch sẽ ra `dist/`.

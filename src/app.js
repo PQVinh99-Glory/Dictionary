@@ -71,6 +71,7 @@ const CONFIG = {
   MORIS_CAMERA_LOCK_SAMPLE_MS: 600,
   MORIS_CAMERA_LOCK_MAX_SAMPLES: 4,
   MORIS_CAMERA_LOCK_SMOOTH_TAU_MS: 150,
+  MORIS_CAMERA_AUTO_CAPTURE_ENABLED: true,
 
   // M28 — Size Contract (S1, query-side only; fail-open khi thiếu dữ liệu)
   MORIS_SIZE_GATE_ENABLED: true,
@@ -3328,6 +3329,7 @@ createApp({
     closeCamera() {
       this._cameraOpenId = (this._cameraOpenId || 0) + 1;
       this._camStreamRequestId = (this._camStreamRequestId || 0) + 1;
+      this._camAutoCapturing = false;
       this.camera.open = false;
       this.camera.ready = false;
       this.camera.busy = false;
@@ -3480,6 +3482,7 @@ createApp({
     resetCameraLock() {
       this.stopCameraLockLoop();
       this._camCaptureRoi = null;
+      this._camAutoCapturing = false;
       this.camera.lock.enabled = CONFIG.MORIS_CAMERA_SUBJECT_LOCK_ENABLED;
       this.camera.lock.seed = null;
       this.camera.lock.ready = false;
@@ -3695,7 +3698,7 @@ createApp({
     /** Lấy mẫu khung live: mask + readiness 5 điều kiện (§10.1) + voting đa khung. */
     async _sampleCameraLockFrame() {
       if (!CONFIG.MORIS_CAMERA_SUBJECT_LOCK_ENABLED) return;
-      if (!this.camera.open || !this.camera.ready || this.camera.scanning || this.camera.busy) return;
+      if (!this.camera.open || !this.camera.ready || this.camera.scanning || this.camera.busy || this._camAutoCapturing) return;
       const video = this.$refs.camVideo;
       if (!video || !video.videoWidth || !video.videoHeight) return;
 
@@ -3773,6 +3776,32 @@ createApp({
         ];
         this.camera.lock.lastError = '';
         this.camera.lock.lastSampleAt = Date.now();
+
+        // Tự động chụp ngay khi tracking khóa thành công và báo xanh (tránh rung tay khi bấm nút thủ công)
+        if (CONFIG.MORIS_CAMERA_AUTO_CAPTURE_ENABLED && readiness.ready &&
+            this.camera.open && this.camera.ready && !this.camera.busy && !this.camera.scanning &&
+            !this.camera.landscapeHint && !this._camAutoCapturing) {
+          const isTyping = typeof document !== 'undefined' &&
+            document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+          if (!isTyping) {
+            this._camAutoCapturing = true;
+            try { navigator?.vibrate?.(60); } catch (_) {}
+            const defer = typeof this.$nextTick === 'function'
+              ? (fn) => this.$nextTick(fn)
+              : (typeof nextTick === 'function' ? (fn) => nextTick(fn) : (fn) => setTimeout(fn, 0));
+            defer(() => {
+              if (this.camera.open && this.camera.ready && !this.camera.busy && !this.camera.scanning && this.camera.lock.ready) {
+                Promise.resolve(this.captureCamera())
+                  .catch(() => {})
+                  .finally(() => {
+                    this._camAutoCapturing = false;
+                  });
+              } else {
+                this._camAutoCapturing = false;
+              }
+            });
+          }
+        }
       } catch (err) {
         this.camera.lock.lastError = this.readError(err);
       }
@@ -3971,6 +4000,7 @@ createApp({
         this.toast('error', this.readError(e));
         this.camera.busy = false;
         this.camera.scanning = false;
+        this._camAutoCapturing = false;
       }
     },
 

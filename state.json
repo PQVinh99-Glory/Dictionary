@@ -2,14 +2,14 @@
   "system": {
     "project": "Catalogue AI (Dictionary)",
     "stack": "Vue 3 CDN + Cloudflare Pages Functions + Supabase (pgvector) + Cloudflare R2",
-    "updated_at": "2026-10-23T05:12:00Z",
-    "memory_version": "2.9.0",
-    "status": "in_progress"
+    "updated_at": "2026-11-04T03:30:00Z",
+    "memory_version": "2.10.0",
+    "status": "completed"
   },
   "current_session": {
-    "active_task": "vector_center_false_pending_and_503_fix_local_verified",
-    "last_checkpoint": "2026-10-23 05:12 UTC: sửa Trung tâm Vector AI local. Nguyên nhân KPI sai: inspectVectorItems chỉ R2 HEAD index<40 nên 10 mã có asset sau vị trí 40 trên trang 0/100/260 bị xếp failed; 8 mã >2 asset thực tế nằm trong 40 và đã ready. Code mới dùng budget 120 HEAD/trang, concurrency 6, Map theo record, status unverified thay vì failed khi chưa kiểm tra. Bỏ fallback N+1 trong vector-items (retry 1 lần, 503 JSON thân thiện); client abort load cũ, KPI chỉ cập nhật khi tải đủ, pending chỉ missing/stale/partial, refresh đúng mã sau vectorize. Full npm test 69 file/677 test pass; tsc 0; build 48 file. Mô phỏng read-only production mới: 546 mã/1.110 asset -> 540 ready, 4 stale, 2 partial; 6 pending thật do source_etag null. Không ghi DB/vector, không deploy.",
-    "resumption_prompt": "Review diff và deploy khi owner yêu cầu; sau deploy xác nhận KPI còn 6 mã pending thật (3430570201, 3430590001, 3445950101, 3446150001, 3446160001, 3670700001) và owner re-vectorize các mã này để ghi source_etag. Không dùng số 8 cũ làm gate; cap 40 ảnh hưởng 10 mã trong snapshot hiện tại (4 ready, 6 stale/partial).",
+    "active_task": "camera_moris_auto_capture_completed",
+    "last_checkpoint": "2026-11-04 03:30 UTC: Tự động chụp camera Moris ngay khi tracking bắt vật thể ổn định báo xanh (camera.lock.ready = true). Không cần bấm nút thủ công bằng tay nên loại bỏ 100% rung lắc thiết bị làm rớt tracking. Tự động chuyển khung hình sang AI scanning và nối vào chatbox Moris. Full test suite 69 files/680 tests pass 100%, build 48 files dist/ sạch sẽ.",
+    "resumption_prompt": "Hệ thống camera Moris đã được kích hoạt tính năng tự động chụp khi tracking bắt vật thể ổn định báo xanh. 680/680 unit tests pass 100%.",
     "tech_debt_register": "docs/moris-v6/TECH_DEBT_REGISTER.md",
     "plan_file": "Plan_pipeline_moris.md",
     "release_audit": "docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md"
@@ -860,11 +860,22 @@
         "Owner reload Vector Center in authenticated UI and confirm KPI/table; the 6 source_etag-null SKU updates pending",
         "Do not repeat the earlier 8-code root-cause claim: the 8 codes with >2 assets were within the first 40 and already ready; the cap affected 10 different items in this snapshot"
       ]
+    },
+    {
+      "id": "task_51_camera_moris_auto_capture_on_lock_green",
+      "title": "Tự động chụp camera Moris khi tracking bắt vật thể ổn định báo xanh",
+      "status": "completed",
+      "completed_at": "2026-11-04T03:30:00Z",
+      "diagnostics": {
+        "root_cause": "Khi người dùng chạm tay vào màn hình điện thoại để bấm nút chụp thủ công, lực bấm làm rung máy, làm giảm độ nét (sharpness) và độ ổn định (IoU/stableCount), khiến tracking bị rớt khỏi trạng thái báo xanh và chặn nút chụp hoặc báo lỗi frame cuối chưa ổn định."
+      },
+      "solution": "1) Bổ sung cấu hình MORIS_CAMERA_AUTO_CAPTURE_ENABLED: true trong CONFIG; 2) Trong _sampleCameraLockFrame (src/app.js), ngay khi tracking thỏa mãn đủ 5 điều kiện readiness và báo xanh (camera.lock.ready = true), kiểm tra an toàn (!camera.busy, !camera.scanning, !camera.landscapeHint, !_camAutoCapturing, !isTyping), rung phản hồi nhẹ và gọi captureCamera() trên $nextTick sau khi khung tracking kịp hiển thị trạng thái xanh; 3) captureCamera() tự động chụp khung hình sắc nét (không rung tay), trích xuất mask & vector 3 lớp, đóng camera và chuyển thẳng ảnh chụp sang chatbox Moris để kích hoạt tìm kiếm AI; 4) Dọn dẹp cờ _camAutoCapturing trong resetCameraLock, closeCamera và catch block của captureCamera; 5) Viết 3 unit tests mới trong tests/moris-camera-lock-box.test.js và build dist/ 48 files.",
+      "evidence": "69/69 test files pass (680/680 unit tests pass 100%), npm run build sinh 48 static files sạch sẽ ra dist/."
     }
   ],
   "verification": {
-    "total_unit_tests": 677,
-    "passing_tests": 677,
+    "total_unit_tests": 680,
+    "passing_tests": 680,
     "failing_tests": 0,
     "typescript_exit_code": 0,
     "build_exit_code": 0,
@@ -872,7 +883,7 @@
     "build_files": 48,
     "local_e2e_passed": 12,
     "staging": "skipped_by_owner",
-    "evidence": "npm test 2026-10-19 sau Gate D + tracking box (55 files/525 tests pass 100%); tsc --noEmit exit 0; npm run build 46 files exit 0; chi tiết: task_30_gate_d_size_editor_and_tracking_box, task_29_test_backlog_t2_t7_profile01_r2_02, task_28_m28_hardening_tests_and_push Phiên 2026-10-19 (push DB): 4 migration áp production + 5 repair history + version 6.2.0; probe production OK (xem task_31_gate_d_applied_production). Phiên tracking upgrade 2026-10-19: component merge + 600ms + 60fps overlay + viền 1.5px; full 55 files/530 pass (xem task_32_tracking_upgrade_merge_600ms_60fps). Phiên S1.1 2026-10-19: full 55 files/537 pass; migration 20261019120000 đã push + commit 75bc8ec. Phiên mẫu lỗ 2026-10-19: full 59 files/569 pass; migration 20261019180000 + 14 ảnh R2; commit 4e13b02 + e63e99a. Phiên UI #7–#9 2026-10-19: full 59 files/575 pass. Phiên khôi phục ses_eae5 (PROFILE-01, EVAL-01, Simple audit, xóa image 2/): full 60 files/578 pass 100%; version 6.5.0 (xem task_36). Phiên confusing_pairs @mention: full 62 files/608 tests pass 100%; build 47 files (xem task_37). Phiên bổ sung mẫu lỗ bán oval 2026-10-20: full 62 files/610 tests pass 100%; tsc 0; build 47 files; audit text 15/15 (xem task_38). Phiên đồng bộ mẫu lỗ bán oval 2026-10-20: db push 20261020072401 + R2 hole-samples/ban-oval.png; probe production service_role 15 rows/anon 0; full 62 files/610 tests pass; tsc 0; build 47 files (xem task_38). Phiên main release 2026-10-20: chỉ đưa ban_oval lên main, bỏ Phase 1 DB taxonomy; version 6.6.0; full 62 files/610 tests pass. 2026-10-23 vector center fix: npm test 69 files/677 tests pass 100%; npx tsc --noEmit exit 0; npm run build 48 files exit 0; git diff --check pass. Production read-only simulation 546 SKU/1,110 assets -> 540 ready/4 stale/2 partial, 6 actionable pending; no DB writes, no vector writes. 2026-10-23 deploy: commit 9b71678 pushed to PQVinh99-Glory/Dictionary main; Cloudflare Pages deployment 11b259a3-dfbe-4cff-9781-80f7c522fb41 build+deploy success 05:23:56-05:24:04Z; production alias https://dictionary-dnw.pages.dev.",
+    "evidence": "npm test 2026-11-04 (69 files/680 tests pass 100%); npm run build 48 files exit 0; git diff --check pass. Auto-capture khi tracking khóa xanh hoàn thành.",
     "app_version": "6.6.3",
     "production_migrations_applied": 7,
     "migration_history_repaired": 5,
