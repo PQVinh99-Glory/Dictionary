@@ -243,8 +243,8 @@ createApp({
   computed:{
     // Chỉ admin được sửa/xoá linh kiện, upload ảnh, chạy queue vector.
     canEdit() { return this.role === 'admin'; },
-    // admin + converter được dùng modal Quy đổi (thêm/sửa/xoá đơn trọng).
-    canConvert() { return this.role === 'admin' || this.role === 'converter'; },
+    // Mọi user trừ viewer được dùng modal Quy đổi (thêm/sửa/xoá đơn trọng).
+    canConvert() { return !!this.role && this.role !== 'viewer'; },
     isAdmin() { return this.role === 'admin'; },
     role() { return String(this.session.user?.role_name || '').toLowerCase(); },
 

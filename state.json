@@ -2,14 +2,14 @@
   "system": {
     "project": "Catalogue AI (Dictionary)",
     "stack": "Vue 3 CDN + Cloudflare Pages Functions + Supabase (pgvector) + Cloudflare R2",
-    "updated_at": "2026-11-04T03:30:00Z",
-    "memory_version": "2.10.0",
+    "updated_at": "2026-11-14T00:50:00Z",
+    "memory_version": "2.11.0",
     "status": "completed"
   },
   "current_session": {
-    "active_task": "camera_moris_auto_capture_completed",
-    "last_checkpoint": "2026-11-04 03:30 UTC: Tự động chụp camera Moris ngay khi tracking bắt vật thể ổn định báo xanh (camera.lock.ready = true). Không cần bấm nút thủ công bằng tay nên loại bỏ 100% rung lắc thiết bị làm rớt tracking. Tự động chuyển khung hình sang AI scanning và nối vào chatbox Moris. Full test suite 69 files/680 tests pass 100%, build 48 files dist/ sạch sẽ.",
-    "resumption_prompt": "Hệ thống camera Moris đã được kích hoạt tính năng tự động chụp khi tracking bắt vật thể ổn định báo xanh. 680/680 unit tests pass 100%.",
+    "active_task": "profiles_rls_recursion_weight_edit_completed",
+    "last_checkpoint": "2026-11-14 00:50 UTC: Sửa lỗi 'infinite recursion detected in policy for relation profiles' khi đổi đơn trọng kg/pcs bằng migration 20261114000000 (helper app_current_role SECURITY DEFINER + policy mw_insert/update/delete cho mọi role trừ viewer) và frontend canConvert. Full test suite 70 files/683 tests pass 100%. Chưa push migration/deploy production.",
+    "resumption_prompt": "Migration 20261114000000_fix_profiles_recursion_weight_edit.sql đã sẵn sàng (chưa apply production); npm test 683/683 pass. Cần owner duyệt để push migration.",
     "tech_debt_register": "docs/moris-v6/TECH_DEBT_REGISTER.md",
     "plan_file": "Plan_pipeline_moris.md",
     "release_audit": "docs/moris-v6/evidence/pipeline-release-readiness-audit-2026-10-21.md"
@@ -871,20 +871,32 @@
       },
       "solution": "1) Bổ sung cấu hình MORIS_CAMERA_AUTO_CAPTURE_ENABLED: true trong CONFIG; 2) Trong _sampleCameraLockFrame (src/app.js), ngay khi tracking thỏa mãn đủ 5 điều kiện readiness và báo xanh (camera.lock.ready = true), kiểm tra an toàn (!camera.busy, !camera.scanning, !camera.landscapeHint, !_camAutoCapturing, !isTyping), rung phản hồi nhẹ và gọi captureCamera() trên $nextTick sau khi khung tracking kịp hiển thị trạng thái xanh; 3) captureCamera() tự động chụp khung hình sắc nét (không rung tay), trích xuất mask & vector 3 lớp, đóng camera và chuyển thẳng ảnh chụp sang chatbox Moris để kích hoạt tìm kiếm AI; 4) Dọn dẹp cờ _camAutoCapturing trong resetCameraLock, closeCamera và catch block của captureCamera; 5) Viết 3 unit tests mới trong tests/moris-camera-lock-box.test.js và build dist/ 48 files.",
       "evidence": "69/69 test files pass (680/680 unit tests pass 100%), npm run build sinh 48 static files sạch sẽ ra dist/."
+    },
+    {
+      "id": "task_52_fix_profiles_rls_recursion_weight_edit",
+      "title": "Sửa lỗi infinite recursion policy profiles khi sửa đơn trọng và cho mọi role trừ viewer chỉnh sửa",
+      "status": "completed",
+      "completed_at": "2026-11-14T00:50:00Z",
+      "diagnostics": {
+        "root_cause": "Policy profiles_select_admin trên public.profiles tự truy vấn public.profiles trong biểu thức EXISTS. Khi policy mw_insert/mw_update/mw_delete của material_weights kiểm tra role qua profiles, PostgreSQL đánh giá profiles_select_admin -> đệ quy vô hạn và báo 'infinite recursion detected in policy for relation \"profiles\"'.",
+        "permission_gap": "Policy material_weights trước đó chỉ cho converter/admin, trong khi yêu cầu là mọi user đang hoạt động trừ viewer."
+      },
+      "solution": "1) Migration 20261114000000_fix_profiles_recursion_weight_edit.sql: thêm helper public.app_current_role() SECURITY DEFINER đọc role từ profiles (bypass RLS); thay profiles_select_admin bằng helper; cấp INSERT/UPDATE/DELETE material_weights cho public.app_current_role() <> 'viewer'. 2) Frontend canConvert đổi thành !!role && role !== 'viewer'. 3) Thêm tests/weight-rls.test.js chống tái phát và cập nhật tests/frontend.test.js.",
+      "evidence": "npm test 70 file/683 test pass 100%; node --check src/app.js pass. Chưa push migration/deploy production."
     }
   ],
   "verification": {
-    "total_unit_tests": 680,
-    "passing_tests": 680,
+    "total_unit_tests": 683,
+    "passing_tests": 683,
     "failing_tests": 0,
     "typescript_exit_code": 0,
     "build_exit_code": 0,
-    "unit_files": 69,
+    "unit_files": 70,
     "build_files": 48,
     "local_e2e_passed": 12,
     "staging": "skipped_by_owner",
-    "evidence": "npm test 2026-11-04 (69 files/680 tests pass 100%); npm run build 48 files exit 0; git diff --check pass. Auto-capture khi tracking khóa xanh hoàn thành.",
-    "app_version": "6.6.3",
+    "evidence": "npm test 2026-11-14 (70 files/683 tests pass 100%); node --check src/app.js pass. Fix RLS recursion profiles + quyền sửa đơn trọng cho non-viewer hoàn thành.",
+    "app_version": "6.6.5",
     "production_migrations_applied": 7,
     "migration_history_repaired": 5,
     "production_migrations_pending_by_design": [

@@ -117,7 +117,7 @@ describe('src/app.js — phân quyền & phiên', () => {
   it('đúng 3 role, không còn hardcode role editor', () => {
     expect(js).not.toContain("['admin','editor']");
     expect(js).toContain("canEdit() { return this.role === 'admin'; }");
-    expect(js).toContain("canConvert() { return this.role === 'admin' || this.role === 'converter'; }");
+    expect(js).toContain("canConvert() { return !!this.role && this.role !== 'viewer'; }");
     expect(js).toContain("isAdmin() { return this.role === 'admin'; }");
     expect(js).toContain("role() { return String(this.session.user?.role_name || '').toLowerCase(); }");
   });

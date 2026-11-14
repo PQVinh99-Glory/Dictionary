@@ -498,3 +498,11 @@ Before continuing, read [docs/moris-v6/HANDOFF.md](docs/moris-v6/HANDOFF.md). It
   - `không tự động chụp nếu tracking chưa đạt readiness (chưa báo xanh)`
   - `không tự động chụp nếu camera còn đang ở chiều dọc (landscapeHint = true)`
 - [x] Kiểm chứng: toàn bộ test suite 69 file / 680 tests pass 100%, `npm run build` sinh 48 static files sạch sẽ ra `dist/`.
+
+## Sửa lỗi RLS "infinite recursion ... profiles" khi sửa đơn trọng (2026-11-14)
+
+- [x] Chẩn đoán: policy `profiles_select_admin` trên `profiles` tự `select ... from public.profiles`; khi policy `mw_insert`/`mw_update`/`mw_delete` của `material_weights` kiểm tra role qua profiles, PostgreSQL đệ quy vô hạn và báo `infinite recursion detected in policy for relation "profiles"`.
+- [x] Migration `supabase/migrations/20261114000000_fix_profiles_recursion_weight_edit.sql`: thêm helper `public.app_current_role()` SECURITY DEFINER (bypass RLS), thay `profiles_select_admin` bằng helper, cấp INSERT/UPDATE/DELETE `material_weights` cho mọi role đang hoạt động trừ `viewer`.
+- [x] Frontend `src/app.js`: `canConvert` = role khác rỗng và khác `viewer`; cập nhật `tests/frontend.test.js`.
+- [x] Thêm `tests/weight-rls.test.js` chống tái phát đệ quy RLS và khóa quyền viewer.
+- [x] Kiểm chứng: `npm test` 70 file/683 test pass; `node --check src/app.js` pass. Phiên bản 6.6.5. Chưa push migration/deploy production.
